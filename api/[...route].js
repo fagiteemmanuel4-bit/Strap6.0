@@ -43,6 +43,7 @@ async function loginIsBlocked(keys) {
 async function suspendEmail(email, reason) {
   const e = lower(email);
   const u = (await q('select id::text as id from neon_auth."user" where lower(email)=$1 limit 1', [e]))[0];
+  if (!u) return;
   await q(`insert into auth_account_security(email,user_id,suspended_at,suspension_reason,updated_at)
     values($1,$2,now(),$3,now()) on conflict(email) do update set
     user_id=coalesce(auth_account_security.user_id,excluded.user_id),
@@ -160,6 +161,7 @@ H['auth/send-code'] = async (req) => {
   const suspended=await accountSuspension(email); if(suspended) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const wait=await actionBlocked(req,email,'otp-send'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code requests. Please wait before trying again.'}];
   await recordAction(req,email,'otp-send');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const r = type === 'forget-password' ? await na(req, 'POST', '/forget-password/email-otp', { email }) : await na(req, 'POST', '/email-otp/send-verification-otp', { email, type });
   return r.ok ? [200, { ok: true }] : [r.status === 429 ? 429 : 400, { ok: false, msg: errMsg(r) }];
 };
@@ -170,6 +172,7 @@ H['auth/verify-email'] = async (req, res) => {
   if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many incorrect code attempts. Please wait before trying again.'}];
   await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const r = await na(req, 'POST', '/email-otp/verify-email', { email, otp });
   if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
   await clearAction(req,email,'otp-verify');
@@ -182,7 +185,13 @@ H['auth/verify-email'] = async (req, res) => {
 };
 /* forgot password: check the code without using it up (if Neon supports it) */
 H['auth/check-code'] = async (req) => {
-  const r = await na(req, 'POST', '/email-otp/check-verification-otp', { email: lower(req.body.email), type: 'forget-password', otp: String(req.body.code || '').trim() });
+  const email=lower(req.body.email);
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const r = await na(req, 'POST', '/email-otp/check-verification-otp', { email, type: 'forget-password', otp: String(req.body.code || '').trim() });
+  if (r.ok || r.status === 404) await clearAction(req,email,'otp-verify');
   if (r.status === 404) return [200, { ok: true }]; // not available: the code is checked when the new password is saved
   return [200, { ok: r.ok }];
 };
@@ -191,6 +200,7 @@ H['auth/reset'] = async (req) => {
   if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code attempts. Please wait before trying again.'}];
   await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const r = await na(req, 'POST', '/email-otp/reset-password', { email, otp: String(req.body.code || '').trim(), password: pw });
   if(r.ok) await clearAction(req,email,'otp-verify');
   return r.ok ? [200, { ok: true }] : [400, { ok: false, msg: 'That code is wrong or expired.' }];
