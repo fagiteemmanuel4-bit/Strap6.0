@@ -39,7 +39,7 @@ const staffAccess = role => ({
   'Cashier': { defaultRoute: 'new-sale', allowedRoutes: ['new-sale','sales-today','sales-history'] },
   'Stock keeper': { defaultRoute: 'products', allowedRoutes: ['products','inventory','transfers'] },
   'Customer care': { defaultRoute: 'orders', allowedRoutes: ['orders','customers'] },
-  'Manager': { defaultRoute: 'home', allowedRoutes: ['home','orders','products','collections','inventory','purchase','transfers','gift','customers','growth','sales-today','sales-history','new-sale','online','mcp','activity','devices','premium'] }
+  'Manager': { defaultRoute: 'home', allowedRoutes: ['home','staff','orders','products','collections','inventory','purchase','transfers','gift','customers','growth','sales-today','sales-history','new-sale','online','mcp','activity','devices','premium'] }
 }[role] || { defaultRoute: '', allowedRoutes: [] });
 function staffLoginKeys(req, email) {
   const forwarded = String(req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
@@ -475,22 +475,26 @@ H['auth/signup'] = async (req, res, user) => {
 
 
 /* ---- staff accounts: owner-managed PIN identities and isolated staff sessions ---- */
-H['staff/list'] = async (req,res,user) => {
-  if(!user) return [401,{ok:false,msg:'Only the business owner can manage staff.'}];
-  await migrateLegacyStaffForOwner(user.id);
-  return [200,{ok:true,staff:await safeStaffRows(user.id)}];
+H['staff/list'] = async (req,res,user,staff) => {
+  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to manage staff.'}];
+  const ownerId=staff?staff.owner_id:user.id;
+  await migrateLegacyStaffForOwner(ownerId);
+  return [200,{ok:true,staff:await safeStaffRows(ownerId)}];
 };
-H['staff/create'] = async (req,res,user) => {
-  if(!user) return [401,{ok:false,msg:'Only the business owner can add staff.'}];
+H['staff/create'] = async (req,res,user,staff) => {
+  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to add staff.'}];
+  const ownerId=staff?staff.owner_id:user.id;
   const b=req.body||{}, name=String(b.name||'').trim().slice(0,80), role=String(b.role||''), email=lower(b.email), pin=String(b.pin||''), branchId=b.branch||null;
   if(!name||!staffAccess(role).allowedRoutes.length||!emailRe.test(email)||!/^[0-9]{6}$/.test(pin)) return [400,{ok:false,msg:'Check the staff name, role, email and 6-digit PIN.'}];
   if(/^(\\d)\\1{5}$/.test(pin)||pin==='123456'||pin==='654321'||pin==='012345') return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
-  const stateRow=(await q('select blob from user_data where user_id=$1',[user.id]))[0], f1=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.f1'],{});
+  const stateRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], f1=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.f1'],{});
   const branches=Array.isArray(f1.branches)?f1.branches:[{id:'b0'}];
-  const used=Number((await q('select count(*)::int as n from staff_accounts where owner_id=$1 and status=\'active\'',[user.id]))[0].n||0);
+  const used=Number((await q('select count(*)::int as n from staff_accounts where owner_id=$1 and status=\'active\'',[ownerId]))[0].n||0);
   const maxStaff=f1.plan==='premium'?50:3;
   if(used>=maxStaff) return [403,{ok:false,code:'STAFF_LIMIT',msg:`Your current plan allows ${maxStaff} staff accounts.`}];
-  if(branchId&&!branches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
+  const managerBranches=staff?staffAllowedBranches(staff,f1):branches;
+  if(branchId&&!managerBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
+  if(staff&&staff.branch_id&&!branchId) return [403,{ok:false,msg:'You can only add staff to your assigned branch.'}];
   const collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1',[email]);
   if(collision.length) return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}];
   const salt=crypto.randomBytes(16).toString('hex'), hash=crypto.scryptSync(pin,salt,64).toString('hex');
@@ -498,14 +502,15 @@ H['staff/create'] = async (req,res,user) => {
     const row=(await q(`insert into staff_accounts(owner_id,name,role,branch_id,email,pin_salt,pin_hash,pin_algo)
       values($1,$2,$3,$4,$5,$6,$7,'scrypt-v1')
       returning id::text as id,name,role,branch_id as branch,email,(extract(epoch from created_at)*1000)::bigint as at`,
-      [user.id,name,role,branchId,email,salt,hash]))[0];
+      [ownerId,name,role,branchId,email,salt,hash]))[0];
     return [200,{ok:true,staff:row}];
   } catch(e) { if(e.code==='23505') return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}]; throw e; }
 };
-H['staff/remove'] = async (req,res,user) => {
-  if(!user) return [401,{ok:false,msg:'Only the business owner can remove staff.'}];
-  const id=String(req.body.id||'');
-  const rows=await q('delete from staff_accounts where id=$1::uuid and owner_id=$2 returning id',[id,user.id]).catch(()=>[]);
+H['staff/remove'] = async (req,res,user,staff) => {
+  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to remove staff.'}];
+  const ownerId=staff?staff.owner_id:user.id, id=String(req.body.id||'');
+  if(staff && id===staff.id) return [403,{ok:false,msg:'You cannot remove your own staff login.'}];
+  const rows=await q('delete from staff_accounts where id=$1::uuid and owner_id=$2 returning id',[id,ownerId]).catch(()=>[]);
   if(!rows.length) return [404,{ok:false,msg:'Staff account not found.'}];
   return [200,{ok:true}];
 };
