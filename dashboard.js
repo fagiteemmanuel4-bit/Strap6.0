@@ -104,7 +104,9 @@
   };
   const MENU = !STAFF ? BASE_MENU : STAFF.role === 'Manager'
     ? BASE_MENU.filter(m => m[0] !== 'settings')
-    : (STAFF.allowedRoutes || []).map(id => STAFF_MENU[id]).filter(Boolean);
+    : STAFF.role === 'Stock keeper'
+      ? [['products','Products','tag',[['products','All products'],['inventory','Inventory'],['transfers','Transfers']]]]
+      : (STAFF.allowedRoutes || []).map(id => STAFF_MENU[id]).filter(Boolean);
   const TAB_OF = { home: 0, products: 2, collections: 2, inventory: 2, purchase: 2, transfers: 2, gift: 2 };
 
   function buildDash(d) {
