@@ -103,7 +103,7 @@
     customers:['customers','Customers','users']
   };
   const MENU = !STAFF ? BASE_MENU : STAFF.role === 'Manager'
-    ? BASE_MENU.filter(m => m[0] !== 'settings' && m[0] !== 'staff')
+    ? BASE_MENU.filter(m => m[0] !== 'settings')
     : (STAFF.allowedRoutes || []).map(id => STAFF_MENU[id]).filter(Boolean);
   const TAB_OF = { home: 0, products: 2, collections: 2, inventory: 2, purchase: 2, transfers: 2, gift: 2 };
 
@@ -182,7 +182,7 @@
     const panes = { home: $('.pane[data-id=home]', dash) }, mods = {};
     let current = 'home';
     const ctx = {
-      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, go: id => show(id), products: () => mods.products,
+      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products,
       rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
       signOut: async () => { await StrapAPI.signOut(); location.href = 'index.html'; }
     };
