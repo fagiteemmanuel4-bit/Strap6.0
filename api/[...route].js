@@ -313,8 +313,11 @@ H['health'] = async (req) => {
 H['auth/email-status'] = async (req) => {
   const email = lower(req.body.email);
   if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email address.' }];
-  await migrateLegacyStaffByEmail(email);
-  const staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
+  let staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
+  if(!staffExists.length) {
+    const ownerExists=await q('select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]);
+    if(!ownerExists.length) { await migrateLegacyStaffByEmail(email); staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]); }
+  }
   if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
   const existing = await q('select 1 from auth_email_registry where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
   return existing.length
@@ -326,7 +329,12 @@ H['auth/email-status'] = async (req) => {
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || password.length < 8) return [400, { ok: false, msg: 'Check your email and password.' }];
-  await migrateLegacyStaffByEmail(email);
+  let staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
+  if(!staffExists.length) {
+    const ownerExists=await q('select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]);
+    if(!ownerExists.length) { await migrateLegacyStaffByEmail(email); staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]); }
+  }
+  if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
 
   // Check Neon Managed Auth directly. Never attempt a sign-in with the password
   // supplied on the create-account screen to detect an existing identity.
@@ -508,8 +516,8 @@ H['staff/create'] = async (req,res,user,staff) => {
   const managerBranches=staff?staffAllowedBranches(staff,f1):branches;
   if(branchId&&!managerBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
   if(staff&&staff.branch_id&&!branchId) return [403,{ok:false,msg:'You can only add staff to your assigned branch.'}];
-  await migrateLegacyStaffByEmail(email);
-  const collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1',[email]);
+  let collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth.\"user\" where lower(email)=$1 union all select 1 from auth_email_registry where lower(email)=$1 limit 1',[email]);
+  if(!collision.length) { await migrateLegacyStaffByEmail(email); collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]); }
   if(collision.length) return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}];
   const salt=crypto.randomBytes(16).toString('hex'), hash=crypto.scryptSync(pin,salt,64).toString('hex');
   try {
@@ -534,15 +542,19 @@ H['staff/lookup'] = async (req) => {
   const lookupKeys=staffLookupKeys(req,email), blocked=await loginIsBlocked(lookupKeys);
   if(blocked) return [429,{ok:false,msg:'Too many staff email checks. Please wait before trying again.'}];
   await recordStaffFailure(lookupKeys);
-  await migrateLegacyStaffByEmail(email);
-  const found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id
+  let found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id
     where lower(s.email)=$1 and s.status='active' and a.deleted_at is null limit 1`,[email]);
+  if(!found.length) {
+    const ownerExists=await q('select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]);
+    if(!ownerExists.length) { await migrateLegacyStaffByEmail(email); found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id where lower(s.email)=$1 and s.status='active' and a.deleted_at is null limit 1`,[email]); }
+  }
   return [200,{ok:true,staff:!!found.length}];
 };
 H['staff/login'] = async (req,res) => {
   const email=lower(req.body.email), pin=String(req.body.pin||'');
   if(!emailRe.test(email)||!/^[0-9]{6}$/.test(pin)) return [401,{ok:false,msg:'Email or staff PIN is incorrect.'}];
-  await migrateLegacyStaffByEmail(email);
+  let staffRow=(await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]))[0];
+  if(!staffRow) { const ownerExists=await q('select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]); if(!ownerExists.length) await migrateLegacyStaffByEmail(email); }
   const keys=staffLoginKeys(req,email), blocked=await loginIsBlocked(keys);
   if(blocked) return [429,{ok:false,msg:'Too many incorrect PIN attempts. Please wait before trying again.'}];
   const row=(await q(`select s.id::text as id,s.owner_id,s.name,s.role,s.branch_id,s.email,s.pin_salt,s.pin_hash,s.pin_algo,
