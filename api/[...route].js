@@ -114,8 +114,8 @@ function mergeCreditPayments(existing,incoming) {
   const oldIds=new Set(old.map(x=>String(x.id)));
   const merged=old.map(item=>{
     const fresh=next.find(x=>String(x.id)===String(item.id)); if(!fresh)return item;
-    const payments=Array.isArray(item.payments)?item.payments:[], keys=new Set(payments.map(p=>String(p.ts)+':'+String(p.amount)));
-    const additions=(Array.isArray(fresh.payments)?fresh.payments:[]).filter(p=>!keys.has(String(p.ts)+':'+String(p.amount)));
+    const payments=Array.isArray(item.payments)?item.payments:[], keys=new Set(payments.map(p=>String(p&&p.ts)+':'+String(p&&p.amount)));
+    const additions=(Array.isArray(fresh.payments)?fresh.payments:[]).filter(p=>p&&!keys.has(String(p.ts)+':'+String(p.amount)));
     return additions.length?{...item,payments:[...payments,...additions]}:item;
   });
   const added=next.filter(x=>!oldIds.has(String(x.id)));
