@@ -2,8 +2,21 @@
 (() => {
   const own = k => String(k).startsWith('strap');
   let active = false, timer = null, pushing = false;
-  const call = (method, path, body) => fetch('/api/' + path, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
-    .then(r => r.json().catch(() => ({ ok: false }))).catch(() => ({ ok: false, msg: 'No connection. Check your internet and try again.' }));
+  const call = async (method, path, body) => {
+    try {
+      const response = await fetch('/api/' + path, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); }
+      catch (e) { return { ok: false, msg: 'Strap API returned an unreadable response (HTTP ' + response.status + '). Please contact support.' }; }
+      if (!response.ok && !data.msg) data.msg = 'Strap API rejected the request (HTTP ' + response.status + '). Please try again or contact support.';
+      if (data.ok === false && !data.msg) data.msg = 'Strap API returned an unsuccessful response (HTTP ' + response.status + '). Please contact support.';
+      return data;
+    } catch (e) {
+      console.error('Strap API request failed:', path, e);
+      return { ok: false, msg: 'Could not reach Strap. Check your internet connection and try again.' };
+    }
+  };
   const xhr = (m, u) => { const x = new XMLHttpRequest(); x.open(m, u, false); try { x.send(); } catch (e) { return { status: 0 }; } let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} return { status: x.status, j }; };
   const wipe = () => { [localStorage, sessionStorage].forEach(s => { try { Object.keys(s).filter(own).forEach(k => s.removeItem(k)); } catch (e) {} }); };
   const collect = () => { const b = {}; try { Object.keys(localStorage).filter(own).forEach(k => b['ls:' + k] = localStorage.getItem(k)); Object.keys(sessionStorage).filter(own).forEach(k => b['ss:' + k] = sessionStorage.getItem(k)); } catch (e) {} return b; };
