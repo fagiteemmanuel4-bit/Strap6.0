@@ -81,6 +81,7 @@
       act: () => api.resetPassword(D.fgemail, D.fgcode, D.fgpw), next: 'fgdone' },
     fgdone: { k: 'success', noBack: 1, t: 'Password updated', s: 'You can now sign in with your new password.', label: 'Back to sign in', go: () => { hist = []; D.fgpw = D.fgpw2 = D.lpw = ''; go('lemail'); } },
     email: { t: 'Enter your email address', s: 'We’ll send you a verification code', f: [{ key: 'email', type: 'email', ph: 'example@email.com', ac: 'email', v: emailError }], btn: 'Continue',
+      act: () => api.checkEmail(D.email),
       note: 'Already have an account? <a href="#" data-flow="lemail">Sign in</a><br>By continuing, you agree to receive transactional messaging about your account. <a href="#" data-legal="privacy">Privacy Policy</a> &amp; <a href="#" data-legal="terms">Terms</a>', next: 'password' },
     password: { t: 'Set Password', s: 'You’ll verify your email next', f: [{ key: 'password', type: 'password', ph: 'Create a password', ac: 'new-password', meter: 1, v: pwErr }], btn: 'Continue',
       act: () => api.startSignup(D.email, D.password), next: 'code' },
