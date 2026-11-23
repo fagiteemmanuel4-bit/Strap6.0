@@ -41,7 +41,8 @@ window.StrapSettings = (() => {
         <div class="pg-rows">${sw('orderAlerts', 'bell', 'Order alerts', P.orderAlerts)}${sw('lowStock', 'inbox', 'Low stock alerts', P.lowStock)}</div>
         <h2 class="pm-h">Account</h2>
         <div class="pg-rows">${nav('password', 'key', 'Change password')}${fx('security', 'shield', 'Security and 2FA', StrapFeatures.state.twofa.on ? 'On' : 'Off')}${fx('backup', 'mail', 'Backup email or phone')}${fx('appearance', 'palette', 'Appearance', StrapFeatures.state.theme)}${fx('staff', 'users', 'Staff')}${fx('branchsw', 'store', 'Branch', esc(StrapFeatures.branchName()))}${fx('premium', 'flash', 'Plan', StrapFeatures.state.plan === 'premium' ? 'Active' : 'Free')}<button type="button" class="pg-r" data-out><span class="st-ri">${ic('out', 20, 1.8)}</span><span>Sign out</span></button></div>
-        <div class="pg-rows" style="margin-top:16px">${fx('delete', 'trash', 'Delete account', '', ' style="color:#c62828"')}</div>`;
+        <div class="pg-rows" style="margin-top:16px">${fx('delete', 'trash', 'Delete account', '', ' style="color:#c62828"')}</div>
+        <footer class="st-legal"><p>Need a hand? <button type="button" data-nav="support">Contact Strap Support</button>.</p><p>By using Strap, you agree to our <button type="button" data-nav="terms">Terms of Use</button> and acknowledge our <button type="button" data-nav="privacy">Privacy Policy</button>.</p><small>© ${new Date().getFullYear()} Strap. All rights reserved.</small></footer>`;
     }
 
     /* ================= receipt designer ================= */
@@ -136,6 +137,39 @@ window.StrapSettings = (() => {
       if (view === 'pin') drawPin();
     }
 
+    /* ================= support and legal ================= */
+    function drawSupport() {
+      const email = ctx.store.email || '';
+      root.innerHTML = hdr('Strap Support', 'mail', true) + `
+        <p class="st-lead">Tell us what happened. Our team will receive your message and reply to your email.</p>
+        <div class="st-support-form">
+          <label class="pm-fl"><span>Your email</span><input id="st-support-email" type="email" value="${esc(email)}" placeholder="you@example.com" autocomplete="email" maxlength="254"></label>
+          <label class="pm-fl"><span>What do you need help with?</span><select id="st-support-kind"><option value="general">General question</option><option value="account">Account or sign-in</option><option value="products">Products and inventory</option><option value="sales">Sales and payments</option><option value="bug">Report a problem</option><option value="suggestion">Suggestion</option></select></label>
+          <label class="pm-fl"><span>Message</span><textarea id="st-support-message" rows="6" maxlength="4000" placeholder="Describe your question or problem..."></textarea></label>
+          <p class="sx-err" id="st-support-error" role="alert"></p>
+          <button type="button" class="pm-add wide" data-support-send>Send message</button>
+          <p class="st-support-note">Please don't include your password, activity PIN, or verification codes.</p>
+        </div>`;
+    }
+    function drawLegal(which) {
+      const terms = which === 'terms';
+      root.innerHTML = hdr(terms ? 'Terms of Use' : 'Privacy Policy', terms ? 'file' : 'shield', true) + (terms ? `
+        <div class="st-legal-copy"><p class="st-lead">These terms explain the basic rules for using Strap.</p>
+        <h2>Using Strap</h2><p>Use Strap only for lawful business activities and keep your account details secure. You are responsible for activity carried out through your account.</p>
+        <h2>Your business information</h2><p>You remain responsible for the accuracy of the products, prices, stock, sales and other information you enter. Check important records before relying on them for business decisions.</p>
+        <h2>Availability and changes</h2><p>We may update features, correct errors or temporarily suspend parts of the service to maintain and improve Strap. Keep appropriate business records and backups.</p>
+        <h2>Acceptable use</h2><p>Do not misuse the service, attempt unauthorized access, interfere with other users or upload unlawful or harmful content.</p>
+        <h2>Contact</h2><p>Questions about these terms? <button type="button" data-nav="support">Contact Strap Support</button>.</p>
+        <p class="st-support-note">Starter terms: these should be reviewed for your business and local legal requirements before public launch.</p></div>` : `
+        <div class="st-legal-copy"><p class="st-lead">This notice explains how Strap handles information you provide while using the app.</p>
+        <h2>Information we use</h2><p>Strap processes account details, business information, products, inventory, sales records and support messages to provide the service.</p>
+        <h2>How information is used</h2><p>We use information to operate and secure accounts, provide app features, troubleshoot issues and respond to support requests.</p>
+        <h2>Service providers</h2><p>Strap uses hosting, database, authentication and email providers to operate the service. Information needed to provide these services may be processed by those providers.</p>
+        <h2>Your choices and requests</h2><p>You can contact support with questions or requests about your account information. Do not send passwords, activity PINs or verification codes in support messages.</p>
+        <h2>Contact</h2><p>For privacy questions, <button type="button" data-nav="support">contact Strap Support</button>.</p>
+        <p class="st-support-note">Starter privacy notice: it should be completed to reflect final data practices and applicable legal requirements.</p></div>`);
+    }
+
     /* ================= change password ================= */
     function drawPassword() {
       const pw = (id, ph, ac) => `<div class="pm-fl st-pw"><span>${ph}</span><input id="${id}" type="password" placeholder="${ph}" autocomplete="${ac}"><button type="button" class="st-eye" data-eye="${id}">Show</button></div>`;
@@ -159,7 +193,7 @@ window.StrapSettings = (() => {
 
     /* ================= routing ================= */
     function go(v) {
-      view = v; ({ root: drawRoot, receipt: drawReceipt, pin: drawPin, password: drawPassword }[v] || drawRoot)(); window.scrollTo({ top: 0 });
+      view = v; ({ root: drawRoot, receipt: drawReceipt, pin: drawPin, password: drawPassword, support: drawSupport, terms: () => drawLegal('terms'), privacy: () => drawLegal('privacy') }[v] || drawRoot)(); window.scrollTo({ top: 0 });
     }
 
     root.addEventListener('click', async e => {
@@ -203,6 +237,19 @@ window.StrapSettings = (() => {
       }
       // PIN
       const pn = t.closest('[data-pin]'); if (pn) return pinAction(pn.dataset.pin);
+      // support form
+      if (t.closest('[data-support-send]')) {
+        const email = $('#st-support-email', root).value.trim(), kind = $('#st-support-kind', root).value, message = $('#st-support-message', root).value.trim(), er = $('#st-support-error', root), btn = t.closest('[data-support-send]');
+        er.textContent = '';
+        if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)) { er.textContent = 'Enter a valid email address.'; return; }
+        if (message.length < 5) { er.textContent = 'Please describe your question or problem.'; return; }
+        btn.disabled = true; btn.textContent = 'Sending…';
+        const r = await StrapAPI.contact(kind, message, email);
+        btn.disabled = false; btn.textContent = 'Send message';
+        if (!r.ok) { er.textContent = r.msg || 'We could not send your message. Please try again.'; return; }
+        root.innerHTML = hdr('Message sent', 'check', true) + '<section class="st-pinc on"><span class="st-pinc-i">'+ic('check',30,1.8)+'</span><h2>We’ve received your message</h2><p>Strap Support will review it and reply to the email address you provided.</p></section><button type="button" class="pm-add wide" data-nav="root">Back to Settings</button>';
+        return;
+      }
       // password
       const ey = t.closest('[data-eye]'); if (ey) { const i = $('#' + ey.dataset.eye, root), h = i.type === 'password'; i.type = h ? 'text' : 'password'; ey.textContent = h ? 'Hide' : 'Show'; return; }
       if (t.closest('#pw-go')) return submitPassword();
