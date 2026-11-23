@@ -134,3 +134,11 @@ body.is-dash{background:var(--black)}
 .staff-bar b{display:block;font-size:14px;font-weight:700;color:var(--black,#0a0a0a)}
 .staff-bar small{display:block;margin-top:3px;font-size:11px;color:var(--mute,#85857e)}
 .staff-bar button{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:var(--black,#0a0a0a);color:var(--lemon,#e6f53a);padding:10px 15px;font-family:inherit;font-size:12px;font-weight:600}
+
+
+/* Staff drawer footer */
+.staff-drawer-foot{margin-top:auto;padding:18px 10px 8px;border-top:1px solid var(--line,#e8e8e3);display:grid;gap:8px}
+.staff-drawer-foot button{width:100%;min-height:46px;border:0;border-radius:12px;background:transparent;display:flex;align-items:center;gap:10px;padding:0 13px;text-align:left;color:inherit;font:inherit;font-weight:650}
+.staff-drawer-foot button[data-staff-logout]{background:#101010;color:#e6f53a}
+.staff-drawer-foot em{margin-left:auto;font-size:10px;font-style:normal;color:#888}
+.dr-panel{display:flex;flex-direction:column}
