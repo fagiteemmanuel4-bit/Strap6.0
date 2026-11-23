@@ -14,6 +14,17 @@
   if (!D.bizname) D = { ...D, name: D.name || 'Amaka Obi', bizname: 'Amaka Fashion House', currency: D.currency || 'NGN' };
   const first = () => (D.name || '').split(/\s+/)[0];
   let STAFF=null; try { STAFF=JSON.parse(sessionStorage.getItem('staff.session')||'null'); } catch(e) {}
+  // Dedicated, editable single-file staff dashboards. Branch-scoped Managers use the Branch Manager mode.
+  if (STAFF && STAFF.role) {
+    const staffMode = STAFF.role === 'Cashier' ? 'cashier'
+      : STAFF.role === 'Stock keeper' ? 'stock-keeper'
+      : STAFF.role === 'Customer care' ? 'customer-care'
+      : STAFF.role === 'Manager' ? (STAFF.branchId ? 'branch-manager' : 'manager') : '';
+    if (staffMode) {
+      location.replace('staff-modes/' + staffMode + '.html');
+      return;
+    }
+  }
 
   const api = {};
   /* ===== DASHBOARD ===== */
