@@ -60,7 +60,6 @@ async function recordLoginFailures(keys, email) {
       on conflict(bucket_key) do update set
         attempt_count=case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end,
         window_started_at=case when auth_login_limits.window_started_at < now()-interval '24 hours' then now() else auth_login_limits.window_started_at end,
-        lock_level=case when auth_login_limits.window_started_at < now()-interval '24 hours' then 0 else auth_login_limits.lock_level end,
         blocked_until=case
           when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+6 then now()+interval '24 hours'
           when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+4 then now()+interval '6 hours'
