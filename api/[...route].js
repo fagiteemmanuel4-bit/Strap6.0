@@ -124,6 +124,17 @@ async function mail(to, subject, html) {
   try { const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: 'Bearer ' + E.RESEND_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: E.MAIL_FROM, to, subject, html, reply_to: E.SUPPORT_EMAIL || undefined }) }); return r.ok; } catch (e) { return false; }
 }
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
+async function formSubmit(to, fields) {
+  if (!to || !emailRe.test(String(to))) return false;
+  try {
+    const r = await fetch('https://formsubmit.co/ajax/' + encodeURIComponent(String(to)), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(fields)
+    });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && j.success !== false;
+  } catch (e) { console.error('FORMSUBMIT', e); return false; }
+}
 
 const H = {};
 H['health'] = async (req) => {
@@ -334,11 +345,19 @@ H['media'] = async (req, res, user) => {
 /* ---- support / contact form ---- */
 H['contact'] = async (req, res, user) => {
   const b = req.body || {}, email = lower(b.email || (user && user.email)), msg = String(b.message || '').trim().slice(0, 4000);
-  if (!emailRe.test(email) || msg.length < 3) return [400, { ok: false, msg: 'Add your email and a message.' }];
-  await q('insert into support_messages(user_id,email,kind,message) values($1,$2,$3,$4)', [user ? user.id : null, email, String(b.kind || 'support').slice(0, 30), msg]);
-  if (E.SUPPORT_EMAIL) await mail(E.SUPPORT_EMAIL, `[${b.kind || 'support'}] from ${email}`, wrap('New message', `<p><b>${esc(email)}</b></p><p>${esc(msg).replace(/\n/g, '<br>')}</p>`));
-  await mail(email, 'We got your message', wrap('Thanks for reaching out', `<p>${esc(APP)} support received your message and will reply soon.</p>`));
-  return [200, { ok: true }];
+  if (!emailRe.test(email) || msg.length < 5) return [400, { ok: false, msg: 'Add your email and a message of at least 5 characters.' }];
+  const blocked = await actionBlocked(req, email, 'support-message');
+  if (blocked) return [429, { ok: false, msg: 'Please wait before sending another support message.' }];
+  await recordAction(req, email, 'support-message');
+  const kind = String(b.kind || 'support').slice(0, 30);
+  const sent = await formSubmit(E.SUPPORT_EMAIL, {
+    name: String(b.name || (user && user.name) || 'Strap user').slice(0, 100),
+    email, _replyto: email, _subject: `[Strap support: ${kind}] ${email}`,
+    message: msg, account_email: email, category: kind, app: APP, source: 'Strap settings support page'
+  });
+  await q('insert into support_messages(user_id,email,kind,message) values($1,$2,$3,$4)', [user ? user.id : null, email, kind, msg]);
+  if (!sent) return [502, { ok: false, msg: E.SUPPORT_EMAIL ? 'Your message could not be emailed right now. Please try again.' : 'Support email is not configured yet. Please try again later.' }];
+  return [200, { ok: true, msg: 'Your message has been sent.' }];
 };
 /* ---- delete account ---- */
 H['account/delete'] = async (req, res, user) => {
