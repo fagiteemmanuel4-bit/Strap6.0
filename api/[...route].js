@@ -307,6 +307,7 @@ H['health'] = async (req) => {
 H['auth/email-status'] = async (req) => {
   const email = lower(req.body.email);
   if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email address.' }];
+  await migrateLegacyStaffByEmail(email);
   const staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
   if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
   const existing = await q('select 1 from auth_email_registry where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
@@ -319,6 +320,7 @@ H['auth/email-status'] = async (req) => {
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || password.length < 8) return [400, { ok: false, msg: 'Check your email and password.' }];
+  await migrateLegacyStaffByEmail(email);
 
   // Check Neon Managed Auth directly. Never attempt a sign-in with the password
   // supplied on the create-account screen to detect an existing identity.
