@@ -165,7 +165,7 @@ function staffReadBlob(blob, staff) {
   if(role==='Cashier'||role==='Manager'||role==='Customer care') {
     const v=parseStored(blob['ls:strap.v1'],{});
     let data={};
-    if(role==='Cashier') data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],seq:v.seq||0,closed:v.closed||null};
+    if(role==='Cashier') data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],seq:v.seq||0,closed:v.closed||null,staffSalesOpen:v.staffSalesOpen===true};
     if(role==='Customer care') data={orders:v.orders||[],credits:v.credits||[]};
     if(role==='Manager') { data={...v}; for(const k of ['pin','lock','receipt','prefs']) delete data[k]; }
     out['ls:strap.v1']=JSON.stringify(data);
@@ -614,13 +614,36 @@ H['staff/signout'] = async (req,res) => {
   clearStaffCookie(res); return [200,{ok:true}];
 };
 
+
+H['sales/session'] = async (req,res,user,staff) => {
+  if (!user || staff) return [403,{ok:false,msg:'Only the business owner can open or pause cashier sales.'}];
+  const row=(await q('select blob from user_data where user_id=$1',[user.id]))[0];
+  const blob={...(row&&row.blob||{})}, state=parseStored(blob['ls:strap.v1'],{});
+  if(req.method==='POST') {
+    if(typeof req.body.open!=='boolean') return [400,{ok:false,msg:'Choose whether cashier sales should be open or paused.'}];
+    state.staffSalesOpen=req.body.open;
+    state.staffSalesOpenedAt=req.body.open?new Date().toISOString():null;
+    state.staffSalesOpenedBy=user.id;
+    blob['ls:strap.v1']=JSON.stringify(state);
+    await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
+  }
+  return [200,{ok:true,open:state.staffSalesOpen===true}];
+};
+
 /* ---- app data: the whole dashboard state as one JSON per user ---- */
 H['data'] = async (req, res, user, staff) => {
   if (!user && !staff) return [401, { ok: false }];
   const ownerId=staff?staff.owner_id:user.id;
   if (req.method === 'PUT') {
     const b=req.body.blob; if(!b||typeof b!=='object') return [400,{ok:false}];
-    if(staff) { await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}]; }
+    if(staff) {
+      if(staff.role==='Cashier') {
+        const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0];
+        const current=parseStored(row&&row.blob&&row.blob['ls:strap.v1'],{});
+        if(current.staffSalesOpen!==true) return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Sales are currently closed by the business owner.'}];
+      }
+      await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}];
+    }
     if(!b['ss:strap.session']) { const o=(await q('select blob from user_data where user_id=$1',[ownerId]))[0]; if(o&&o.blob&&o.blob['ss:strap.session']) b['ss:strap.session']=o.blob['ss:strap.session']; }
     const clean=await safeOwnerBlob(ownerId,b);
     await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[ownerId,clean]);
