@@ -361,9 +361,10 @@ window.StrapSales = (() => {
     }
     function drawClosed() {
       const c = S.state.closed;
-      root.innerHTML = `<div class="sx"><header class="sx-head"><button type="button" class="pm-round" data-home aria-label="Back to home">${ic('back', 22, 2.2)}</button><h1 class="sx-title">Sales</h1></header>
-        <div class="sx-closed"><span class="sx-cl-ic">${ic('lock', 30, 1.8)}</span><h2>Sales are closed for today</h2><p>You earned <b>${money(c.earned)}</b> from ${plural(c.count, 'sale')}. Reopen sales if you need to keep selling.</p>
-        <button type="button" class="pm-add" data-reopen>Reopen sales</button><button type="button" class="pm-imp" data-home>Back to home</button></div></div>`;
+      const cashier = ctx.staff && ctx.staff.role==='Cashier';
+      root.innerHTML = `<div class="sx"><header class="sx-head"><button type="button" class="pm-round" ${cashier?'data-staff-menu aria-label="Open menu"':'data-home aria-label="Back to home"'}>${ic(cashier?'menu':'back', 22, 2.2)}</button><h1 class="sx-title">Sales</h1></header>
+        <div class="sx-closed"><span class="sx-cl-ic">${cashier?U.illus('sales'):ic('lock',30,1.8)}</span><h2>${cashier?'Sales are paused by the owner':'Sales are closed for today'}</h2><p>${cashier?'Ask the business owner to open the sales session before continuing.':`You earned <b>${money(c.earned)}</b> from ${plural(c.count, 'sale')}. Reopen sales if you need to keep selling.`}</p>
+        ${cashier?'<button type="button" class="pm-add" data-staff-refresh>Check again</button>':'<button type="button" class="pm-add" data-reopen>Reopen sales</button><button type="button" class="pm-imp" data-home>Back to home</button>'}</div></div>`;
     }
     async function reopen() {
       if (!S.hasPin()) { S.reopenDay(); return render(); }
