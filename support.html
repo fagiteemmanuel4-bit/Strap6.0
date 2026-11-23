@@ -1,111 +1,388 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0a"><meta name="description" content="Search Strap help guides, browse business topics or contact Strap Support.">
-<title>Strap – Help Centre</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>Strap – Support</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;600&display=swap">
 <style>
+/* Strap – support page. Same tokens, type and shapes as the dashboard. */
 :root{--lemon:#e6f53a;--black:#0a0a0a;--mute:#8d8d86;--line:#ececea;--soft:#f3f3ee}
-*{box-sizing:border-box;margin:0;padding:0}html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}body{font-family:Sora,"Helvetica Neue",Arial,sans-serif;background:var(--black);color:var(--black);min-height:100dvh;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}:focus-visible{outline:3px solid var(--lemon);outline-offset:3px}
-.page{max-width:640px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 12px) 18px 14px}.back{width:46px;height:46px;border-radius:50%;border:1.5px solid #3a3a3a;background:none;color:#fff;font-size:22px;cursor:pointer}.brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none}.brand b{font-size:19px;letter-spacing:-.04em}.sheet{background:#fff;border-radius:34px 34px 0 0;min-height:calc(100dvh - 78px);padding:8px clamp(18px,5.5vw,26px) calc(env(safe-area-inset-bottom,0px) + 48px);animation:up .55s cubic-bezier(.2,.8,.2,1)}@keyframes up{from{transform:translateY(35px);opacity:0}}
-.hero{text-align:center;padding:18px 0 4px}.orb{width:132px;height:132px;margin:auto auto 18px;border-radius:50%;background:var(--lemon);display:grid;place-items:center;font-size:58px;color:var(--black)}h1{font-size:clamp(30px,8vw,40px);line-height:1.1;letter-spacing:-.05em;font-weight:600}.hero h1 span{background:linear-gradient(transparent 62%,var(--lemon) 62%)}.hero p{margin:12px auto 0;max-width:420px;font:15px/1.65 Inter,Arial,sans-serif;color:#55554f}
-.find{position:relative;margin-top:22px}.find svg{position:absolute;left:20px;top:50%;transform:translateY(-50%);pointer-events:none}.field{width:100%;border:2px solid var(--black);border-radius:999px;background:#fff;padding:16px 22px 16px 52px;font:500 15px Sora,Arial;color:var(--black);outline:none}.tabs{display:flex;gap:6px;overflow-x:auto;margin:24px -3px 0;padding:0 3px 5px;scrollbar-width:none}.tabs button{flex:none;border:0;border-radius:999px;background:none;padding:11px 17px;color:#6f6f69;font-size:13px;cursor:pointer}.tabs button[aria-selected=true]{background:#efefec;color:var(--black);font-weight:700}.view{padding-top:4px;animation:fade .25s ease}@keyframes fade{from{opacity:.5;transform:translateY(8px)}}
-h2.section-title{font-size:21px;letter-spacing:-.03em;font-weight:600;margin:28px 0 13px}.sub{font:14px/1.65 Inter,Arial,sans-serif;color:#55554f;margin:-4px 0 15px}.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cat{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;border:1px solid var(--line);border-radius:22px;background:#fff;text-align:left;box-shadow:0 12px 28px -22px #0a0a0a66;cursor:pointer;min-height:124px}.cat:active{transform:scale(.98)}.cat .ico{width:42px;height:42px;border-radius:14px;background:var(--soft);display:grid;place-items:center;font-size:21px}.cat b{font-size:14px;line-height:1.3}.cat small{font:12px/1.4 Inter,Arial,sans-serif;color:var(--mute)}
-.steps{margin-top:22px;padding:20px;border-radius:25px;background:var(--black);color:#fff}.steps h3{font-size:18px;margin-bottom:13px}.steps ol{list-style:none;display:grid;gap:12px;counter-reset:step}.steps li{display:flex;gap:12px;align-items:flex-start;font:13px/1.55 Inter,Arial,sans-serif;color:#d8d8d2;counter-increment:step}.steps li:before{content:counter(step);flex:none;width:28px;height:28px;border-radius:50%;background:var(--lemon);color:var(--black);font-weight:800;display:grid;place-items:center}.steps b{display:block;color:#fff;font:600 14px Sora,Arial}
-.row{display:flex;align-items:center;gap:13px;width:100%;min-height:62px;padding:12px 16px;border:0;border-top:1px solid #f1f1ed;background:#fff;color:var(--black);text-align:left;text-decoration:none;cursor:pointer}.rows{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#fff}.row:first-child{border-top:0}.row .rowico{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:var(--soft)}.row span:nth-child(2){flex:1}.row b{display:block;font-size:14px}.row small{display:block;margin-top:3px;color:var(--mute);font:12px Inter,Arial,sans-serif}
-.article-crumb{display:flex;gap:8px;align-items:center;margin:20px 0;color:#85857d;font-size:12px}.article-crumb button{border:0;background:none;color:#292920;font-weight:700;cursor:pointer}.article-head{padding:10px 0 20px;border-bottom:1px solid var(--line)}.kicker{font-size:10px;font-weight:800;letter-spacing:.13em;color:#77786d}.article-head h1{font-size:clamp(28px,7vw,38px);margin:10px 0 12px}.article-intro{font:15px/1.7 Inter,Arial,sans-serif;color:#55554f}.meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}.meta span{background:#f0f1df;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700}
-.toc{display:grid;gap:10px;margin:20px 0;padding:18px;border:1px solid var(--line);border-radius:22px;background:#fafaf6}.toc b{font-size:13px}.toc a{font:13px/1.5 Inter,Arial,sans-serif;color:#45453e;text-decoration:none}.toc a:before{content:"↳";color:#85857d;margin-right:8px}
-.article{font-family:Inter,Arial,sans-serif;color:#383830}.article>p{font-size:15px;line-height:1.8;margin:20px 0}.article section{scroll-margin-top:18px;padding:16px 0 18px;border-bottom:1px solid #efefe9}.article h2{font:600 19px/1.35 Sora,Arial,sans-serif;letter-spacing:-.03em;color:#10100d;margin-bottom:10px}.article p,.article li{font-size:14px;line-height:1.85;color:#4a4a42}.article p+p{margin-top:10px}.article ul{padding-left:20px;margin-top:8px}.faq{padding:22px 0 4px}.faq h2{font:600 19px Sora,Arial,sans-serif;margin-bottom:10px}.faq details{border-bottom:1px solid var(--line);padding:13px 0}.faq summary{font:600 13px/1.55 Sora,Arial,sans-serif;cursor:pointer}.faq details p{font:13px/1.7 Inter,Arial,sans-serif;color:#55554f;padding-top:8px}
-.helpbox{margin:22px 0;padding:20px;border-radius:24px;background:var(--black);color:#fff}.helpbox b{font-size:16px}.helpbox p{font:13px/1.7 Inter,Arial,sans-serif;color:#d0d0c8;margin:8px 0 15px}
-.pill{width:100%;min-height:54px;border:2px solid var(--black);border-radius:999px;background:var(--black);color:var(--lemon);font-weight:700;font-size:14px;cursor:pointer;padding:13px 18px}.pill:disabled{opacity:.5}.pill.alt{background:#fff;color:var(--black)}
-.related{display:grid;gap:8px}.related button{display:flex;justify-content:space-between;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#fff;font-size:13px;font-weight:600;text-align:left}
-.form{border:1px solid var(--line);border-radius:26px;padding:20px;margin-top:16px}.form label{display:block;margin:15px 0 7px;font-size:12px;font-weight:700}.form input,.form textarea,.form select{width:100%;border:1.5px solid var(--line);border-radius:14px;background:#fbfbf8;padding:14px;font:14px Inter,Arial,sans-serif}.form textarea{min-height:130px;resize:vertical;line-height:1.6}.form .hint{font:11px/1.5 Inter,Arial,sans-serif;color:var(--mute);margin-top:6px}.status{min-height:20px;margin-top:10px;font:13px/1.5 Inter,Arial,sans-serif;color:#426329}.status.error{color:#b13b2d}
-.dot{width:10px;height:10px;border-radius:50%;background:#2fbf71}.dot.warn{background:#ffb84d}.dot.down{background:#ff5a4d}
-.foot{text-align:center;margin-top:32px;color:var(--mute);font:12px/1.8 Inter,Arial,sans-serif}.foot a{color:var(--black);font-weight:700}
-.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#fff;color:var(--black);padding:12px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:20;font-size:13px}.toast.on{opacity:1;transform:translate(-50%,0)}
-@media(min-width:700px){.sheet{border-radius:34px;margin-bottom:40px;min-height:0}.cats{gap:12px}}@media(max-width:360px){.cats{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{font-family:"Sora","Helvetica Neue",Arial,sans-serif;background:var(--black);color:var(--black);min-height:100dvh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:3px solid var(--lemon);outline-offset:2px}
+.sheet :focus-visible{outline-color:var(--black)}
+
+.sp-page{max-width:640px;margin:0 auto}
+.sp-top{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 12px) 18px 14px}
+.sp-round{width:46px;height:46px;border-radius:50%;border:1.5px solid #3a3a3a;background:none;color:#fff;display:grid;place-items:center;cursor:pointer;transition:transform .15s}
+.sp-round:active{transform:scale(.92)}
+.sp-brand{display:flex;align-items:center;gap:9px;color:#fff}.sp-brand b{font-size:19px;letter-spacing:-.04em}
+.sheet{background:#fff;border-radius:34px 34px 0 0;min-height:calc(100dvh - 78px);padding:8px clamp(18px,5.5vw,26px) calc(env(safe-area-inset-bottom,0px) + 48px);animation:sheetUp .7s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes sheetUp{from{transform:translateY(70px);opacity:0}}
+
+/* hero */
+.hero{display:grid;place-items:center;text-align:center;padding-top:10px}
+.il{width:min(220px,64%);height:auto;overflow:visible}
+.il .fl{animation:flt 3.6s ease-in-out infinite}.il .tw{animation:flt 3.6s ease-in-out .5s infinite reverse}
+.il .spk{animation:twk 2.6s ease-in-out infinite}.il .s2{animation-delay:.9s}.il .s3{animation-delay:1.7s}
+@keyframes flt{50%{transform:translateY(-5px)}}@keyframes twk{50%{opacity:.25;transform:scale(.8)}}
+.hero h1{margin-top:6px;font-size:clamp(30px,8.6vw,40px);line-height:1.1;font-weight:600;letter-spacing:-.045em}
+.hero h1 span{background:linear-gradient(transparent 62%,var(--lemon) 62%)}
+.hero p{margin:12px auto 0;max-width:420px;font-size:15px;line-height:1.6;color:#55554f}
+.find{position:relative;margin-top:22px;text-align:left}
+.find svg{position:absolute;left:20px;top:50%;transform:translateY(-50%);pointer-events:none}
+.fi{width:100%;border:2px solid var(--black);border-radius:999px;background:#fff;padding:16px 22px;font:500 16px "Sora",sans-serif;color:var(--black);outline:none;-webkit-appearance:none;appearance:none}
+.find .fi{padding-left:52px}.fi::placeholder{color:rgba(10,10,10,.4)}
+.fi:focus{box-shadow:0 0 0 3px rgba(10,10,10,.18)}
+.fi[aria-invalid=true]{border-color:#b3261e}
+.ferr{margin:8px 6px 0;font-size:12.5px;font-weight:600;color:#b3261e}.ferr:empty{display:none}
+
+/* tabs */
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:26px -4px 0;padding:0 4px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;height:42px;padding:0 18px;border:0;border-radius:999px;background:none;font:500 14.5px "Sora",sans-serif;color:#6f6f69;cursor:pointer;transition:background .2s,color .2s}
+.tab[aria-selected=true]{background:#efefec;color:var(--black);font-weight:600}
+
+h2.h{margin:30px 2px 12px;font-size:clamp(19px,5.2vw,22px);font-weight:500;letter-spacing:-.025em}
+h2.h small{font-size:12.5px;font-weight:500;color:var(--mute);margin-left:6px}
+.lead{font-size:14px;line-height:1.6;color:#55554f;margin:-4px 2px 14px}
+
+/* quick start: a real sequence, so it is numbered */
+.qs{background:var(--black);color:#fff;border-radius:30px;padding:22px 20px;margin-top:22px}
+.qs h3{font-size:19px;font-weight:600;letter-spacing:-.03em;margin-bottom:14px}
+.qs ol{list-style:none;display:grid;gap:14px;counter-reset:q}
+.qs li{display:flex;gap:14px;align-items:flex-start;font-size:14px;line-height:1.5;color:#d8d8d2;counter-increment:q}
+.qs li::before{content:counter(q);flex:none;width:30px;height:30px;border-radius:50%;background:var(--lemon);color:var(--black);font-weight:700;font-size:14px;display:grid;place-items:center}
+.qs li b{display:block;color:#fff;font-weight:600;font-size:15px}
+
+/* categories */
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat{display:flex;flex-direction:column;align-items:flex-start;gap:12px;text-align:left;padding:16px;border:1px solid var(--line);border-radius:24px;background:#fff;color:var(--black);cursor:pointer;box-shadow:0 12px 28px -22px rgba(10,10,10,.4);transition:transform .15s,background .2s,border-color .2s}
+.cat:active{transform:scale(.97)}
+.cat i{width:46px;height:46px;border-radius:16px;background:var(--soft);display:grid;place-items:center;transition:background .2s}
+.cat b{font-size:15px;font-weight:600;letter-spacing:-.02em}.cat small{font-size:12.5px;font-weight:500;color:var(--mute);margin-top:-8px}
+.cat[aria-pressed=true]{border-color:var(--black);background:#fcfcf2}.cat[aria-pressed=true] i{background:var(--lemon)}
+
+/* accordion (same + that turns into an x) */
+.acc{border:2px solid var(--black);border-radius:22px;overflow:hidden;margin-bottom:10px}
+.acc-h{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;color:var(--black);font:600 15px/1.35 "Sora",sans-serif;padding:16px 18px;cursor:pointer;text-align:left}
+.acc-i{flex:none;font-size:26px;line-height:1;font-weight:500;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.acc.open .acc-i{transform:rotate(45deg)}
+.acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.2,.8,.2,1)}
+.acc.open .acc-b{grid-template-rows:1fr}
+.acc-b>div{overflow:hidden;min-height:0}
+.acc-t{padding:0 18px 18px;font:400 14px/1.65 "Inter",sans-serif;color:#44443f}
+.acc-t p+p,.acc-t ul{margin-top:10px}.acc-t ul{padding-left:18px;display:grid;gap:5px}
+.acc-t em{font-style:normal;background:var(--lemon);padding:0 4px;border-radius:4px;font-weight:600;color:var(--black)}
+.acc-t a{color:var(--black);font-weight:600}
+.empty{display:grid;place-items:center;text-align:center;padding:10px 0 4px}
+.empty p{font-size:14px;line-height:1.55;color:#55554f;max-width:300px;margin:4px 0 14px}
+
+/* rows */
+.rows{border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#fff}
+.row{display:flex;align-items:center;gap:14px;width:100%;min-height:64px;padding:10px 18px;border:0;border-top:1px solid #f1f1ed;background:none;font:500 15px "Sora",sans-serif;color:var(--black);text-align:left;text-decoration:none;cursor:pointer}
+.row:first-child{border-top:0}.row:active{background:#f8f8f4}
+.row>i{flex:none;width:42px;height:42px;border-radius:14px;background:var(--soft);display:grid;place-items:center}
+.row>span{flex:1;min-width:0}.row>span b{display:block;font-weight:600;letter-spacing:-.015em}
+.row>span small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:var(--mute)}
+.row>svg:last-child{color:#a9a9a2;flex:none}
+.dot{width:10px;height:10px;border-radius:50%;background:#2fbf71;flex:none}.dot.warn{background:#ffb84d}.dot.down{background:#ff5a4d}
+.row .st{font-size:13px;font-weight:600;color:#55554f}
+
+/* form */
+.fcard{border:1px solid var(--line);border-radius:30px;padding:20px;box-shadow:0 12px 28px -22px rgba(10,10,10,.4)}
+.fl{display:block;margin-bottom:14px}.fl>span{display:block;margin:0 6px 7px;font-size:13px;font-weight:600}
+.fl .fi{font-size:15.5px;padding:15px 20px;border-radius:22px;border-width:1.5px}
+textarea.fi{min-height:130px;resize:vertical;line-height:1.5;font-family:"Sora",sans-serif}
+select.fi{padding-right:50px;border-radius:999px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 18 12'><path d='M1.5 1.5h15L9 10.5z' fill='none' stroke='%230a0a0a' stroke-width='2' stroke-linejoin='round'/></svg>") no-repeat right 20px center}
+.cnt{display:block;text-align:right;margin:5px 8px 0;font-size:12px;color:var(--mute)}
+.pill{width:100%;height:58px;border-radius:999px;background:var(--black);color:var(--lemon);border:2px solid var(--black);font:600 16.5px "Sora",sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,opacity .2s}
+.pill:active{transform:scale(.985)}.pill[disabled]{opacity:.35;cursor:not-allowed}.pill.alt{background:transparent;color:var(--black)}
+.note{margin-top:14px;text-align:center;font-size:12.5px;line-height:1.55;color:#66665f}
+
+/* sent mark: ring draws, dot pops, tick draws */
+.sent{display:grid;place-items:center;text-align:center;padding:26px 6px 6px}
+.okm{width:124px;height:124px;margin-bottom:18px}.okm svg{width:100%;height:100%;overflow:visible}
+.okr,.okt{fill:none;stroke:var(--black);stroke-dasharray:1;stroke-dashoffset:1;animation:draw .7s cubic-bezier(.6,0,.2,1) forwards}
+.okr{stroke-width:3;transform-origin:60px 60px;transform:rotate(-90deg)}.okt{stroke-width:6;stroke-linecap:round;stroke-linejoin:round;animation-delay:.75s;animation-duration:.45s}
+.okd{fill:var(--lemon);transform-box:fill-box;transform-origin:center;animation:pop .55s .35s cubic-bezier(.2,1.5,.3,1) backwards}
+@keyframes draw{to{stroke-dashoffset:0}}@keyframes pop{from{transform:scale(0)}}
+.sent h2{font-size:26px;font-weight:600;letter-spacing:-.04em}.sent p{margin:10px 0 18px;font-size:14.5px;line-height:1.6;color:#55554f;max-width:340px}
+.ref{display:inline-block;background:var(--lemon);border-radius:999px;padding:8px 18px;font-weight:700;letter-spacing:.06em;margin-bottom:20px}
+
+.pv{display:grid;gap:12px;margin-top:6px}
+.foot{margin-top:34px;text-align:center;font-size:12px;line-height:1.8;color:var(--mute)}
+.foot a{color:var(--black);font-weight:600;text-underline-offset:2px}
+.view{animation:vin .4s cubic-bezier(.2,.9,.2,1)}@keyframes vin{from{opacity:0;transform:translateY(12px)}}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translate(-50%,20px);background:#fff;color:var(--black);font:500 13px "Sora",sans-serif;padding:12px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;z-index:60;box-shadow:0 10px 30px -10px rgba(10,10,10,.5)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media(min-width:700px){.sp-top{padding-top:28px}.sheet{border-radius:34px;margin-bottom:40px;min-height:0}.cats{gap:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+html[data-theme=dark] .sheet,html[data-theme=dark] .toast{filter:invert(.92) hue-rotate(180deg)}
+.note a{color:var(--black);font-weight:600;text-underline-offset:2px}
+
+/* topic panel: slides up from the bottom */
+.ov{position:fixed;inset:0;background:rgba(10,10,10,.55);opacity:0;visibility:hidden;transition:opacity .3s,visibility 0s .3s;z-index:40}
+.ov.on{opacity:1;visibility:visible;transition:opacity .3s}
+.pn{position:fixed;left:50%;bottom:0;width:100%;max-width:640px;max-height:90dvh;display:flex;flex-direction:column;background:#fff;border-radius:30px 30px 0 0;transform:translate(-50%,100%);visibility:hidden;transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s .45s;z-index:50;box-shadow:0 -20px 60px -20px rgba(0,0,0,.5)}
+.pn.on{transform:translate(-50%,0);visibility:visible;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.pn-grab{width:44px;height:5px;border-radius:9px;background:#dcdcd6;margin:10px auto 0;flex:none}
+.pn-x{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--black);background:#fff;color:var(--black);display:grid;place-items:center;cursor:pointer;z-index:2;transition:transform .15s}
+.pn-x:active{transform:scale(.92)}
+.pn-s{overflow-y:auto;overscroll-behavior:contain;padding:18px clamp(18px,5.5vw,26px) calc(env(safe-area-inset-bottom,0px) + 32px)}
+.pn-h{display:flex;align-items:center;gap:14px;padding-right:54px}
+.pn-h i{width:50px;height:50px;border-radius:17px;background:var(--lemon);display:grid;place-items:center;flex:none}
+.pn-h h2{font-size:21px;font-weight:600;letter-spacing:-.035em;line-height:1.15}
+.pn-h small{display:block;margin-top:4px;font-size:12.5px;font-weight:500;color:var(--mute)}
+.pn-b{margin-top:20px;font:400 15px/1.75 "Inter",sans-serif;color:#33332f}
+.pn-b p+p,.pn-b ul{margin-top:12px}.pn-b ul{padding-left:20px;display:grid;gap:6px}
+.pn-b em{font-style:normal;background:var(--lemon);padding:0 4px;border-radius:4px;font-weight:600;color:var(--black)}
+.pn h3{margin:30px 2px 12px;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.pn :focus-visible{outline-color:var(--black)}
+html[data-theme=dark] .pn{filter:invert(.92) hue-rotate(180deg)}
+
 </style>
 </head>
 <body>
-<main class="page">
-<header class="top"><button class="back" id="back" aria-label="Go back">‹</button><a class="brand" href="dashboard.html" aria-label="Strap dashboard"><svg width="28" height="28" viewBox="0 0 136 136" aria-hidden="true"><circle cx="68" cy="68" r="65" fill="none" stroke="#fff" stroke-width="6"/><circle cx="68" cy="68" r="49" fill="#fff"/><circle cx="68" cy="68" r="19" fill="#e6f53a"/></svg><b>Strap</b></a></header>
-<div class="sheet">
-<section class="hero" id="hero"><div class="orb" aria-hidden="true">✳</div><h1>How can we <span>help?</span></h1><p>Search our guides, browse by topic, or talk to the Strap Support team.</p></section>
-<label class="find"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input class="field" id="search" type="search" placeholder="Search for an answer" aria-label="Search help guides"></label>
-<nav class="tabs" aria-label="Support sections"><button data-tab="help" aria-selected="true">Help centre</button><button data-tab="contact" aria-selected="false">Contact us</button><button data-tab="status" aria-selected="false">System status</button></nav>
-<div id="view" class="view" aria-live="polite"></div>
-<footer class="foot">Strap Support · <a href="legal.html?doc=terms">Terms of Use</a> · <a href="legal.html?doc=privacy">Privacy Policy</a></footer>
-</div></main><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<main class="sp-page" id="sp">
+  <div class="sp-top">
+    <button class="sp-round" type="button" id="sp-back" aria-label="Go back"></button>
+    <div class="sp-brand"></div>
+  </div>
+  <div class="sheet" id="sheet"></div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="api.js"></script>
 <script>
+/* Strap – support page (front end only). Wire your backend in SUPPORT below. */
 (() => {
-const articles={
-start:{title:"Getting started with Strap",desc:"Set up your business, add your first products and build a simple routine for recording accurate sales.",sections:[
-["Set up your business profile","<p>After creating your account, complete the business details requested during setup. Use the name customers recognise, choose the currency you actually use and select the business mode that most closely describes how your shop operates. These choices help Strap organise the tools and records you see. Do not enter made-up details just to complete a field. If a choice does not fit your business, ask support before relying on it.</p>"],
-["Build your first catalogue","<p>Start with the products you sell most often. Give each item a clear name, an accurate selling price and the correct opening quantity if you track stock. Add a photo when it helps staff identify the item. Search before creating a new record so you do not accidentally add duplicates. If you already have a spreadsheet, prepare it with clear column headings, one product per row and prices as plain numbers without currency symbols. Keep a backup copy and review imported records before using them for live sales.</p>"],
-["Make a test sale and prepare your routine","<p>Open Sales, add a product, confirm the quantity and total, then choose the payment type that matches what happened. Check the receipt before completing the transaction. A test helps you learn the checkout flow before serving a waiting customer. Do not record a fake sale just to populate your dashboard. Once ready, check stock before opening, confirm the active branch, use individual staff logins and review sales regularly. You can improve settings as the business grows; a small accurate setup is better than a large setup filled with guesses.</p>"]],
-faqs:[["Can I change setup details later?","Many preferences can be revisited in Settings. Check the effect of a change before saving, especially for currency or business mode."],["Do I need to add every product immediately?","No. Start with the products you sell most often, then add the rest as you build your catalogue."]]},
-sales:{title:"Sales and receipts",desc:"Record transactions accurately, manage interrupted checkouts and keep receipts and sales history useful.",sections:[
-["Build and check the basket","<p>Open Sales and add products by searching, selecting them or scanning a barcode where available. Confirm the product and quantity before moving to payment. If an item is missing from the catalogue, add or correct its record first where practical so the sale can be connected to the right product. Check discounts, quantities and the final total with the customer. If you work across branches, confirm that the correct branch is active before completing the sale.</p>"],
-["Record the payment honestly","<p>Choose the payment option that reflects what the customer actually used. Do not mark an unpaid balance as cash received. If the customer will pay later and the credit option is available, record the transaction as credit and attach it to the correct customer. This makes the outstanding amount easier to follow up. For unusual or split payments, use the options displayed in the checkout rather than forcing the transaction into a payment type that does not match what happened.</p>"],
-["Hold a sale and manage receipts","<p>Hold sale parks the current basket when a customer needs time or you must serve someone else. It is not a completed sale and should not be counted as money received. Resume it later and check the items and quantities before finishing checkout. Receipt settings let you review the business details and information customers see. Keep the store name and contact details accurate, use the preview before changing the design and avoid displaying personal information customers do not need.</p>"],
-["Review sales history","<p>Use sales history and reports to understand patterns. Check the date range and branch before interpreting totals. If a figure looks unexpected, inspect the transactions behind it instead of assuming the report is wrong. Note the date, branch, transaction and expected amount if you need help. This makes support investigations faster and reduces the risk of repeating or changing a transaction unnecessarily.</p>"]],
-faqs:[["Does Hold sale complete a transaction?","No. It temporarily saves the basket so you can return to it. Complete checkout only when the customer and payment details are ready."],["How do I record money a customer will pay later?","Use the credit option when available and link the sale to the correct customer. Do not record it as cash received."]]},
-stock:{title:"Products and stock",desc:"Maintain a reliable catalogue, import product lists carefully and investigate stock differences.",sections:[
-["Create accurate product records","<p>When adding a product, enter a name staff can recognise, its selling price and the quantity currently on hand if inventory tracking is enabled. Add a category or photo when it helps people find the right item. Avoid creating duplicates with slightly different spellings; search first. If an item comes in different sizes, colours or packages, use the product options available in your current setup so each sellable choice can be identified correctly.</p>"],
-["Prepare imports before uploading","<p>For a bulk import, use a spreadsheet or CSV with one product per row and clear column headings. Keep prices as plain numbers without currency symbols. Check that quantities are numeric, names are not blank and there are no accidental duplicate rows. Save a backup of the original file. After importing, review a sample of records in Products and confirm names, prices and quantities before using the catalogue for live sales. If the import reports a problem, correct the source file and try again rather than fixing many mistakes one by one.</p>"],
-["Keep stock quantities trustworthy","<p>Update stock when deliveries arrive, stock is moved or a physical count reveals a difference. Record the real quantity on the shelf, not an estimate. Low-stock alerts are useful only when opening quantities and later adjustments are kept current. Treat an alert as a prompt to check the shelf and reorder, not proof that an item is already unavailable. If an item is not tracked, do not treat its displayed quantity as a reliable availability promise.</p>"],
-["Manage branch transfers and differences","<p>Confirm the active location before adjusting stock. A transfer should represent stock physically moving from one branch to another. Check both locations after the transfer. When a system quantity differs from a physical count, recount the item and review recent sales, deliveries and transfers. Note the date, branch, product and expected quantity before making a correction. This creates a clear trail for your own records and gives support useful information if the difference remains unexplained.</p>"]],
-faqs:[["What if an import has incorrect prices?","Pause use of the affected records, compare them with your source spreadsheet and correct them. Keep the original file as a reference."],["Why might branch stock differ?","Incorrect opening counts, unrecorded transfers, delayed updates or the wrong active branch can contribute. Check each location and recent movements."]]},
-team:{title:"Branches and staff",desc:"Organise locations, give staff individual access and protect sensitive business actions.",sections:[
-["Use branches for real locations","<p>A branch represents a shop, outlet or business location that needs its own sales and stock context. Give it a name staff can recognise. Before recording a sale or adjusting inventory, check that the correct branch is active. This prevents records from being assigned to the wrong location. Do not create duplicate branches to separate shifts or people; use staff and role controls for team members and branch controls for locations.</p>"],
-["Give every person their own login","<p>Add staff through the staff settings available in your account. Use the person's correct name and email, assign their working branch and choose the role that matches their responsibilities. Ask each person to use their own login rather than sharing the owner's password. Individual access makes it easier to understand who performed an action and lets you remove one person's access without disrupting everyone else. When someone leaves or no longer needs access, review and remove their account promptly.</p>"],
-["Follow least-privilege access","<p>Give staff only the permissions needed for their job. A cashier may need to record sales but not change account settings; a manager may need wider operational access. Review the role descriptions shown in the app because permissions can depend on your setup and plan. Never share passwords, one-time codes or an Activity PIN in a group chat. If a team member needs access, create or invite their own account through the proper flow.</p>"],
-["Review your team as things change","<p>If Activity PIN is enabled, keep it known only to people authorised to approve protected actions. Keep recovery information private. Remove access when a staff member leaves, update branch assignments when people move, review roles when responsibilities change and sign out shared devices when they are not in use. If you reach a plan limit for staff or branches, check the Plan screen for the current limit and available options rather than creating duplicate accounts.</p>"]],
-faqs:[["Can staff share one login?","It is safer to give each person their own account. Shared logins make activity harder to trace and access harder to revoke."],["What if a staff member changes branch?","Update their branch assignment in staff settings and remind them to check the active branch before working."]]},
-online:{title:"Online store",desc:"Prepare a trustworthy catalogue, understand online orders and keep storefront availability aligned with real stock.",sections:[
-["Prepare products before publishing","<p>Review the products you want customers to see. Use recognisable names, accurate prices and clear photos. Descriptions should explain what the item is, its size or variant and important details a buyer needs before ordering. Avoid exaggerated claims or information you cannot verify. Check quantities and availability. If you do not track stock for an item, make sure your fulfilment routine confirms availability before promising it to a customer.</p>"],
-["Review the storefront experience","<p>Choose a store name customers can connect with your business. Review the preview on a phone as well as a larger screen. Product photos should be clear, descriptions easy to scan and prices visible. Remove outdated products and correct spelling or price mistakes before sharing the link. Make delivery or collection arrangements clear before taking orders, and explain how customers can contact the business if they have a question.</p>"],
-["Review each order before fulfilment","<p>When an order arrives, check the items, quantities, customer contact details and delivery or collection information shown. Do not assume an order has been paid simply because it appears in the order list; check the payment status displayed by the system. Keep order statuses accurate as work progresses. If an item is unavailable, contact the customer and agree on the next step rather than silently substituting a different product.</p>"],
-["Keep online and counter stock aligned","<p>When the same product can be sold online and in person, stock accuracy matters. Record counter sales promptly and check online orders before promising the same remaining unit to another customer. If your workflow does not automatically reserve stock, use a manual availability check to avoid overselling. Use genuine photos, accurate prices, clear delivery expectations and prompt updates when an order is delayed or changed. A short weekly review of prices, photos, availability and order handling can prevent avoidable complaints.</p>"]],
-faqs:[["Where should I check new orders?","Use the Orders area available in your current Strap setup and review the order and payment status before fulfilment."],["What if an item is out of stock after an order arrives?","Contact the customer, explain the issue and agree on a suitable resolution. Keep the order status accurate."]]},
-plan:{title:"Plans and billing",desc:"Review plan limits, subscription details and payment terms before confirming a billing change.",sections:[
-["Check what your plan includes","<p>Open the Plan or subscription area in Settings and read the features and limits shown for your account. Limits may apply to products, branches or staff. Use the wording currently shown in the app rather than relying on an old screenshot or a price mentioned elsewhere. If you are approaching a limit, check which records use it and whether you need more capacity. Do not delete important business records just to make room without understanding the consequences.</p>"],
-["Read the full price before subscribing","<p>Before confirming a subscription, check the amount, currency, billing period and any introductory offer terms. If a discounted period is shown, check when it ends and what price applies afterwards. The payment screen should make the amount and renewal arrangement clear before you approve it. Never send your card number, CVV, password or one-time code to support in a message. Use only the payment flow presented inside your authenticated Strap experience.</p>"],
-["Keep billing details current","<p>Use an email address and phone number that the account owner can access. Billing notices and verification messages are useful only if they reach the right person. If your business contact details change, update them in the appropriate account settings and complete any verification requested.</p>"],
-["Understand renewals and ask for help","<p>Review the renewal date and the instructions shown for changing or ending a plan. If you are unsure whether a change takes effect immediately or at the next billing period, check the confirmation screen or ask support before proceeding. Save your payment confirmation for bookkeeping. If a payment fails, check the reason before repeatedly trying different cards. For an unexpected limit or billing status, send support the account email, plan label, date and a short explanation. Never include full payment credentials.</p>"]],
-faqs:[["Where can I see the current Premium price?","Check the Plan screen in your Strap account. It is the authoritative place for the price and terms currently offered."],["Should I share card details with support?","No. Never send full card details, CVV, passwords or verification codes in a support message."]]},
-security:{title:"Account and security",desc:"Protect your Strap account with strong credentials, verification, recovery planning and safe staff access.",sections:[
-["Use a unique password","<p>Choose a password you do not use on social media, email or another service. A longer passphrase made from unrelated words can be easier to remember and harder to guess than a short password with predictable substitutions. Do not share it with staff; each person should use their own account. If you think someone else knows your password, change it in account security settings and secure the email account used for Strap too.</p>"],
-["Enable additional verification","<p>If two-factor authentication is available in your account, follow the setup instructions and store recovery information somewhere private. A second verification step can help protect the account if a password is exposed. Never tell another person a one-time code, even if they claim to be support. Be cautious of messages that pressure you to act quickly, ask you to open an unfamiliar link or request a code. Open Strap directly through your usual app or website instead.</p>"],
-["Keep recovery details current","<p>Use a backup email or phone that you personally control and can access. Check that it is typed correctly and complete any verification required. Avoid using another person's contact details as your recovery method; that can make it difficult to prove account ownership later. If you lose access to your email or phone, recover that service first where possible, then use Strap's official recovery flow.</p>"],
-["Protect shared devices and report concerns","<p>On a phone used by several people, lock the device and sign out when appropriate. Give staff individual accounts and remove access when their role ends. Keep the Activity PIN private if your account uses one. If you see an unfamiliar sign-in, unexpected account change or verification messages you did not request, secure your email and Strap password, review staff access and contact support. Include the time and device, but never include a password, PIN or OTP. If an account is under review, use the in-app review request flow instead of creating another account to bypass the restriction.</p>"]],
-faqs:[["Will support ask for my password or OTP?","No. Do not share passwords, Activity PINs or one-time verification codes with anyone claiming to help."],["What if I lose my recovery email?","Recover access to that email provider first if possible, then use Strap's official recovery options and contact support if needed."]]},
-fix:{title:"Troubleshooting",desc:"Safely diagnose common sign-in, scanning, performance and reporting issues before contacting support.",sections:[
-["Check your connection before retrying","<p>Confirm that your phone has a working internet connection by opening another trusted website. If the connection is unstable, wait until it improves before retrying a sale or stock change. Close and reopen the Strap page if it appears frozen, then sign in again if asked. Before refreshing during checkout, check whether the sale was already completed. Look in sales history first so you do not accidentally record the same transaction twice.</p>"],
-["Fix barcode scanning problems","<p>Allow camera access for the browser, clean the camera lens and scan in steady light. Hold the barcode flat and keep the phone still while it focuses. If the code is damaged or will not scan, search for the product by name and confirm that you selected the correct item. If camera permission was denied earlier, open your device or browser site settings and allow camera access for Strap. Reload the page after changing the permission.</p>"],
-["Investigate unexpected figures","<p>Check the active branch and date range first. A different branch or reporting period can change totals without anything being wrong. Compare the summary with the individual sales or stock records that contribute to it. Confirm whether the figure represents gross sales, payments received, credit or another measure. For stock differences, recount the item and review recent deliveries, sales and transfers.</p>"],
-["Handle slow pages and report clearly","<p>Close unused browser tabs, check that your browser is up to date and try again on a stable connection. If one page repeatedly fails, note the page name and the action immediately before the problem. Avoid clearing all browser data as a first step because it can remove useful session information and sign you out. When contacting support, include the page, time, device and browser, steps followed, exact error text and what you expected. Add a screenshot only if it does not expose customer data, passwords, PINs or verification codes.</p>"]],
-faqs:[["Should I retry a sale if the screen freezes?","First check sales history to see whether the sale was completed. Retry only after confirming it was not recorded."],["What information helps support fix a problem?","The page, timestamp, device/browser, steps to reproduce, exact error message and expected result are useful starting details."]]}}
-const categories=[["start","Getting started","book","Set up in minutes"],["sales","Sales and receipts","receipt","Selling and credit"],["stock","Products and stock","inventory","Items, imports, alerts"],["team","Branches and staff","users","Your people and places"],["online","Online store","store","Sell beyond the counter"],["plan","Plans and billing","flash","Plans and subscriptions"],["security","Account and security","shield","Passwords and privacy"],["fix","Troubleshooting","gear","When something is off"]];
-const icons={book:"▤",receipt:"▧",inventory:"▦",users:"♙",store:"⌂",flash:"ϟ",shield:"⬡",gear:"⚙"};
-const $=s=>document.querySelector(s),view=$("#view"),search=$("#search"),toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),2400)};
-let activeTab="help",schemaNode=null;
-const safe=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function tabs(){document.querySelectorAll("[data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===activeTab)))}
-function home(push=true){if(push)history.pushState({}, "", "support.html");if(schemaNode){schemaNode.remove();schemaNode=null}document.title="Strap – Help Centre";activeTab="help";tabs();$("#hero").hidden=false;search.hidden=false;renderHome();window.scrollTo(0,0)}
-function renderHome(){const q=search.value.trim().toLowerCase();const matches=categories.filter(([id,n,,d])=>!q||(n+" "+d+" "+articles[id].desc+" "+articles[id].sections.map(s=>s.join(" ")).join(" ")).toLowerCase().includes(q));view.innerHTML=(q?"":'<section class="steps"><h3>Up and selling in four steps</h3><ol><li><span><b>Add your products</b>Type them in or import a list.</span></li><li><span><b>Design your receipt</b>Review it in Settings → Sales receipt.</span></li><li><span><b>Make your first sale</b>Add items, check the total and finish checkout.</span></li><li><span><b>Invite your team</b>Give each person their own login.</span></li></ol></section>')+'<h2 class="section-title">'+(q?"Matching help topics":"Browse by topic")+'</h2><div class="cats">'+matches.map(([id,n,ico,d])=>'<button class="cat" data-article="'+id+'"><i class="ico">'+icons[ico]+'</i><b>'+n+'</b><small>'+d+'</small></button>').join("")+'</div>'+(matches.length?'':'<p class="sub">No topic matches that search. Contact support and tell us what you need.</p>')+'<h2 class="section-title">Still need help?</h2><button class="pill" data-contact>Message Strap Support</button>'}
-function article(id,push=true){const a=articles[id];if(!a)return home();if(push)history.pushState({article:id},"","support.html?article="+encodeURIComponent(id));activeTab="help";tabs();$("#hero").hidden=true;search.hidden=true;document.title=a.title+" | Strap Help Centre";let md=document.querySelector('meta[name="description"]');if(md)md.content=a.desc;const count=(a.title+" "+a.desc+" "+a.sections.map(s=>s.join(" ").replace(/<[^>]*>/g," ")).join(" ")).trim().split(/\s+/).length;const toc=a.sections.map((s,i)=>'<a href="#section-'+i+'">'+safe(s[0])+'</a>').join("");const body=a.sections.map((s,i)=>'<section id="section-'+i+'"><h2>'+safe(s[0])+'</h2>'+s[1]+'</section>').join("");const faq=a.faqs.map(([q,v])=>'<details><summary>'+safe(q)+'</summary><p>'+safe(v)+'</p></details>').join("");view.innerHTML='<nav class="article-crumb" aria-label="Breadcrumb"><button data-home>Help centre</button><span>/</span><span>'+safe(categories.find(c=>c[0]===id)[1])+'</span></nav><header class="article-head"><p class="kicker">STRAP HELP GUIDE · '+count+' WORDS</p><h1>'+safe(a.title)+'</h1><p class="article-intro">'+safe(a.desc)+'</p><div class="meta"><span>About 2 minutes to read</span><span>Practical guide</span></div></header><nav class="toc" aria-label="On this page"><b>In this guide</b>'+toc+'</nav><article class="article" itemscope itemtype="https://schema.org/TechArticle"><meta itemprop="headline" content="'+safe(a.title)+'"><meta itemprop="description" content="'+safe(a.desc)+'"><meta itemprop="inLanguage" content="en"><p>'+safe(a.desc)+'</p>'+body+'<section class="faq"><h2>Common questions</h2>'+faq+'</section></article><section class="helpbox"><b>Still need a hand?</b><p>Tell support which page you were using and what you were trying to do. Never include your password, Activity PIN or verification code.</p><button class="pill" data-contact>Contact support</button></section><h2 class="section-title">Explore other topics</h2><div class="related">'+categories.filter(c=>c[0]!==id).slice(0,3).map(c=>'<button data-article="'+c[0]+'">'+c[1]+' <span>↗</span></button>').join("")+'</div><button class="row" style="margin-top:16px" data-home>← Back to all help topics</button>';
-if(schemaNode)schemaNode.remove();schemaNode=document.createElement("script");schemaNode.type="application/ld+json";schemaNode.textContent=JSON.stringify({"@context":"https://schema.org","@graph":[{"@type":"TechArticle",headline:a.title,description:a.desc,articleSection:categories.find(c=>c[0]===id)[1],wordCount:count,inLanguage:"en",mainEntityOfPage:location.href,author:{"@type":"Organization",name:"Strap Support"},publisher:{"@type":"Organization",name:"Strap"}},{"@type":"FAQPage",mainEntity:a.faqs.map(([q,v])=>({"@type":"Question",name:q,acceptedAnswer:{"@type":"Answer",text:v}}))}]});document.head.appendChild(schemaNode);window.scrollTo(0,0)}
-function contact(){activeTab="contact";tabs();$("#hero").hidden=true;search.hidden=true;view.innerHTML='<h2 class="section-title">Contact Strap Support</h2><p class="sub">Tell us what happened and what you expected. We will use your details only to respond to this request.</p><form class="form" id="ticket"><label for="topic">What is this about?</label><select id="topic"><option>Something is not working</option><option>Billing or my plan</option><option>Account access</option><option>Online store</option><option>Importing products</option><option>Feedback or an idea</option><option>Something else</option></select><label for="email">Your email</label><input id="email" type="email" autocomplete="email" required placeholder="name@example.com"><label for="store">Store name (optional)</label><input id="store" autocomplete="organization" placeholder="Your business name"><label for="message">Your message</label><textarea id="message" maxlength="4000" required minlength="10" placeholder="Describe the issue and what you expected..."></textarea><p class="hint">Do not include passwords, Activity PINs, verification codes or card details.</p><button class="pill" id="send" style="margin-top:18px">Send message</button><p id="ticket-status" class="status" role="status" aria-live="polite"></p></form>';if(window.StrapAPI){StrapAPI.call("GET","me").then(r=>{if(r.ok&&r.email&&$("#email"))$("#email").value=r.email})}}
-async function sendTicket(e){e.preventDefault();const b=$("#send"),st=$("#ticket-status");b.disabled=true;b.textContent="Sending…";st.textContent="";st.className="status";try{const r=await StrapAPI.contact($("#topic").value,$("#message").value.trim(),$("#email").value.trim(),$("#store").value.trim());if(!r.ok)throw Error(r.msg||"Could not send your message.");view.innerHTML='<div class="hero" style="padding:45px 0"><div class="orb">✓</div><h1>Message <span>sent.</span></h1><p>Your request has reached Strap Support. We will reply to the email address you provided.</p></div><button class="pill alt" data-home>Back to help centre</button>'}catch(err){b.disabled=false;b.textContent="Send message";st.classList.add("error");st.textContent=err.message||"We could not send your message. Please try again."}}
-async function status(){activeTab="status";tabs();$("#hero").hidden=true;search.hidden=true;view.innerHTML='<h2 class="section-title">Checking Strap services…</h2>';try{const r=await fetch("/api/health",{cache:"no-store"});const h=await r.json();const rows=[["Application database",h.db],["Neon database connection",h.db],["Authentication service",h.auth]];view.innerHTML='<h2 class="section-title">'+(rows.every(x=>x[1])?"Services are responding":"Some checks need attention")+'</h2><p class="sub">Live health checks from the Strap application.</p><div class="rows">'+rows.map(x=>'<div class="row"><i class="dot '+(x[1]?"":"warn")+'"></i><span><b>'+x[0]+'</b><small>'+(x[1]?"Health check passed":"Could not confirm this service is healthy")+'</small></span></div>').join("")+'</div>'}catch(e){view.innerHTML='<h2 class="section-title">Status unavailable</h2><p class="sub">We could not retrieve the latest health check. Please try again shortly.</p>'}}
-document.addEventListener("click",e=>{const a=e.target.closest("[data-article]");if(a){article(a.dataset.article);return}if(e.target.closest("[data-home]")){home();return}if(e.target.closest("[data-contact]")){contact();return}const t=e.target.closest("[data-tab]");if(t){if(t.dataset.tab==="help")home();else if(t.dataset.tab==="contact")contact();else status()}});
-search.addEventListener("input",renderHome);document.addEventListener("submit",e=>{if(e.target&&e.target.id==="ticket")sendTicket(e)});
-$("#back").addEventListener("click",()=>{if(new URLSearchParams(location.search).has("article"))home();else if(document.referrer)history.back();else location.href="dashboard.html"});
-window.addEventListener("popstate",()=>{const id=new URLSearchParams(location.search).get("article");if(id)article(id,false);else home(false)});
-const initial=new URLSearchParams(location.search).get("article");if(initial&&articles[initial])article(initial,false);else renderHome();
+  const SUPPORT = {
+    endpoint: '',            // POST target for tickets. JSON in: {topic,email,store,message}. JSON out: {ref}. Empty = demo mode.
+    statusEndpoint: '',      // optional GET -> [{name, state:'ok'|'warn'|'down', note}]. Empty = the list below.
+    email: 'support@example.com', phone: '+234 800 000 0000', whatsapp: '2348000000000',
+    hours: 'Mon to Sat, 8am to 6pm',
+    home: 'dashboard.html', terms: '#', privacy: '#',
+    status: [['Sales and receipts', 'ok'], ['Online stores', 'ok'], ['Stock sync across branches', 'ok'], ['Premium payments', 'ok']]
+  };
+
+  /* ---------- icons + illustrations (copied from Strap's own set) ---------- */
+  const P = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+    chat: '<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3v-3H5A1.5 1.5 0 0 1 3.5 16V7A1.5 1.5 0 0 1 5 5.5z"/>',
+    mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/>',
+    phone: '<path d="M6.5 4h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5L16 13l4 1.5v3a2 2 0 0 1-2 2A14 14 0 0 1 4.5 6a2 2 0 0 1 2-2z"/>',
+    receipt: '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>',
+    inventory: '<path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16z"/><path d="m3.5 8 8.5 4.5L20.5 8M12 12.5v8"/>',
+    store: '<path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18.5 14a6 6 0 0 1 3 5.5"/>',
+    shield: '<path d="M12 3.5 5 6v5.5c0 4.2 2.9 7.3 7 9 4.1-1.7 7-4.8 7-9V6z"/><path d="m9 12 2.2 2.2L15 10"/>',
+    flash: '<path d="M13 3.5 5.5 13.5H12l-1 7 7.5-10H12z"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+    book: '<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    chevR: '<path d="m9 6 6 6-6 6"/>', back: '<path d="M15 5 8 12l7 7"/>', send: '<path d="m4 12 16-7-6 15-3-6z"/><path d="m11 14 9-9"/>'
+  };
+  const ic = (k, s = 22, w = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>`;
+  const W = '#fff';
+  const IL = {
+    support: `<path d="M44 50h74a10 10 0 0 1 10 10v30a10 10 0 0 1-10 10H80l-20 16V100h-16a10 10 0 0 1-10-10V60a10 10 0 0 1 10-10z" fill="${W}"/><path d="M62 68h46M62 82h28"/><g class="tw"><path d="M110 28h46a10 10 0 0 1 10 10v22a10 10 0 0 1-10 10h-6v12l-14-12h-26a10 10 0 0 1-10-10V38a10 10 0 0 1 10-10z" fill="#0a0a0a"/><circle cx="118" cy="49" r="3" fill="#e6f53a" stroke="none"/><circle cx="133" cy="49" r="3" fill="#e6f53a" stroke="none"/><circle cx="148" cy="49" r="3" fill="#e6f53a" stroke="none"/></g>`,
+    search: `<circle cx="92" cy="66" r="30" fill="${W}"/><path d="m114 88 24 24" stroke-width="6"/><path d="M78 66h28M92 52v28" opacity=".0"/><g class="tw"><path d="M80 60c2-8 10-10 16-6s4 10-2 13-3 5-3 8M92 80v.1"/></g>`,
+    mail: `<rect x="46" y="48" width="108" height="72" rx="12" fill="${W}"/><path d="m50 54 50 36 50-36"/><g class="tw"><circle cx="150" cy="46" r="15" fill="#0a0a0a"/><path d="M143 46l5 5 9-10" stroke="#e6f53a" stroke-width="2.6"/></g>`
+  };
+  const il = k => `<svg class="il" viewBox="0 0 200 150" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="100" cy="134" rx="58" ry="6.5" fill="#0a0a0a" fill-opacity=".07" stroke="none"/><circle cx="100" cy="72" r="54" fill="#e6f53a" stroke="none"/><g class="fl">${IL[k]}</g><path class="spk" d="M30 40v9M25.5 44.5h9"/><path class="spk s2" d="M170 96v8M166 100h8"/><circle class="spk s3" cx="164" cy="34" r="2.6" fill="#0a0a0a" stroke="none"/></svg>`;
+
+  /* ---------- the write-up ---------- */
+  const CATS = [
+    ['start', 'Getting started', 'book', 'Set up in minutes'],
+    ['sales', 'Sales and receipts', 'receipt', 'Selling and credit'],
+    ['stock', 'Products and stock', 'inventory', 'Items, imports, alerts'],
+    ['team', 'Branches and staff', 'users', 'Your people and places'],
+    ['online', 'Online store', 'store', 'Sell beyond the counter'],
+    ['plan', 'Plans and billing', 'flash', 'Free, Premium, cards'],
+    ['security', 'Account and security', 'shield', 'Passwords, 2FA, privacy'],
+    ['fix', 'Troubleshooting', 'gear', 'When something is off']
+  ];
+  const QA = [
+    ['start', 1, 'How do I set up my store?', '<p>After you create an account, Strap asks for your business name, business mode and currency. Then add your first products, design your receipt in <em>Settings → Sales receipt</em> and make a test sale.</p><p>Every one of these choices can be changed later, so start simple.</p>'],
+    ['start', 0, 'What is business mode?', '<p>Business mode tells Strap how you sell, so the tools you see fit your shop. If you picked the wrong one, contact support and we will help you change it.</p>'],
+    ['start', 0, 'Can I use Strap on more than one phone?', '<p>Yes. Sign in on each device. Staff should use their own login so every sale shows who made it, instead of sharing yours.</p>'],
+    ['start', 0, 'Which currency does Strap use?', '<p>The one you chose during setup. You can see it under <em>Settings → Currency</em>. Prices, sales and reports all use it.</p>'],
+    ['sales', 1, 'How do I record a sale?', '<p>Open Sales and add items by tapping them or scanning their barcode. Choose how the customer paid, then finish the sale. Strap creates the receipt for you to share.</p>'],
+    ['sales', 0, 'What does Hold sale do?', '<p>It parks the current basket so you can serve another customer. When you come back, resume the held sale exactly as you left it.</p>'],
+    ['sales', 0, 'How do credit sales work?', '<p>Choose credit when a customer will pay later. The amount goes into your Credit book under their name, so you always know who owes what.</p><p>Turn on <em>Credit reminders</em> in Settings to be flagged when a payment is due. Once a credit sale is fully paid it is cleared from what is owed.</p>'],
+    ['sales', 0, 'How do I change how my receipts look?', '<p>Go to <em>Settings → Sales receipt</em>. Edit your contact details, fonts and colours, choose what to show or hide, and check the live preview. Changes save as you type and you can reset to the default at any time.</p>'],
+    ['stock', 1, 'How do I add products?', '<p>Open Products and tap add. Enter the name, price and quantity, add a photo if you like, then save. For many products at once, use import.</p>'],
+    ['stock', 0, 'Can I import my product list?', '<p>Yes. Use import in Products to upload a spreadsheet or CSV file.</p><ul><li>Give every column a clear heading</li><li>Put one product on each row</li><li>Keep prices as plain numbers, with no currency symbol</li></ul><p>Export gives you a copy any time for backup or editing.</p>'],
+    ['stock', 0, 'How do low stock alerts work?', '<p>Turn on <em>Low stock alerts</em> in <em>Settings → Notifications</em>. Strap lets you know when items are running low so you can restock before you sell out.</p>'],
+    ['stock', 0, 'How do I move stock between branches?', '<p>Use Transfers to send items from one branch to another. Both branches\' counts update, so your totals stay right.</p>'],
+    ['team', 1, 'How do I add staff?', '<p>Go to <em>Settings → Staff</em>. Add their name, role, email and the branch they work in. Each person gets their own login, and removing someone stops their access straight away.</p>'],
+    ['team', 0, 'Why can\'t I add more branches or staff?', '<p>The free plan has limits on branches, staff and products. When you reach one, Strap tells you. Upgrade to Premium in <em>Settings → Plan</em> to add more.</p>'],
+    ['team', 0, 'How do I switch branches?', '<p>Open <em>Settings → Branch</em> and pick the branch you are working in. Sales and stock follow the branch you choose.</p>'],
+    ['team', 0, 'What is the Activity PIN for?', '<p>It adds a PIN check so only people who know it can approve sensitive actions, which is useful on a phone that several people use. Set it in <em>Settings → Activity PIN</em>.</p>'],
+    ['online', 1, 'How do I get an online store?', '<p>Open Online store and follow the steps: pick a name, choose your products and publish. Strap gives you a link and a QR code to share on social media, receipts or your shop door.</p>'],
+    ['online', 0, 'Where do online orders appear?', '<p>In Orders. Turn on <em>Order alerts</em> in <em>Settings → Notifications</em> to be told when a new one arrives.</p>'],
+    ['online', 0, 'Which products show in my store?', '<p>You choose. Clear photos, honest prices and accurate quantities help customers trust your store and cut down on cancelled orders.</p>'],
+    ['plan', 1, 'What is the difference between Free and Premium?', '<p>Free is built for getting started and has limits on branches, staff and products. Premium raises those limits and unlocks more tools. See exactly what is included in <em>Settings → Plan</em>.</p>'],
+    ['plan', 0, 'How do I pay for Premium?', '<p>Enter your card on the plan screen. Visa, Mastercard and Verve are supported.</p>'],
+    ['plan', 0, 'Is there an introductory price?', '<p>Premium can start with a special monthly price for the first few months. You will see the exact price and dates before you pay.</p>'],
+    ['security', 1, 'How do I turn on two-factor authentication?', '<p>Go to <em>Settings → Security and 2FA</em> and follow the steps. From then on, signing in asks for a code as well as your password, which keeps your store safe even if a password leaks.</p>'],
+    ['security', 0, 'What is the backup email or phone for?', '<p>It is how we reach you if you ever lose access. Add one or both in <em>Settings → Backup email or phone</em>.</p>'],
+    ['security', 0, 'I forgot my password', '<p>Use the reset option on the log-in screen. If you cannot get in, send us a message from the Contact tab and mention your backup email or phone so we can help you verify it is you.</p>'],
+    ['security', 0, 'What happens if I delete my account?', '<p>Strap asks why you are leaving, then deletes your sign-in details, staff accounts, PINs, 2FA keys, products, customers and sales data from active systems.</p><p>For audit, fraud prevention and legal reasons, we keep a reference record of your store: its name, branches and plan history.</p>'],
+    ['security', 0, 'My account is under review', '<p>You will see a message in the app with a button to request a review. Tell us what happened and give a contact email. A clear explanation helps us decide faster.</p>'],
+    ['fix', 1, 'The barcode scanner will not scan', '<p>Allow camera access for Strap in your phone settings and clean the lens. Hold steady in good light. If a code still will not read, search for the product by name.</p>'],
+    ['fix', 0, 'A number on my dashboard looks wrong', '<p>Check the branch and date range first. If a figure still looks wrong, send us the date, the branch and what you expected to see.</p>'],
+    ['fix', 0, 'There is no beep or vibration when I sell', '<p>Turn on <em>Beep sound</em> and <em>Vibration</em> in <em>Settings → Sales</em>, and check that your phone is not on silent.</p>'],
+    ['fix', 0, 'The page is slow or stuck', '<p>Close and reopen Strap and check your internet connection. If it keeps happening, tell us what you were doing and which phone and browser you use.</p>'],
+    ['fix', 0, 'How do I switch to dark mode?', '<p>Open <em>Settings → Appearance</em> and choose a theme.</p>']
+  ];
+  const STEPS = [['Add your products', 'Type them in or import a list.'], ['Design your receipt', 'Settings → Sales receipt.'], ['Make your first sale', 'Sales → add items → finish.'], ['Invite your team', 'Settings → Staff.']];
+  const TOPICS = ['Something is not working', 'Billing or my plan', 'Account access', 'Online store', 'Importing products', 'Feedback or an idea', 'Something else'];
+
+  /* ---------- helpers ---------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const txt = h => h.replace(/<[^>]+>/g, ' ');
+  const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2400); };
+  const S = { tab: 'help', cat: null, q: '' };
+  const sheet = $('#sheet');
+  $('#sp-back').innerHTML = ic('back', 22, 2.2);
+  $('#sp-back').onclick = () => document.referrer ? history.back() : (location.href = SUPPORT.home);
+
+  /* ---------- shell ---------- */
+  sheet.innerHTML = `
+    <section class="hero">${il('support')}<h1>How can we <span>help?</span></h1><p>Search our guides, browse by topic, or talk to a real person. We reply fast.</p></section>
+    <label class="find">${ic('search', 20, 2)}<input class="fi" id="q" type="search" placeholder="Search for an answer" autocomplete="off" aria-label="Search help articles"></label>
+    <div class="tabs" role="tablist">${[['help', 'Help centre'], ['contact', 'Contact us'], ['status', 'System status']].map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === 'help'}">${l}</button>`).join('')}</div>
+    <div id="view"></div>
+    <p class="foot">Strap support, ${esc(SUPPORT.hours)}.<br><a href="${SUPPORT.terms}">Terms of Use</a> and <a href="${SUPPORT.privacy}">Privacy Policy</a></p>`;
+  const view = $('#view');
+
+  /* ---------- help tab ---------- */
+  const qa = ([c, , q, a], open) => `<div class="acc${open ? ' open' : ''}"><button class="acc-h" aria-expanded="${!!open}">${q}<span class="acc-i" aria-hidden="true">+</span></button><div class="acc-b"><div><div class="acc-t">${a}</div></div></div></div>`;
+  function help() {
+    const q = S.q.trim().toLowerCase();
+    let list = QA, title = 'Popular questions';
+    if (q) { list = QA.filter(x => (x[2] + ' ' + txt(x[3])).toLowerCase().includes(q)); title = `Results for “${esc(S.q.trim())}”`; }
+    else if (S.cat) { list = QA.filter(x => x[0] === S.cat); title = CATS.find(c => c[0] === S.cat)[1]; }
+    else list = QA.filter(x => x[1]);
+    const intro = !q && !S.cat ? `<section class="qs"><h3>Up and selling in four steps</h3><ol>${STEPS.map(([b, s]) => `<li><span><b>${b}</b>${s}</span></li>`).join('')}</ol></section>` : '';
+    const cats = q ? '' : `<h2 class="h">Browse by topic</h2><div class="cats">${CATS.map(([k, n, i, d]) => `<button class="cat" data-cat="${k}" aria-haspopup="dialog"><i>${ic(i, 22, 1.8)}</i><b>${n}</b><small>${d}</small></button>`).join('')}</div>`;
+    const body = list.length ? list.map(x => qa(x)).join('') : `<div class="empty">${il('search')}<p>No answers match that yet. Try a shorter word, or send us the question and we will answer it.</p><button class="pill" data-go="contact">Ask support</button></div>`;
+    view.innerHTML = `<div class="view">${intro}${cats}<h2 class="h">${title}<small>${list.length}</small></h2>${body}
+      <div class="rows" style="margin-top:22px"><button class="row" data-go="contact"><i>${ic('chat', 20)}</i><span><b>Still stuck?</b><small>Message our team</small></span>${ic('chevR', 18, 2)}</button></div></div>`;
+  }
+
+  /* ---------- contact tab ---------- */
+  const wa = SUPPORT.whatsapp ? `https://wa.me/${SUPPORT.whatsapp}` : '';
+  function contact(sent) {
+    if (sent) { view.innerHTML = `<div class="view sent"><div class="okm"><svg viewBox="0 0 120 120"><circle class="okd" cx="60" cy="60" r="44"/><circle class="okr" cx="60" cy="60" r="56" pathLength="1"/><path class="okt" d="M40 62l14 14 27-30" pathLength="1"/></svg></div><h2>Message sent</h2><p>Thanks. We will reply to <b>${esc(sent.email)}</b> within one working day.${sent.ref ? ' Keep your reference handy.' : ''}</p>${sent.ref ? `<span class="ref">${esc(sent.ref)}</span>` : ''}<button class="pill alt" data-go="help">Back to help centre</button></div>`; return; }
+    view.innerHTML = `<div class="view"><section class="hero" style="padding-top:20px">${il('mail')}</section>
+      <h2 class="h" style="margin-top:6px">Reach us directly</h2>
+      <div class="rows">
+        <a class="row" href="mailto:${esc(SUPPORT.email)}"><i>${ic('mail', 20)}</i><span><b>Email</b><small>${esc(SUPPORT.email)}</small></span>${ic('chevR', 18, 2)}</a>
+        <a class="row" href="tel:${esc(SUPPORT.phone.replace(/\s/g, ''))}"><i>${ic('phone', 20)}</i><span><b>Call us</b><small>${esc(SUPPORT.phone)}, ${esc(SUPPORT.hours)}</small></span>${ic('chevR', 18, 2)}</a>
+        ${wa ? `<a class="row" href="${wa}" target="_blank" rel="noopener"><i>${ic('chat', 20)}</i><span><b>WhatsApp</b><small>Quick questions, quick replies</small></span>${ic('chevR', 18, 2)}</a>` : ''}
+      </div>
+      <h2 class="h">Send a message</h2><p class="lead">Tell us what happened and what you expected. Screenshots of the problem help, so mention if you have one and we will ask for it.</p>
+      <form class="fcard" id="tk" novalidate>
+        <label class="fl"><span>What is this about?</span><select class="fi" id="tk-t">${TOPICS.map(t => `<option>${t}</option>`).join('')}</select></label>
+        <label class="fl"><span>Your email</span><input class="fi" id="tk-e" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com"><div class="ferr" id="e-e"></div></label>
+        <label class="fl"><span>Store name <small style="font-weight:400;color:var(--mute)">(optional)</small></span><input class="fi" id="tk-s" type="text" autocomplete="organization" placeholder="e.g. Ade’s Provisions"></label>
+        <label class="fl"><span>Your message</span><textarea class="fi" id="tk-m" maxlength="4000" placeholder="What can we help with?">${esc(S.q.trim())}</textarea><span class="cnt" id="tk-c">0 / 4000</span><div class="ferr" id="e-m"></div></label>
+        <button class="pill" id="tk-go" type="submit">${ic('send', 20, 2)} Send message</button>
+        <p class="note">Do not include passwords, Activity PINs, verification codes or card details.<br>We only use your details to answer this request. See our <a href="${SUPPORT.privacy}">Privacy Policy</a>.</p>
+      </form></div>`;
+    const m = $('#tk-m'), c = $('#tk-c'); const cnt = () => c.textContent = `${m.value.length} / 4000`; m.oninput = cnt; cnt();
+    $('#tk').onsubmit = submit;
+    if (window.StrapAPI) StrapAPI.call('GET', 'me').then(r => { const el = $('#tk-e'); if (r && r.ok && r.email && el && !el.value) el.value = r.email; }).catch(() => {});
+  }
+  async function submit(e) {
+    e.preventDefault();
+    const em = $('#tk-e'), ms = $('#tk-m'), b = $('#tk-go');
+    const bad = (el, er, msg) => { el.setAttribute('aria-invalid', !!msg); $(er).textContent = msg; return !!msg; };
+    const e1 = bad(em, '#e-e', /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em.value.trim()) ? '' : 'Enter a valid email so we can reply.');
+    const e2 = bad(ms, '#e-m', ms.value.trim().length >= 10 ? '' : 'Add a little more detail, at least 10 characters.');
+    if (e1 || e2) { (e1 ? em : ms).focus(); return; }
+    const data = { topic: $('#tk-t').value, email: em.value.trim(), store: $('#tk-s').value.trim(), message: ms.value.trim() };
+    b.disabled = true; b.textContent = 'Sending';
+    try {
+      let ref = '';
+      if (window.StrapAPI) { const r = await StrapAPI.contact(data.topic, data.message, data.email, data.store); if (!r || !r.ok) throw new Error((r && r.msg) || ''); ref = r.ref || ''; }
+      else if (SUPPORT.endpoint) { const r = await fetch(SUPPORT.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw 0; ref = (await r.json()).ref; }
+      else { await new Promise(r => setTimeout(r, 900)); ref = 'ST-' + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+      contact({ email: data.email, ref });
+      scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) { b.disabled = false; b.innerHTML = `${ic('send', 20, 2)} Send message`; toast((err && err.message) || 'Could not send. Check your connection and try again.'); }
+  }
+
+  /* ---------- status tab ---------- */
+  const LBL = { ok: 'Working', warn: 'Slow', down: 'Down' };
+  async function status() {
+    let list = SUPPORT.status.map(([name, state]) => ({ name, state, note: '' }));
+    view.innerHTML = '<div class="view"></div>';
+    if (SUPPORT.statusEndpoint) { try { list = await (await fetch(SUPPORT.statusEndpoint)).json(); } catch (_) { toast('Could not load live status.'); } }
+    const all = list.every(x => x.state === 'ok');
+    $('.view', view).innerHTML = `<h2 class="h" style="margin-top:24px">${all ? 'Everything is working' : 'Some things need attention'}</h2><p class="lead">${all ? 'All Strap services are running normally right now.' : 'We know about the items below and are working on them.'}</p>
+      <div class="rows">${list.map(x => `<div class="row"><span class="dot ${x.state}"></span><span><b>${esc(x.name)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ''}</span><span class="st" style="flex:none">${LBL[x.state] || ''}</span></div>`).join('')}</div>
+      <div class="rows" style="margin-top:14px"><button class="row" data-go="contact"><i>${ic('clock', 20)}</i><span><b>Seeing something else?</b><small>Tell us and we will check</small></span>${ic('chevR', 18, 2)}</button></div>`;
+  }
+
+  /* ---------- topic panel (slides up from the bottom) ---------- */
+  P.x = '<path d="M6 6l12 12M18 6 6 18"/>';
+  const DETAIL = {
+    start: `<p>Getting started with Strap takes a few minutes, and nothing you choose on day one is permanent. After you create your account, Strap asks for your business name, business mode and currency. Business mode shapes the tools you see, and the currency is used for every price, sale and report.</p><p>Once you are inside, follow this order:</p><ul><li>Add your products one by one, or import a spreadsheet if you already have a list</li><li>Design your receipt in <em>Settings → Sales receipt</em> so customers see your details</li><li>Make a test sale to see how the flow feels</li><li>Invite your team from <em>Settings → Staff</em>, giving each person their own login</li></ul><p>You can sign in on more than one phone. Staff should always use their own login, so every sale shows who made it. If you picked the wrong business mode, contact support and we will help you change it. Start simple, then grow into the rest of Strap as your shop grows.</p>`,
+    sales: `<p>Sales is the heart of Strap. Open it, add items by tapping them or scanning their barcode, choose how the customer paid and finish the sale. Strap then creates a receipt you can share.</p><p>Two features help on busy days. <em>Hold sale</em> parks the current basket so you can serve the next customer, and you can resume it exactly as you left it. <em>Credit</em> lets a customer pay later: the amount goes into your Credit book under their name, so you always know who owes what. Turn on Credit reminders in Settings to be flagged when a payment is due. Once a credit sale is fully paid, it clears from what is owed.</p><p>Your receipt is yours to shape. In <em>Settings → Sales receipt</em> you can edit contact details, fonts and colours, choose what to show or hide, and watch the live preview. Changes save as you type, and you can reset to the default at any time. For feedback while selling, switch on Beep sound and Vibration in <em>Settings → Sales</em>.</p>`,
+    stock: `<p>Products are what you sell, and accurate stock keeps your sales honest. Open Products and tap add, then enter a name, price and quantity. A photo is optional, but it helps, especially if you plan to sell online.</p><p>Already have a list? Use import to upload a spreadsheet or CSV file. Give every column a clear heading, put one product on each row, and keep prices as plain numbers with no currency symbol. Export gives you a copy any time for backup or editing.</p><p>To avoid selling out, turn on <em>Low stock alerts</em> in <em>Settings → Notifications</em>. Strap lets you know when items are running low so you can restock in time. If you run more than one branch, use Transfers to move items between them. Both branches' counts update, so your totals stay right. The free plan has limits on products, and Strap tells you when you reach one.</p>`,
+    team: `<p>As your business grows, Strap lets you add people and places without losing control. Each branch keeps its own sales and stock. Open <em>Settings → Branch</em> to choose the branch you are working in, and everything you record follows that choice.</p><p>To add staff, go to <em>Settings → Staff</em>. Enter their name, role, email and the branch they work in. Every person gets their own login, so each sale shows who made it. If someone leaves, removing them stops their access straight away.</p><p>On a phone that several people share, set an <em>Activity PIN</em> in <em>Settings → Activity PIN</em>. Only people who know it can approve sensitive actions.</p><p>The free plan limits branches, staff and products. When you reach a limit, Strap tells you, and you can upgrade to Premium in <em>Settings → Plan</em> to add more.</p>`,
+    online: `<p>Your online store lets customers buy from you beyond the counter. Open Online store and follow the steps: pick a name, choose your products and publish. Strap gives you a link and a QR code that you can share on social media, put on receipts or display on your shop door.</p><p>You decide which products appear. Clear photos, honest prices and accurate quantities build trust and cut down on cancelled orders, so keep your stock counts up to date.</p><p>When a customer orders, it appears in Orders. Turn on <em>Order alerts</em> in <em>Settings → Notifications</em> so you are told the moment a new one arrives. Check Orders often, especially in busy hours, so customers are not left waiting. If something looks off with an order or your store link, message us from the Contact tab and tell us what you expected to happen.</p>`,
+    plan: `<p>Strap has a Free plan and a Premium plan. Free is built for getting started and has limits on branches, staff and products. Premium raises those limits and unlocks more tools. You can see exactly what each plan includes in <em>Settings → Plan</em>, so there are no surprises.</p><p>To upgrade, enter your card on the plan screen. Visa, Mastercard and Verve are supported. Premium can start with a special monthly price for the first few months, and you will see the exact price and dates before you pay.</p><p>If you hit a limit on the free plan, Strap tells you at that moment instead of failing silently. That is a good time to decide whether Premium suits your shop. If you have a billing question, or something looks wrong after payment, use the Contact tab and choose <em>Billing or my plan</em> so it reaches the right person quickly.</p>`,
+    security: `<p>Your store holds sales, customers and staff details, so Strap gives you tools to protect it. Start with two-factor authentication in <em>Settings → Security and 2FA</em>. After that, signing in asks for a code as well as your password, which keeps your store safe even if a password leaks.</p><p>Add a backup email or phone in <em>Settings → Backup email or phone</em>. It is how we reach you if you ever lose access. If you forget your password, use the reset option on the log-in screen. If you still cannot get in, message us from the Contact tab and mention your backup details so we can verify it is you.</p><p>If your account is under review, you will see a message in the app with a button to request a review. Explain what happened and give a contact email.</p><p>If you delete your account, Strap removes sign-in details, staff accounts, PINs, 2FA keys, products, customers and sales data from active systems. We keep a reference record of your store, its name, branches and plan history, for audit, fraud prevention and legal reasons.</p>`,
+    fix: `<p>When something feels off, a few quick checks solve most problems. If the barcode scanner will not scan, allow camera access for Strap in your phone settings, clean the lens and hold steady in good light. If a code still will not read, search for the product by name.</p><p>If a number on your dashboard looks wrong, check the branch and date range first, because the figures follow them. If it still looks wrong, send us the date, the branch and what you expected to see.</p><p>No beep or vibration when you sell? Turn on <em>Beep sound</em> and <em>Vibration</em> in <em>Settings → Sales</em>, and check that your phone is not on silent. If a page is slow or stuck, close and reopen Strap and check your internet connection. Dark mode lives in <em>Settings → Appearance</em>.</p><p>When a problem keeps happening, tell us what you were doing and which phone and browser you use. That detail lets us fix it faster.</p>`
+  };
+  const ov = document.createElement('div'); ov.className = 'ov';
+  const pn = document.createElement('section'); pn.className = 'pn'; pn.setAttribute('role', 'dialog'); pn.setAttribute('aria-modal', 'true'); pn.setAttribute('aria-labelledby', 'pn-t'); pn.setAttribute('aria-hidden', 'true');
+  pn.innerHTML = `<div class="pn-grab" aria-hidden="true"></div><button class="pn-x" type="button" aria-label="Close">${ic('x', 20, 2.4)}</button><div class="pn-s"></div>`;
+  document.body.append(ov, pn);
+  let opener = null;
+  function openPanel(k, from) {
+    const c = CATS.find(x => x[0] === k); if (!c) return;
+    opener = from;
+    $('.pn-s', pn).innerHTML = `<div class="pn-h"><i>${ic(c[2], 24, 1.9)}</i><div><h2 id="pn-t">${c[1]}</h2><small>1 min read</small></div></div><div class="pn-b">${DETAIL[k]}</div><h3>Quick answers</h3>${QA.filter(x => x[0] === k).map(x => qa(x)).join('')}`;
+    $('.pn-s', pn).scrollTop = 0;
+    ov.classList.add('on'); pn.classList.add('on'); pn.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => $('.pn-x', pn).focus({ preventScroll: true }), 50);
+  }
+  function closePanel() {
+    if (!pn.classList.contains('on')) return;
+    ov.classList.remove('on'); pn.classList.remove('on'); pn.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (opener) opener.focus({ preventScroll: true });
+  }
+  $('.pn-x', pn).onclick = closePanel;
+  ov.onclick = closePanel;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+  /* ---------- wiring ---------- */
+  const draw = () => { [...document.querySelectorAll('.tab')].forEach(t => t.setAttribute('aria-selected', t.dataset.tab === S.tab)); ({ help, contact, status })[S.tab](); };
+  const go = t => { S.tab = t; if (t !== 'help') $('#q').value = S.q = S.q; draw(); };
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-tab],[data-go],[data-cat],.acc-h'); if (!t) return;
+    if (t.dataset.tab || t.dataset.go) return go(t.dataset.tab || t.dataset.go);
+    if (t.dataset.cat) return openPanel(t.dataset.cat, t);
+    const a = t.parentElement, o = a.classList.toggle('open'); t.setAttribute('aria-expanded', o);
+  });
+  $('#q').addEventListener('input', e => { S.q = e.target.value; S.cat = null; if (S.tab !== 'help') { S.tab = 'help'; draw(); } else help(); });
+  draw();
 })();
+
 </script>
-</body></html>
+</body>
+</html>
