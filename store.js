@@ -18,7 +18,7 @@ window.StrapStore = (() => {
   const A = window.StrapAPI.auth;
   const api = {
     DEMO: false,
-    sendCode: A.sendCode, verifyCode: A.verifyCode, changePassword: A.changePassword,
+    sendCode: A.sendPinCode, verifyCode: A.verifyPinCode, changePassword: A.changePassword,
     async savePin(pinHash) { return { ok: true }; }, // PIN hash is saved with the rest of your data in Neon
     async scheduleCreditReminder(credit) { return { ok: true }; }
   };

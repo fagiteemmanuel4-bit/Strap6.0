@@ -115,7 +115,7 @@ window.StrapSec = (() => {
           if (!okB) { eb.textContent = 'The PINs don’t match.'; return; }
           pin = a.value; btn.disabled = true; btn.textContent = 'Sending code…';
           const r = await S.api.sendCode(email);
-          if (!r.ok) { btn.disabled = false; btn.textContent = 'Continue'; eb.textContent = 'We couldn’t send a code. Try again.'; return; }
+          if (!r.ok) { btn.disabled = false; btn.textContent = 'Continue'; eb.textContent = r.msg || 'We couldn’t send a code. Try again.'; return; }
           stepCode();
         });
         swap(f);
@@ -134,7 +134,7 @@ window.StrapSec = (() => {
         const val = () => boxes.map(b => b.value).join('');
         const start = () => { let s = 30; rs.disabled = true; stop(); const tick = () => { note.textContent = s > 0 ? `You can resend in ${s}s` : 'Didn’t get it?'; if (s-- <= 0) { stop(); rs.disabled = false; } }; tick(); timer = setInterval(tick, 1000); };
         start();
-        rs.onclick = async () => { await S.api.sendCode(email); boxes.forEach(b => b.value = ''); boxes[0].focus(); btn.disabled = true; start(); StrapKit.$('#toast') && toastMsg('New code sent'); };
+        rs.onclick = async () => { rs.disabled = true; const r = await S.api.sendCode(email); if (!r.ok) { err.textContent = r.msg || 'We couldn’t send a new code. Try again.'; rs.disabled = false; return; } boxes.forEach(b => b.value = ''); boxes[0].focus(); btn.disabled = true; err.textContent = ''; start(); toastMsg('New code sent'); };
         boxes.forEach((b, i) => {
           b.addEventListener('input', () => { b.value = b.value.replace(/\D/g, '').slice(-1); err.textContent = ''; if (b.value && i < 5) boxes[i + 1].focus(); btn.disabled = val().length < 6; if (val().length === 6) f.requestSubmit(); });
           b.addEventListener('keydown', e => { if (e.key === 'Backspace' && !b.value && i > 0) boxes[i - 1].focus(); });
@@ -144,7 +144,7 @@ window.StrapSec = (() => {
           e.preventDefault(); if (val().length < 6 || btn.disabled && btn.dataset.busy) return;
           btn.disabled = true; btn.dataset.busy = 1; btn.textContent = 'Verifying…';
           const r = await S.api.verifyCode(email, val());
-          if (!r.ok) { btn.dataset.busy = ''; btn.textContent = 'Verify and save PIN'; boxes.forEach(b => b.value = ''); boxes[0].focus(); err.textContent = 'That code isn’t right. Check it and try again.'; return; }
+          if (!r.ok) { btn.dataset.busy = ''; btn.textContent = 'Verify and save PIN'; boxes.forEach(b => b.value = ''); boxes[0].focus(); err.textContent = r.msg || 'That code isn’t right or has expired. Request a new code.'; return; }
           const saved = await S.setPin(pin);
           if (!saved.ok) { btn.dataset.busy = ''; btn.disabled = false; btn.textContent = 'Verify and save PIN'; err.textContent = 'We couldn’t save your PIN. Try again.'; return; }
           stop(); fx('ok');
