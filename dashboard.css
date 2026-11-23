@@ -123,3 +123,8 @@ body.is-dash{background:var(--black)}
 /* Settings legal footer */
 .st-legal{padding:22px 4px 12px;margin-top:18px;text-align:center;color:#85857e;font-size:11px;line-height:1.8}
 .st-legal a{color:var(--black);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+.st-help-links a.pg-r{text-decoration:none;color:inherit}
+.st-help-links a.pg-r>span:nth-child(2){display:block;flex:1}
+.st-help-links a.pg-r small{display:block;margin-top:3px;font-size:11.5px;color:var(--mute);font-weight:500}
+.st-legal a{text-decoration:underline}

@@ -39,10 +39,16 @@ window.StrapSettings = (() => {
           ${sw('sound', 'volume', 'Beep sound', P.sound, 'Plays when you add items and finish a sale')}${sw('vibrate', 'vibrate', 'Vibration', P.vibrate, 'A short buzz on scans and completed sales')}${sw('creditReminders', 'clock', 'Credit reminders', P.creditReminders, 'Flag customers whose payment is due')}</div>
         <h2 class="pm-h">Notifications</h2>
         <div class="pg-rows">${sw('orderAlerts', 'bell', 'Order alerts', P.orderAlerts)}${sw('lowStock', 'inbox', 'Low stock alerts', P.lowStock)}</div>
+        <h2 class="pm-h">Help & legal</h2>
+        <div class="pg-rows st-help-links">
+          <a class="pg-r st-nav" href="support.html"><span class="st-ri">${ic('info', 20, 1.8)}</span><span>Contact Support<small>Questions, complaints and feedback</small></span>${ic('chevR', 18, 2)}</a>
+          <a class="pg-r st-nav" href="legal.html?doc=terms"><span class="st-ri">${ic('book', 20, 1.8)}</span><span>Terms of Use</span>${ic('chevR', 18, 2)}</a>
+          <a class="pg-r st-nav" href="legal.html?doc=privacy"><span class="st-ri">${ic('shield', 20, 1.8)}</span><span>Privacy Policy</span>${ic('chevR', 18, 2)}</a>
+        </div>
         <h2 class="pm-h">Account</h2>
         <div class="pg-rows">${nav('password', 'key', 'Change password')}${fx('security', 'shield', 'Security and 2FA', StrapFeatures.state.twofa.on ? 'On' : 'Off')}${fx('backup', 'mail', 'Backup email or phone')}${fx('appearance', 'palette', 'Appearance', StrapFeatures.state.theme)}${fx('staff', 'users', 'Staff')}${fx('branchsw', 'store', 'Branch', esc(StrapFeatures.branchName()))}${fx('premium', 'flash', 'Plan', StrapFeatures.state.plan === 'premium' ? 'Active' : 'Free')}<button type="button" class="pg-r" data-out><span class="st-ri">${ic('out', 20, 1.8)}</span><span>Sign out</span></button></div>
         <div class="pg-rows" style="margin-top:16px">${fx('delete', 'trash', 'Delete account', '', ' style="color:#c62828"')}</div>
-        <footer class="st-legal">By using Strap, you agree to our <a href="legal.html?doc=terms">Terms of Use</a> and <a href="legal.html?doc=privacy">Privacy Policy</a>. Need help? <a href="support.html">Contact Support</a>.</footer>`;
+        <footer class="st-legal">By using Strap, you agree to our <a href="legal.html?doc=terms">Terms of Use</a> and <a href="legal.html?doc=privacy">Privacy Policy</a>. For assistance, visit <a href="support.html">Strap Support</a>.</footer>`;
     }
 
     /* ================= receipt designer ================= */
