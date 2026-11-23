@@ -29,7 +29,7 @@ const clearMine = res => res.setHeader('Set-Cookie', 'strap_auth=; HttpOnly; Sec
 const upCookie = req => { const m = /(?:^|;\s*)strap_auth=([\w-]+)/.exec(req.headers.cookie || ''); return m ? Buffer.from(m[1], 'base64url').toString() : ''; };
 const cache = global.__sc || (global.__sc = new Map());
 
-const staffToken = req => { const m = /(?:^|;\\s*)strap_staff=([\\w-]+)/.exec(req.headers.cookie || ''); return m ? m[1] : ''; };
+const staffToken = req => { const m = /(?:^|;\s*)strap_staff=([\w-]+)/.exec(req.headers.cookie || ''); return m ? m[1] : ''; };
 const setStaffCookie = (res, token) => res.setHeader('Set-Cookie', ['strap_auth=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0', 'strap_staff=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200']);
 const clearStaffCookie = res => res.setHeader('Set-Cookie', [
   'strap_staff=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0',
