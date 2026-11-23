@@ -119,3 +119,16 @@ body.is-dash{background:var(--black)}
 .tab:focus-visible{outline:3px solid var(--lemon);outline-offset:-3px}
 @media(prefers-reduced-motion:reduce){.sl{stroke-dashoffset:0}.sa,.sd{opacity:1}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Settings footer, support and legal pages */
+.st-legal{margin:28px 0 110px;padding:20px 4px 10px;text-align:center;color:var(--mute);font-size:12px;line-height:1.8}
+.st-legal p+p{margin-top:5px}
+.st-legal button,.st-legal-copy button{border:0;background:none;color:var(--black);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.st-legal small{display:block;margin-top:12px;font-size:11px;opacity:.7}
+.st-support-form{display:grid;gap:16px;margin-top:24px}
+.st-support-form select,.st-support-form textarea{width:100%;border:1.5px solid var(--edge);border-radius:16px;padding:14px;background:#fff;color:#0a0a0a;font:500 14px/1.5 "Sora",sans-serif;outline:none}
+.st-support-form select:focus,.st-support-form textarea:focus{box-shadow:0 0 0 3px rgba(10,10,10,.1)}
+.st-support-note{font-size:12px;line-height:1.6;color:var(--mute);margin-top:10px}
+.st-legal-copy{padding-bottom:110px}
+.st-legal-copy h2{font-size:17px;margin:26px 0 8px}
+.st-legal-copy p:not(.st-lead){font-size:14px;line-height:1.7;color:var(--mute)}
