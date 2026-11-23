@@ -101,6 +101,7 @@ async function recordAction(req,email,action) {
       updated_at=now() returning lock_level`,[key]);
   if (Number(rows[0].lock_level)>=6 && action==='otp-send') await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
 }
+async function clearAction(req,email,action) { const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim(); const key=sha('strap-action:'+action+':'+lower(email)+':'+ip); await q('delete from auth_action_limits where bucket_key=$1',[key]); }
 async function me(req) {
   const c = upCookie(req); if (!c) return null;
   const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) return hit.u;
@@ -166,11 +167,17 @@ H['auth/send-code'] = async (req) => {
 H['auth/verify-email'] = async (req, res) => {
   const email = lower(req.body.email), otp = String(req.body.otp || '').trim();
   if (!emailRe.test(email) || !/^\d{6}$/.test(otp)) return [400, { ok: false, msg: 'Enter the complete 6-digit verification code.' }];
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many incorrect code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
   const r = await na(req, 'POST', '/email-otp/verify-email', { email, otp });
   if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
+  await clearAction(req,email,'otp-verify');
   let cookies = r.cookies;
   if (!cookies.length && req.body.password) { const s = await na(req, 'POST', '/sign-in/email', { email, password: String(req.body.password) }); if (s.ok) cookies = s.cookies; }
   if (!cookies.length) return [200, { ok: false, msg: 'Verified, but sign in failed. Please sign in.' }];
+  const verifiedUser=(await q('select id::text as id from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]))[0];
+  if(verifiedUser) await q('insert into auth_email_registry(email,user_id) values($1,$2) on conflict(email) do update set user_id=excluded.user_id',[email,verifiedUser.id]);
   mine(res, cookies); return [200, { ok: true }];
 };
 /* forgot password: check the code without using it up (if Neon supports it) */
@@ -180,8 +187,12 @@ H['auth/check-code'] = async (req) => {
   return [200, { ok: r.ok }];
 };
 H['auth/reset'] = async (req) => {
-  const pw = String(req.body.password || ''); if (pw.length < 8) return [400, { ok: false, msg: 'Use at least 8 characters.' }];
-  const r = await na(req, 'POST', '/email-otp/reset-password', { email: lower(req.body.email), otp: String(req.body.code || '').trim(), password: pw });
+  const email=lower(req.body.email), pw = String(req.body.password || ''); if (pw.length < 8) return [400, { ok: false, msg: 'Use at least 8 characters.' }];
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
+  const r = await na(req, 'POST', '/email-otp/reset-password', { email, otp: String(req.body.code || '').trim(), password: pw });
+  if(r.ok) await clearAction(req,email,'otp-verify');
   return r.ok ? [200, { ok: true }] : [400, { ok: false, msg: 'That code is wrong or expired.' }];
 };
 H['auth/signin'] = async (req, res) => {
