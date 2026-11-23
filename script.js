@@ -230,6 +230,7 @@
           lock(btn, false);
           if (!r || !r.ok) {
             if (r && r.code === 'ACCOUNT_SUSPENDED') { D.reviewEmail = D.lemail || D.email || ''; go('suspended'); return; }
+            if (r && r.code === 'STAFF_EMAIL') { D.lemail=String(D.email||'').trim().toLowerCase(); D.staffFound=true; D.staffPin=''; toast('This is a staff login. Enter your staff PIN.'); go('staff-pin'); return; }
             if (r && r.code === 'ACCOUNT_EXISTS') {
               D.lemail = String(D.email || '').trim().toLowerCase(); D.lpw = '';
               toast('Account already exists. Enter your login password.');
