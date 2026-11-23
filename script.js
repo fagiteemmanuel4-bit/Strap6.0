@@ -433,14 +433,11 @@
   $('#l-login').addEventListener('click', () => startFlow('lemail'));
   if (SUB) { try { Object.assign(D, JSON.parse(sessionStorage.getItem('strap.session') || '{}')); } catch (e) {} land.hidden = true; flow.hidden = false; hist = []; go('subscribe'); }
 
-  /* ===== legal and support links: pages are being updated, so they show a short notice for now ===== */
-  const NOTICE = { terms: ['Terms of Use', 'Our terms of use are being updated.'], privacy: ['Privacy Policy', 'Our privacy policy is being updated.'], support: ['Support', 'Support is currently being updated. Please check back soon.'] };
-  const sheetEl = $('#notice');
-  const closeNotice = () => { sheetEl.classList.remove('on'); setTimeout(() => { sheetEl.hidden = true; }, 260); };
+  /* Legal and support pages */
   document.addEventListener('click', e => {
-    const a = e.target.closest('[data-legal]'); if (!a) return; e.preventDefault();
-    const [t, d] = NOTICE[a.dataset.legal] || NOTICE.support; $('#notice-t').textContent = t; $('#notice-d').textContent = d;
-    sheetEl.hidden = false; void sheetEl.offsetWidth; sheetEl.classList.add('on');
+    const a = e.target.closest('[data-legal]'); if (!a) return;
+    e.preventDefault();
+    const dest = a.dataset.legal === 'support' ? 'support.html' : 'legal.html?doc=' + encodeURIComponent(a.dataset.legal);
+    location.href = dest;
   });
-  $('#notice-x').addEventListener('click', closeNotice); $('.n-scrim', sheetEl).addEventListener('click', closeNotice);
 })();
