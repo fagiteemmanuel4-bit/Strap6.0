@@ -17,6 +17,7 @@
     verifyLoginCode: (email, code) => auth && auth.verifyLoginCode ? auth.verifyLoginCode(email, code) : Promise.resolve(authUnavailable()),
     resetPassword: (email, code, password) => auth && auth.resetPassword ? auth.resetPassword(email, code, password) : Promise.resolve(authUnavailable()),
     createAccount: data => auth && auth.createAccount ? auth.createAccount(data) : Promise.resolve(authUnavailable()),
+    requestReview: (email,message) => auth && auth.requestReview ? auth.requestReview(email,message) : Promise.resolve(authUnavailable()),
     async subscribe({ amount, card }) {
       await sleep(1100);
       if (card.number === '4000000000000002') return { ok: false, msg: 'Your card was declined. Try another card.' };
@@ -70,6 +71,7 @@
       act: async () => { const r = await api.signIn(D.lemail, D.lpw); if (!r.ok) r.msg = r.msg || 'Email or password is incorrect.'; return r; }, next: 'lok' },
     'login-code': { k: 'code', len: 6, wait: 30, mail: 'lemail', verify: (m, c) => api.verifyLoginCode(m, c), t: 'Verify your email', s: () => `We sent a 6-digit code to ${D.lemail}.`, next: 'lok' },
     lok: { k: 'success', noBack: 1, t: 'You’re signed in', s: 'Welcome back to Strap.', label: 'Open dashboard', auto: 2200, go: () => { location.href = 'dashboard.html'; } },
+    suspended: { k: 'suspended', noBack: 1, t: 'Account temporarily suspended', s: 'We noticed unusual activity on this account. Your data is safe. Request a review and our team will check it.' },
     fgemail: { t: 'Reset your password', s: 'Enter your account email and we’ll send you a 6 digit code.', f: [{ key: 'fgemail', type: 'email', ph: 'example@email.com', ac: 'email', def: () => D.lemail, v: emailError }], btn: 'Send code',
       act: () => api.sendReset(D.fgemail), next: 'fgcode' },
     fgcode: { k: 'code', len: 6, wait: 30, mail: 'fgemail', save: 'fgcode', verify: (m, c) => api.verifyCode(m, c), t: 'Enter the code', s: () => `We sent a 6 digit code to ${D.fgemail}.`, next: 'fgnew' },
@@ -163,7 +165,7 @@
     const body = el('div', 'body'), foot = el('div', 'foot');
     body.append(el('h2', 'st', st.t));
     if (st.s) body.append(el('p', 'ss', typeof st.s === 'function' ? st.s() : st.s));
-    ({ code: kCode, verified: kVerified, choice: kChoice, image: kImage, plan: kPlan, success: kSuccess, final: kFinal }[st.k] || kForm)(st, body, foot);
+    ({ code: kCode, verified: kVerified, choice: kChoice, image: kImage, plan: kPlan, success: kSuccess, final: kFinal, suspended: kSuspended }[st.k] || kForm)(st, body, foot);
     if (st.pw) foot.append(el('p', 'note', 'Powered by Flutterwave'));
     box.append(body, el('div', 'sp'), foot);
     $$('.st,.ss,.fg,.acc,.paycard,.avatar,.tl,.okm,.foot > *,.skip-top', box).forEach((n, k) => { n.classList.add('rise'); n.style.setProperty('--i', Math.min(k, 8)); });
@@ -217,6 +219,7 @@
           const r = await st.act();
           lock(btn, false);
           if (!r || !r.ok) {
+            if (r && r.code === 'ACCOUNT_SUSPENDED') { D.reviewEmail = D.lemail || D.email || ''; go('suspended'); return; }
             if (r && r.code === 'ACCOUNT_EXISTS') {
               D.lemail = String(D.email || '').trim().toLowerCase(); D.lpw = '';
               toast('Account already exists. Enter your login password.');
@@ -376,6 +379,19 @@
     b.onclick = run; foot.append(b);
     clearTimeout(tmr2); if (st.auto) tmr2 = setTimeout(run, reduced() ? 600 : st.auto);
   }
+  function kSuspended(st, body, foot) {
+    const art=el('div','suspend-art');
+    art.innerHTML='<svg viewBox="0 0 260 220" role="img" aria-label="A protected account illustration" fill="none"><circle cx="130" cy="105" r="83" fill="#e6f53a"/><rect x="76" y="42" width="108" height="132" rx="18" fill="#fff" stroke="#0a0a0a" stroke-width="4"/><path d="M98 42V30a32 32 0 0 1 64 0v12" stroke="#0a0a0a" stroke-width="8" stroke-linecap="round"/><rect x="94" y="80" width="72" height="60" rx="12" fill="#0a0a0a"/><path d="M130 96v17m0 10v1" stroke="#e6f53a" stroke-width="7" stroke-linecap="round"/><circle cx="202" cy="151" r="28" fill="#fff" stroke="#0a0a0a" stroke-width="4"/><path d="M202 137v17m0 8v1" stroke="#0a0a0a" stroke-width="4" stroke-linecap="round"/></svg>';
+    const email=el('p','note',D.reviewEmail||D.lemail||'');
+    const msg=el('textarea','suspend-message'); msg.rows=3; msg.maxLength=1500; msg.placeholder='Add a short message for the review team (optional).';
+    const err=el('p','ferr'); err.setAttribute('role','alert');
+    const btn=pill('Request account review');
+    btn.onclick=async()=>{ lock(btn,true,'Submitting…'); const r=await api.requestReview(D.reviewEmail||D.lemail||'',msg.value); lock(btn,false); if(!r.ok){err.textContent=r.msg||'We could not submit your request. Please try again.';return;} err.textContent=''; msg.value=''; btn.textContent='Review request submitted'; btn.disabled=true; email.textContent='Your request is with the Strap review team. We’ll follow up by email.'; };
+    const back=pill('Back to sign in','alt'); back.onclick=()=>{hist=[];D.lpw='';go('lemail');};
+    body.append(art,el('p','ss','Sign-in is paused while we protect your account. You can request a review below.'),email,msg,err);
+    foot.append(btn,back);
+  }
+
   function kFinal(st, body, foot) {
     body.append(el('p', 'ss', `${D.bizname || 'Your business'} is ready to set up on Strap.`));
     const b = pill('Open my workspace');

@@ -68,6 +68,7 @@
       async resetPassword(email, code, password) { const r = await call('POST', 'auth/reset', { email, code, password }); return { ok: !!r.ok, msg: r.msg }; },
       async createAccount(data) { const { photo, password, ...d } = data; const r = await call('POST', 'auth/signup', { data: d }); return { ok: !!r.ok, msg: r.msg }; },
       async changePassword(current, next) { const r = await call('POST', 'auth/change-password', { current, next }); return { ok: !!r.ok, msg: r.msg }; },
+      async requestReview(email, message) { const r = await call('POST', 'auth/request-review', { email, message }); return { ok: !!r.ok, msg: r.msg }; },
       async deleteAccount(payload) { const r = await call('POST', 'account/delete', { payload }); if (r.ok) fresh(); return { ok: !!r.ok }; }
     }
   };

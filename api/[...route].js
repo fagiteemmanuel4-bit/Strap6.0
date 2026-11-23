@@ -29,44 +29,92 @@ const clearMine = res => res.setHeader('Set-Cookie', 'strap_auth=; HttpOnly; Sec
 const upCookie = req => { const m = /(?:^|;\s*)strap_auth=([\w-]+)/.exec(req.headers.cookie || ''); return m ? Buffer.from(m[1], 'base64url').toString() : ''; };
 const cache = global.__sc || (global.__sc = new Map());
 
-/* Persistent login throttling: counters live in Neon so they survive Vercel cold starts. */
+/* Persistent abuse controls. All counters are stored in Neon and shared across Vercel instances. */
 function loginLimitKeys(req, email) {
   const forwarded = String(req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   const ip = forwarded && forwarded.length <= 80 ? forwarded : 'unknown';
-  return [
-    { key: sha('strap-login-email:' + lower(email)), threshold: 5 },
-    { key: sha('strap-login-ip:' + ip), threshold: 20 }
-  ];
+  return [{ key: sha('strap-login-email:' + lower(email)), threshold: 5, email: true },
+    { key: sha('strap-login-ip:' + ip), threshold: 20, email: false }];
 }
 async function loginIsBlocked(keys) {
-  const hashes = keys.map(x => x.key);
-  const rows = await q('select key_hash, blocked_until from auth_login_limits where key_hash = any($1::text[]) and blocked_until > now()', [hashes]);
-  return rows.length > 0;
+  const rows = await q('select bucket_key, blocked_until from auth_login_limits where bucket_key = any($1::text[]) and blocked_until > now()', [keys.map(x => x.key)]);
+  return rows.length ? rows[0].blocked_until : null;
 }
-async function recordLoginFailures(keys) {
+async function suspendEmail(email, reason) {
+  const e = lower(email);
+  const u = (await q('select id::text as id from neon_auth."user" where lower(email)=$1 limit 1', [e]))[0];
+  if (!u) return;
+  await q(`insert into auth_account_security(email,user_id,suspended_at,suspension_reason,updated_at)
+    values($1,$2,now(),$3,now()) on conflict(email) do update set
+    user_id=coalesce(auth_account_security.user_id,excluded.user_id),
+    suspended_at=coalesce(auth_account_security.suspended_at,now()),
+    suspension_reason=excluded.suspension_reason, updated_at=now()`, [e,u && u.id,reason]);
+}
+async function accountSuspension(email) {
+  return (await q('select suspended_at, review_status from auth_account_security where email=$1 and suspended_at is not null', [lower(email)]))[0] || null;
+}
+async function recordLoginFailures(keys, email) {
+  let emailCount = 0;
   for (const item of keys) {
-    await q(`insert into auth_login_limits(key_hash, failures, window_started_at, blocked_until, updated_at)
-      values($1, 1, now(), null, now())
-      on conflict(key_hash) do update set
-        failures = case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end,
-        window_started_at = case when auth_login_limits.window_started_at < now() - interval '24 hours' then now() else auth_login_limits.window_started_at end,
-        blocked_until = case
-          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 + 7 then now() + interval '24 hours'
-          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 + 3 then now() + interval '1 hour'
-          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 then now() + interval '15 minutes'
+    const rows = await q(`insert into auth_login_limits(bucket_key,attempt_count,window_started_at,blocked_until,lock_level,updated_at)
+      values($1,1,now(),null,0,now())
+      on conflict(bucket_key) do update set
+        attempt_count=case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end,
+        window_started_at=case when auth_login_limits.window_started_at < now()-interval '24 hours' then now() else auth_login_limits.window_started_at end,
+        blocked_until=case
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+6 then now()+interval '24 hours'
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+4 then now()+interval '6 hours'
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+2 then now()+interval '1 hour'
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2 then now()+interval '15 minutes'
           else null end,
-        updated_at = now()`, [item.key, item.threshold]);
+        lock_level=case
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+6 then 4
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+4 then 3
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2+2 then 2
+          when (case when auth_login_limits.window_started_at < now()-interval '24 hours' then 1 else auth_login_limits.attempt_count+1 end) >= $2 then 1
+          else 0 end, updated_at=now()
+      returning attempt_count`, [item.key,item.threshold]);
+    if (item.email) emailCount=Number(rows[0].attempt_count);
   }
+  if (emailCount >= 11) await suspendEmail(email,'Repeated incorrect password attempts triggered the 24-hour security threshold.');
 }
 async function clearLoginFailures(email) {
-  await q('delete from auth_login_limits where key_hash = $1', [sha('strap-login-email:' + lower(email))]);
+  await q('delete from auth_login_limits where bucket_key=$1', [sha('strap-login-email:' + lower(email))]);
 }
+function actionKeys(req,email,action) {
+  const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim();
+  return [{key:sha('strap-action-email:'+action+':'+lower(email)),account:true},
+    {key:sha('strap-action-ip:'+action+':'+ip),account:false}];
+}
+async function actionBlocked(req,email,action) {
+  const keys=actionKeys(req,email,action).map(x=>x.key);
+  const row=(await q('select blocked_until from auth_action_limits where bucket_key=any($1::text[]) and blocked_until>now() limit 1',[keys]))[0];
+  return row && row.blocked_until;
+}
+async function recordAction(req,email,action) {
+  const keys=actionKeys(req,email,action);
+  for(const item of keys) {
+    const rows=await q(`insert into auth_action_limits(bucket_key,attempt_count,window_started_at,blocked_until,lock_level,updated_at)
+      values($1,1,now(),now()+interval '30 seconds',0,now())
+      on conflict(bucket_key) do update set
+        attempt_count=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 1 else auth_action_limits.attempt_count+1 end,
+        window_started_at=case when auth_action_limits.window_started_at<now()-interval '24 hours' then now() else auth_action_limits.window_started_at end,
+        lock_level=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else least(6,auth_action_limits.lock_level+1) end,
+        blocked_until=now()+case least(6,case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else auth_action_limits.lock_level+1 end)
+          when 0 then interval '30 seconds' when 1 then interval '1 minute' when 2 then interval '5 minutes'
+          when 3 then interval '15 minutes' when 4 then interval '1 hour' when 5 then interval '6 hours' else interval '24 hours' end,
+        updated_at=now() returning lock_level`,[item.key]);
+    if(item.account && Number(rows[0].lock_level)>=6 && (action==='otp-send'||action==='otp-verify'))
+      await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
+  }
+}
+async function clearAction(req,email,action) { const keys=actionKeys(req,email,action).map(x=>x.key); await q('delete from auth_action_limits where bucket_key=any($1::text[])',[keys]); }
 async function me(req) {
   const c = upCookie(req); if (!c) return null;
-  const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) return hit.u;
+  const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) { if (await accountSuspension(hit.u.email)) { cache.delete(k); return null; } return hit.u; }
   const r = await na(req, 'GET', '/get-session', null, c);
   const u = r.ok && r.j && r.j.user && r.j.user.emailVerified !== false ? { id: String(r.j.user.id), email: lower(r.j.user.email), name: r.j.user.name } : null;
-  if (u) { await q('insert into app_users(id,email) values($1,$2) on conflict(id) do nothing', [u.id, u.email]); cache.set(k, { u, t: Date.now() + 30000 }); }
+  if (u) { if (await accountSuspension(u.email)) return null; await q('insert into app_users(id,email) values($1,$2) on conflict(id) do nothing', [u.id, u.email]); cache.set(k, { u, t: Date.now() + 30000 }); }
   return u;
 }
 
@@ -92,17 +140,22 @@ H['auth/signup-start'] = async (req) => {
 
   // Check Neon Managed Auth directly. Never attempt a sign-in with the password
   // supplied on the create-account screen to detect an existing identity.
-  const existing = await q('select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
+  const existing = await q('select 1 from auth_email_registry where email=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
   if (existing.length) return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
-
+  try { await q('insert into auth_email_registry(email) values($1)',[email]); }
+  catch (e) { return [409, { ok:false, code:'ACCOUNT_EXISTS', msg:'An account with this email already exists. Sign in with your password.' }]; }
+  const sendWait=await actionBlocked(req,email,'otp-send');
+  if (sendWait) { await q('delete from auth_email_registry where email=$1',[email]); return [429,{ok:false,code:'RATE_LIMITED',msg:'Please wait before requesting another verification code.'}]; }
+  await recordAction(req,email,'otp-send');
   const r = await na(req, 'POST', '/sign-up/email', { email, password, name: email.split('@')[0] });
   if (!r.ok) {
     // Covers a signup race: another request may have created the same email
     // after the existence check but before Neon processed this request.
     const appeared = await q('select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]).catch(() => []);
-    if (appeared.length || /already exists|user exists|email.*taken/i.test(errMsg(r))) {
+    if (appeared.length || /already exists|user exists|email.*taken/i.test(errMsg(r))) { await q('delete from auth_email_registry where email=$1',[email]);
       return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
     }
+    await q('delete from auth_email_registry where email=$1',[email]);
     return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
   }
   // Managed Auth sends the initial verification code during /sign-up/email.
@@ -111,6 +164,10 @@ H['auth/signup-start'] = async (req) => {
 H['auth/send-code'] = async (req) => {
   const email = lower(req.body.email), type = req.body.type === 'forget-password' ? 'forget-password' : 'email-verification';
   if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email.' }];
+  const suspended=await accountSuspension(email); if(suspended) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-send'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code requests. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-send');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const r = type === 'forget-password' ? await na(req, 'POST', '/forget-password/email-otp', { email }) : await na(req, 'POST', '/email-otp/send-verification-otp', { email, type });
   return r.ok ? [200, { ok: true }] : [r.status === 429 ? 429 : 400, { ok: false, msg: errMsg(r) }];
 };
@@ -118,29 +175,48 @@ H['auth/send-code'] = async (req) => {
 H['auth/verify-email'] = async (req, res) => {
   const email = lower(req.body.email), otp = String(req.body.otp || '').trim();
   if (!emailRe.test(email) || !/^\d{6}$/.test(otp)) return [400, { ok: false, msg: 'Enter the complete 6-digit verification code.' }];
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many incorrect code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const r = await na(req, 'POST', '/email-otp/verify-email', { email, otp });
   if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
+  await clearAction(req,email,'otp-verify');
   let cookies = r.cookies;
   if (!cookies.length && req.body.password) { const s = await na(req, 'POST', '/sign-in/email', { email, password: String(req.body.password) }); if (s.ok) cookies = s.cookies; }
   if (!cookies.length) return [200, { ok: false, msg: 'Verified, but sign in failed. Please sign in.' }];
+  const verifiedUser=(await q('select id::text as id from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]))[0];
+  if(verifiedUser) await q('insert into auth_email_registry(email,user_id) values($1,$2) on conflict(email) do update set user_id=excluded.user_id',[email,verifiedUser.id]);
   mine(res, cookies); return [200, { ok: true }];
 };
 /* forgot password: check the code without using it up (if Neon supports it) */
 H['auth/check-code'] = async (req) => {
-  const r = await na(req, 'POST', '/email-otp/check-verification-otp', { email: lower(req.body.email), type: 'forget-password', otp: String(req.body.code || '').trim() });
+  const email=lower(req.body.email);
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const r = await na(req, 'POST', '/email-otp/check-verification-otp', { email, type: 'forget-password', otp: String(req.body.code || '').trim() });
+  if (r.ok || r.status === 404) await clearAction(req,email,'otp-verify');
   if (r.status === 404) return [200, { ok: true }]; // not available: the code is checked when the new password is saved
   return [200, { ok: r.ok }];
 };
 H['auth/reset'] = async (req) => {
-  const pw = String(req.body.password || ''); if (pw.length < 8) return [400, { ok: false, msg: 'Use at least 8 characters.' }];
-  const r = await na(req, 'POST', '/email-otp/reset-password', { email: lower(req.body.email), otp: String(req.body.code || '').trim(), password: pw });
+  const email=lower(req.body.email), pw = String(req.body.password || ''); if (pw.length < 8) return [400, { ok: false, msg: 'Use at least 8 characters.' }];
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const wait=await actionBlocked(req,email,'otp-verify'); if(wait) return [429,{ok:false,code:'RATE_LIMITED',msg:'Too many code attempts. Please wait before trying again.'}];
+  await recordAction(req,email,'otp-verify');
+  if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
+  const r = await na(req, 'POST', '/email-otp/reset-password', { email, otp: String(req.body.code || '').trim(), password: pw });
+  if(r.ok) await clearAction(req,email,'otp-verify');
   return r.ok ? [200, { ok: true }] : [400, { ok: false, msg: 'That code is wrong or expired.' }];
 };
 H['auth/signin'] = async (req, res) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || !password) return [400, { ok: false, msg: 'Enter your email and password.' }];
+  if (await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}];
   const keys = loginLimitKeys(req, email);
-  if (await loginIsBlocked(keys)) return [429, { ok: false, msg: 'Too many incorrect attempts. Please wait before trying again.' }];
+  const blocked=await loginIsBlocked(keys); if (blocked) return [429, { ok: false, msg: 'Too many incorrect attempts. Please wait before trying again.' }];
   const r = await na(req, 'POST', '/sign-in/email', { email, password });
   if (r.status === 403) {
     const resend = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' });
@@ -149,11 +225,22 @@ H['auth/signin'] = async (req, res) => {
       : [resend.status === 429 ? 429 : 502, { ok: false, msg: 'Your email needs verification, but we could not send a new code. ' + errMsg(resend) }];
   }
   if (!r.ok || !r.cookies.length) {
-    if (r.status === 401 || r.status === 400 || r.status === 403) await recordLoginFailures(keys);
+    if (r.status === 401 || r.status === 400 || r.status === 403) { await recordLoginFailures(keys,email); if(await accountSuspension(email)) return [423,{ok:false,code:'ACCOUNT_SUSPENDED',msg:'This account is suspended. Request a review to restore access.'}]; }
     return [r.status === 429 ? 429 : 401, { ok: false, msg: r.status === 429 ? 'Too many attempts. Try again later.' : 'Email or password is incorrect.' }];
   }
   await clearLoginFailures(email);
   mine(res, r.cookies); return [200, { ok: true }];
+};
+H['auth/request-review'] = async (req) => {
+  const email=lower(req.body.email), message=String(req.body.message||'').trim().slice(0,1500);
+  if(!emailRe.test(email)) return [400,{ok:false,msg:'Enter the email address on the suspended account.'}];
+  if(await actionBlocked(req,email,'review-request')) return [429,{ok:false,msg:'A review request was recently submitted. Please wait before sending another.'}];
+  await recordAction(req,email,'review-request');
+  const row=await accountSuspension(email); if(!row) return [404,{ok:false,msg:'No suspended account was found for this email.'}];
+  await q("update auth_account_security set review_status='pending',review_message=$2,review_requested_at=now(),updated_at=now() where email=$1",[email,message||'Please review my account suspension.']);
+  await q("insert into support_messages(user_id,email,kind,message) values(null,$1,'account-review',$2)",[email,message||'Please review my account suspension.']);
+  if(E.SUPPORT_EMAIL) await mail(E.SUPPORT_EMAIL,`[Account review] ${email}`,wrap('Account review requested',`<p><b>${esc(email)}</b></p><p>${esc(message||'Please review my account suspension.')}</p>`));
+  return [200,{ok:true,msg:'Your review request has been submitted.'}];
 };
 H['auth/signout'] = async (req, res) => { const c = upCookie(req); if (c) await na(req, 'POST', '/sign-out', {}, c); clearMine(res); return [200, { ok: true }]; };
 H['auth/change-password'] = async (req, res, user) => {
