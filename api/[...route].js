@@ -307,6 +307,8 @@ H['health'] = async (req) => {
 H['auth/email-status'] = async (req) => {
   const email = lower(req.body.email);
   if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email address.' }];
+  const staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
+  if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
   const existing = await q('select 1 from auth_email_registry where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
   return existing.length
     ? [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }]
@@ -320,6 +322,8 @@ H['auth/signup-start'] = async (req) => {
 
   // Check Neon Managed Auth directly. Never attempt a sign-in with the password
   // supplied on the create-account screen to detect an existing identity.
+  const staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
+  if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
   const existing = await q('select 1 from auth_email_registry where email=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
   if (existing.length) return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
   try { await q('insert into auth_email_registry(email) values($1)',[email]); }
@@ -496,6 +500,7 @@ H['staff/create'] = async (req,res,user,staff) => {
   const managerBranches=staff?staffAllowedBranches(staff,f1):branches;
   if(branchId&&!managerBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
   if(staff&&staff.branch_id&&!branchId) return [403,{ok:false,msg:'You can only add staff to your assigned branch.'}];
+  await migrateLegacyStaffByEmail(email);
   const collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1',[email]);
   if(collision.length) return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}];
   const salt=crypto.randomBytes(16).toString('hex'), hash=crypto.scryptSync(pin,salt,64).toString('hex');
@@ -548,7 +553,7 @@ H['staff/login'] = async (req,res) => {
     const salt=crypto.randomBytes(16).toString('hex'), hash=crypto.scryptSync(pin,salt,64).toString('hex');
     await q("update staff_accounts set pin_salt=$2,pin_hash=$3,pin_algo='scrypt-v1',updated_at=now() where id=$1::uuid",[row.id,salt,hash]);
   }
-  await clearStaffFailures(keys);
+  await clearStaffFailures(keys); await clearAction(req,email,'staff-lookup');
   const token=crypto.randomBytes(32).toString('base64url'), tokenHash=sha(token);
   await q('delete from staff_sessions where expires_at<=now()');
   await q('insert into staff_sessions(token_hash,staff_id,owner_id,expires_at) values($1,$2::uuid,$3,now()+interval \'12 hours\')',[tokenHash,row.id,row.owner_id]);
