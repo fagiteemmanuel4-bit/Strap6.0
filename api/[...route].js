@@ -89,10 +89,11 @@ async function migrateLegacyStaffByEmail(email) {
     if(found) await migrateLegacyStaffForOwner(row.user_id);
   }
 }
-async function safeStaffRows(ownerId) {
+async function safeStaffRows(ownerId, branchId=null) {
   return q(`select id::text as id,name,role,branch_id as branch,email,
     (extract(epoch from created_at)*1000)::bigint as at
-    from staff_accounts where owner_id=$1 and status='active' order by created_at desc`,[ownerId]);
+    from staff_accounts where owner_id=$1 and status='active'
+      and ($2::text is null or branch_id=$2 or branch_id is null) order by created_at desc`,[ownerId,branchId]);
 }
 function parseStored(raw, fallback={}) { try { return typeof raw==='string' ? JSON.parse(raw) : (raw||fallback); } catch (_) { return fallback; } }
 async function safeOwnerBlob(ownerId, blob) {
@@ -125,7 +126,7 @@ function staffAllowedBranches(staff, state) {
 function staffReadBlob(blob, staff) {
   const role=staff.role, state=parseStored(blob['ls:strap.f1'],{}), branches=staffAllowedBranches(staff,state);
   const active=branches.some(b=>String(b.id)===String(state.active))?state.active:(branches[0]&&branches[0].id)||'b0';
-  const f1={plan:'free',branches,active,imports:{m:new Date().toISOString().slice(0,7),n:0},theme:state.theme||'light',
+  const f1={plan:role==='Manager'?(state.plan||'free'):'free',branches,active,imports:{m:new Date().toISOString().slice(0,7),n:0},theme:state.theme||'light',
     staff:[],twofa:{on:false,secret:''},backup:{email:'',phone:''},mcp:[],transfers:role==='Stock keeper'||role==='Manager'?(state.transfers||[]):[],dismissed:[]};
   const out={'ls:strap.f1':JSON.stringify(f1)};
   const profile=staff.profile||{};
@@ -479,7 +480,7 @@ H['staff/list'] = async (req,res,user,staff) => {
   if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to manage staff.'}];
   const ownerId=staff?staff.owner_id:user.id;
   await migrateLegacyStaffForOwner(ownerId);
-  return [200,{ok:true,staff:await safeStaffRows(ownerId)}];
+  return [200,{ok:true,staff:await safeStaffRows(ownerId,staff?staff.branch_id:null)}];
 };
 H['staff/create'] = async (req,res,user,staff) => {
   if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to add staff.'}];
@@ -510,7 +511,7 @@ H['staff/remove'] = async (req,res,user,staff) => {
   if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to remove staff.'}];
   const ownerId=staff?staff.owner_id:user.id, id=String(req.body.id||'');
   if(staff && id===staff.id) return [403,{ok:false,msg:'You cannot remove your own staff login.'}];
-  const rows=await q('delete from staff_accounts where id=$1::uuid and owner_id=$2 returning id',[id,ownerId]).catch(()=>[]);
+  const rows=await q('delete from staff_accounts where id=$1::uuid and owner_id=$2 and ($3::text is null or branch_id=$3) returning id',[id,ownerId,staff?staff.branch_id:null]).catch(()=>[]);
   if(!rows.length) return [404,{ok:false,msg:'Staff account not found.'}];
   return [200,{ok:true}];
 };
@@ -573,7 +574,7 @@ H['data'] = async (req, res, user, staff) => {
   }
   if(staff) {
     const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], blob=row?row.blob:{};
-    return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store'}}];
+    return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,branchId:staff.branch_id,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store'}}];
   }
   await migrateLegacyStaffForOwner(ownerId);
   const r=await q('select blob from user_data where user_id=$1',[ownerId]);
