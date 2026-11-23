@@ -622,6 +622,7 @@ H['sales/session'] = async (req,res,user,staff) => {
   if(req.method==='POST') {
     if(typeof req.body.open!=='boolean') return [400,{ok:false,msg:'Choose whether cashier sales should be open or paused.'}];
     state.staffSalesOpen=req.body.open;
+    if(req.body.open) state.closed=null;
     state.staffSalesOpenedAt=req.body.open?new Date().toISOString():null;
     state.staffSalesOpenedBy=user.id;
     blob['ls:strap.v1']=JSON.stringify(state);
