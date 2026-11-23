@@ -28,6 +28,39 @@ const mine = (res, cookies) => { if (cookies.length) res.setHeader('Set-Cookie',
 const clearMine = res => res.setHeader('Set-Cookie', 'strap_auth=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
 const upCookie = req => { const m = /(?:^|;\s*)strap_auth=([\w-]+)/.exec(req.headers.cookie || ''); return m ? Buffer.from(m[1], 'base64url').toString() : ''; };
 const cache = global.__sc || (global.__sc = new Map());
+
+/* Persistent login throttling: counters live in Neon so they survive Vercel cold starts. */
+function loginLimitKeys(req, email) {
+  const forwarded = String(req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const ip = forwarded && forwarded.length <= 80 ? forwarded : 'unknown';
+  return [
+    { key: sha('strap-login-email:' + lower(email)), threshold: 5 },
+    { key: sha('strap-login-ip:' + ip), threshold: 20 }
+  ];
+}
+async function loginIsBlocked(keys) {
+  const hashes = keys.map(x => x.key);
+  const rows = await q('select key_hash, blocked_until from auth_login_limits where key_hash = any($1::text[]) and blocked_until > now()', [hashes]);
+  return rows.length > 0;
+}
+async function recordLoginFailures(keys) {
+  for (const item of keys) {
+    await q(`insert into auth_login_limits(key_hash, failures, window_started_at, blocked_until, updated_at)
+      values($1, 1, now(), null, now())
+      on conflict(key_hash) do update set
+        failures = case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end,
+        window_started_at = case when auth_login_limits.window_started_at < now() - interval '24 hours' then now() else auth_login_limits.window_started_at end,
+        blocked_until = case
+          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 + 7 then now() + interval '24 hours'
+          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 + 3 then now() + interval '1 hour'
+          when (case when auth_login_limits.window_started_at < now() - interval '24 hours' then 1 else auth_login_limits.failures + 1 end) >= $2 then now() + interval '15 minutes'
+          else null end,
+        updated_at = now()`, [item.key, item.threshold]);
+  }
+}
+async function clearLoginFailures(email) {
+  await q('delete from auth_login_limits where key_hash = $1', [sha('strap-login-email:' + lower(email))]);
+}
 async function me(req) {
   const c = upCookie(req); if (!c) return null;
   const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) return hit.u;
@@ -96,9 +129,16 @@ H['auth/reset'] = async (req) => {
 };
 H['auth/signin'] = async (req, res) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
+  if (!emailRe.test(email) || !password) return [400, { ok: false, msg: 'Enter your email and password.' }];
+  const keys = loginLimitKeys(req, email);
+  if (await loginIsBlocked(keys)) return [429, { ok: false, msg: 'Too many incorrect attempts. Please wait before trying again.' }];
   const r = await na(req, 'POST', '/sign-in/email', { email, password });
   if (r.status === 403) { await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return [403, { ok: false, msg: 'Your email is not verified. We sent a new code: tap Create account, use the same email and password, and enter it.' }]; }
-  if (!r.ok || !r.cookies.length) return [r.status === 429 ? 429 : 401, { ok: false, msg: r.status === 429 ? 'Too many attempts. Try again soon.' : undefined }];
+  if (!r.ok || !r.cookies.length) {
+    if (r.status === 401 || r.status === 400 || r.status === 403) await recordLoginFailures(keys);
+    return [r.status === 429 ? 429 : 401, { ok: false, msg: r.status === 429 ? 'Too many attempts. Try again later.' : 'Email or password is incorrect.' }];
+  }
+  await clearLoginFailures(email);
   mine(res, r.cookies); return [200, { ok: true }];
 };
 H['auth/signout'] = async (req, res) => { const c = upCookie(req); if (c) await na(req, 'POST', '/sign-out', {}, c); clearMine(res); return [200, { ok: true }]; };
