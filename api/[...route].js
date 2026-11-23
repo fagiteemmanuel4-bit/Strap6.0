@@ -338,8 +338,6 @@ H['auth/signup-start'] = async (req) => {
 
   // Check Neon Managed Auth directly. Never attempt a sign-in with the password
   // supplied on the create-account screen to detect an existing identity.
-  const staffExists=await q('select 1 from staff_accounts where lower(email)=$1 and status=\'active\' limit 1',[email]);
-  if(staffExists.length) return [409,{ok:false,code:'STAFF_EMAIL',msg:'This email belongs to a Strap staff account. Sign in using your 6-digit staff PIN.'}];
   const existing = await q('select 1 from auth_email_registry where email=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
   if (existing.length) return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
   try { await q('insert into auth_email_registry(email) values($1)',[email]); }
