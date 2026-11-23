@@ -136,7 +136,7 @@ async function formSubmitSupport(fields) {
   try {
     const r = await fetch('https://formsubmit.co/ajax/' + encodeURIComponent(inbox), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ ...fields, _template: 'table', _subject: '[Strap Support] ' + fields.category }) });
     const raw = await r.text(); let data = {}; try { data = JSON.parse(raw); } catch (e) {}
-    return r.ok && data.success !== false;
+    return r.ok && (data.success === true || data.success === 'true');
   } catch (e) { console.error('FormSubmit support submission failed:', e); return false; }
 }
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
