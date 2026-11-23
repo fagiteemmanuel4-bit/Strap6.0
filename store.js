@@ -4,7 +4,7 @@ window.StrapStore = (() => {
   const KEY = 'strap.v1';
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const blank = () => ({
-    sales: [], payments: [], held: [], collections: [], credits: [], seq: 0, closed: null, pin: null, lock: { n: 0, until: 0 }, receipt: null, online: null, orders: [], oseq: 1000,
+    sales: [], payments: [], held: [], collections: [], credits: [], seq: 0, closed: null, staffSalesOpen: false, pin: null, lock: { n: 0, until: 0 }, receipt: null, online: null, orders: [], oseq: 1000,
     prefs: { sound: true, vibrate: true, creditReminders: true, orderAlerts: true, lowStock: true }
   });
   let S = blank();

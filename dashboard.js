@@ -20,7 +20,7 @@
       : STAFF.role === 'Stock keeper' ? 'stock-keeper'
       : STAFF.role === 'Customer care' ? 'customer-care'
       : STAFF.role === 'Manager' ? (STAFF.branchId ? 'branch-manager' : 'manager') : '';
-    if (staffMode) {
+    if (staffMode && STAFF.role !== 'Cashier') {
       location.replace('staff-modes/' + staffMode + '.html');
       return;
     }
@@ -171,13 +171,14 @@
         <div class="ic">${svg(ic, 26)}</div>
         <div class="tx"><span class="lb">${label}</span><b class="vl" data-count="${val}" data-kind="${key}">0</b><span class="sb">${sub}</span></div>
       </article>`;
+    const salesOpen = (()=>{try{return JSON.parse(localStorage.getItem('strap.v1')||'{}').staffSalesOpen===true;}catch(e){return false;}})();
     const menuHtml = MENU.map(m => {
       if (m[0] === '@') return m[1] ? `<p class="ds-h">${m[1]}</p>` : '<div class="ds-sep"></div>';
       const [id, lbl, ico, ex] = m;
       if (Array.isArray(ex)) return `<div class="ds-grp"><button type="button" class="ds-i" data-grp="${id}" aria-expanded="false"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span><span class="ds-chev">${uic('chevD', 18, 2)}</span></button><div class="ds-sub"><div>${ex.map(([sid, sl]) => `<button type="button" class="ds-s" data-go="${sid}">${sl}</button>`).join('')}</div></div></div>`;
       return `<button type="button" class="ds-i" data-go="${id}"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span>${ex === 'soon' ? '<em class="ds-b">Coming soon</em>' : ''}</button>`;
     }).join('');
-    const staffToolbar = STAFF && STAFF.role !== 'Manager' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
+    const staffToolbar = STAFF && STAFF.role !== 'Manager' && STAFF.role !== 'Cashier' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
     dash.innerHTML = `
       <div class="dtop"></div>
       <section class="dsheet">${staffToolbar}
@@ -227,7 +228,9 @@
         <aside class="dr-panel" role="dialog" aria-label="Menu">
           <div class="dr-top"><div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div><button type="button" class="pm-x" id="dr-x" aria-label="Close menu">${uic('close', 20, 2.2)}</button></div>
           <button type="button" class="ds-open" data-go="new-sale"><span>Open sale</span><i>${uic('arrow', 22, 2.4)}</i></button>
+          ${!STAFF ? `<button type="button" class="ds-open ds-session" data-sales-session data-open="${salesOpen?'true':'false'}"><span>${salesOpen?'Pause cashier sales':'Open cashier sales'}</span><i>${uic('arrow', 22, 2.4)}</i></button>` : ''}
           <nav class="ds-nav">${menuHtml}</nav>
+          ${STAFF ? `<div class="staff-drawer-foot"><button type="button" data-staff-messages>Messages <em>Coming soon</em></button><button type="button" data-staff-logout>${uic('out',20,2)}<span>Log out</span></button></div>` : ''}
         </aside>
       </div>`;
 
@@ -235,7 +238,7 @@
     const panes = { home: $('.pane[data-id=home]', dash) }, mods = {};
     let current = 'home';
     const ctx = {
-      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products,
+      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products, openMenu: () => openDrawer(),
       rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
       signOut: async () => { await StrapAPI.signOut(); location.href = 'index.html'; }
     };
@@ -266,6 +269,19 @@
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
     const staffMenu=$('#staff-menu',dash); if(staffMenu) staffMenu.addEventListener('click',openDrawer);
+    const staffLogout=$('[data-staff-logout]',drawer); if(staffLogout) staffLogout.addEventListener('click',async()=>{await StrapAPI.signOut();location.replace('index.html');});
+    const staffMessages=$('[data-staff-messages]',drawer); if(staffMessages) staffMessages.addEventListener('click',()=>toast('Staff messages are coming soon.'));
+    const salesSession=$('[data-sales-session]',drawer); if(salesSession) salesSession.addEventListener('click',async()=>{
+      salesSession.disabled=true;
+      const open=salesSession.dataset.open!=='true';
+      const result=await StrapAPI.call('POST','sales/session',{open});
+      salesSession.disabled=false;
+      if(!result.ok){toast(result.msg||'Could not update cashier sales.');return;}
+      salesSession.dataset.open=String(open);
+      salesSession.querySelector('span').textContent=open?'Pause cashier sales':'Open cashier sales';
+      try{const state=JSON.parse(localStorage.getItem('strap.v1')||'{}');state.staffSalesOpen=open;if(open)state.closed=null;localStorage.setItem('strap.v1',JSON.stringify(state));}catch(e){}
+      toast(open?'Cashier sales are now open.':'Cashier sales have been paused.');
+    });
     if(STAFF && STAFF.role!=='Manager') { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
     function openDrawer() { drawer.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); document.body.classList.add('pm-open'); }
     function closeDrawer() { if (!drawer.classList.contains('on')) return; drawer.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pm-open'); }

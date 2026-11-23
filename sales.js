@@ -52,10 +52,11 @@ window.StrapSales = (() => {
 
     /* =============== page =============== */
     function render() {
+      if (ctx.staff && ctx.staff.role==='Cashier' && !S.state.staffSalesOpen) return drawStaffWaiting();
       if (S.isClosed()) return drawClosed();
       root.innerHTML = `<div class="sx">
         <header class="sx-head">
-          <button type="button" class="pm-round" data-x aria-label="Close sale">${ic('close', 22, 2.2)}</button>
+          <button type="button" class="pm-round" ${ctx.staff && ctx.staff.role==='Cashier'?'data-staff-menu aria-label="Open menu"':'data-x aria-label="Close sale"'}>${ic(ctx.staff && ctx.staff.role==='Cashier'?'menu':'close', 22, 2.2)}</button>
           <h1 class="sx-title">Sales</h1>
           <div class="sx-tools"><button type="button" class="sx-chip" data-held>${ic('pause', 18, 2.2)}<span>Held</span><em hidden></em></button><button type="button" class="sx-chip" data-credit>${ic('book', 18, 2)}<span>Credit</span><em hidden></em></button></div>
         </header>
@@ -100,6 +101,8 @@ window.StrapSales = (() => {
     }
 
     root.addEventListener('click', e => {
+      if (e.target.closest('[data-staff-menu]')) return ctx.openMenu ? ctx.openMenu() : null;
+      if (e.target.closest('[data-staff-refresh]')) { location.reload(); return; }
       if (e.target.closest('[data-x]')) return closeFlow();
       if (e.target.closest('[data-scan]')) return openScanner();
       if (e.target.closest('[data-cart]')) return openCart();
@@ -352,11 +355,16 @@ window.StrapSales = (() => {
       reduced() ? a.textContent = money(to) : requestAnimationFrame(step);
       $('.sx-sdone', w).onclick = () => { w.classList.remove('on'); StrapKit.lock(false); setTimeout(() => w.remove(), 400); ctx.go('home'); render(); };
     }
+    function drawStaffWaiting() {
+      root.innerHTML = `<div class="sx"><header class="sx-head"><button type="button" class="pm-round" data-staff-menu aria-label="Open menu">${ic('menu',22,2.2)}</button><h1 class="sx-title">Sales</h1></header>
+        <div class="sx-closed"><span class="sx-cl-ic">${U.illus('sales')}</span><h2>Sales are not open yet</h2><p>Your business owner must open the sales session before you can add products or complete a sale.</p><button type="button" class="pm-add" data-staff-refresh>Check again</button></div></div>`;
+    }
     function drawClosed() {
       const c = S.state.closed;
-      root.innerHTML = `<div class="sx"><header class="sx-head"><button type="button" class="pm-round" data-home aria-label="Back to home">${ic('back', 22, 2.2)}</button><h1 class="sx-title">Sales</h1></header>
-        <div class="sx-closed"><span class="sx-cl-ic">${ic('lock', 30, 1.8)}</span><h2>Sales are closed for today</h2><p>You earned <b>${money(c.earned)}</b> from ${plural(c.count, 'sale')}. Reopen sales if you need to keep selling.</p>
-        <button type="button" class="pm-add" data-reopen>Reopen sales</button><button type="button" class="pm-imp" data-home>Back to home</button></div></div>`;
+      const cashier = ctx.staff && ctx.staff.role==='Cashier';
+      root.innerHTML = `<div class="sx"><header class="sx-head"><button type="button" class="pm-round" ${cashier?'data-staff-menu aria-label="Open menu"':'data-home aria-label="Back to home"'}>${ic(cashier?'menu':'back', 22, 2.2)}</button><h1 class="sx-title">Sales</h1></header>
+        <div class="sx-closed"><span class="sx-cl-ic">${cashier?U.illus('sales'):ic('lock',30,1.8)}</span><h2>${cashier?'Sales are paused by the owner':'Sales are closed for today'}</h2><p>${cashier?'Ask the business owner to open the sales session before continuing.':`You earned <b>${money(c.earned)}</b> from ${plural(c.count, 'sale')}. Reopen sales if you need to keep selling.`}</p>
+        ${cashier?'<button type="button" class="pm-add" data-staff-refresh>Check again</button>':'<button type="button" class="pm-add" data-reopen>Reopen sales</button><button type="button" class="pm-imp" data-home>Back to home</button>'}</div></div>`;
     }
     async function reopen() {
       if (!S.hasPin()) { S.reopenDay(); return render(); }
