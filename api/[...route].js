@@ -44,8 +44,8 @@ const staffAccess = role => ({
 function staffLookupKeys(req,email) {
   const forwarded=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'').split(',')[0].trim();
   const ip=forwarded&&forwarded.length<=80?forwarded:'unknown';
-  return [{key:sha('strap-staff-lookup-email:'+lower(email)),threshold:20,email:true},
-    {key:sha('strap-staff-lookup-ip:'+ip),threshold:100,email:false}];
+  return [{key:sha('strap-staff-lookup-email:'+lower(email)),threshold:100,email:true},
+    {key:sha('strap-staff-lookup-ip:'+ip),threshold:500,email:false}];
 }
 function staffLoginKeys(req, email) {
   const forwarded = String(req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim();
@@ -499,7 +499,7 @@ H['staff/create'] = async (req,res,user,staff) => {
   const ownerId=staff?staff.owner_id:user.id;
   const b=req.body||{}, name=String(b.name||'').trim().slice(0,80), role=String(b.role||''), email=lower(b.email), pin=String(b.pin||''), branchId=b.branch||null;
   if(!name||!staffAccess(role).allowedRoutes.length||!emailRe.test(email)||!/^[0-9]{6}$/.test(pin)) return [400,{ok:false,msg:'Check the staff name, role, email and 6-digit PIN.'}];
-  if(/^(\d)\1{5}$/.test(pin)||pin==='123456'||pin==='654321'||pin==='012345') return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
+  if(/^(\d)\1{5}$/.test(pin)||'0123456789'.includes(pin)||'9876543210'.includes(pin)) return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
   const stateRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], f1=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.f1'],{});
   const branches=Array.isArray(f1.branches)?f1.branches:[{id:'b0'}];
   const used=Number((await q('select count(*)::int as n from staff_accounts where owner_id=$1 and status=\'active\'',[ownerId]))[0].n||0);
@@ -557,12 +557,12 @@ H['staff/login'] = async (req,res) => {
       valid=a.length===b.length&&crypto.timingSafeEqual(a,b);
     } catch(_) { valid=false; }
   }
-  if(!valid) { await recordStaffFailure(keys); await clearStaffFailures(staffLookupKeys(req,email)); return [401,{ok:false,msg:'Email or staff PIN is incorrect.'}]; }
+  if(!valid) { await recordStaffFailure(keys); return [401,{ok:false,msg:'Email or staff PIN is incorrect.'}]; }
   if(row.pin_algo==='legacy-sha256-v1') {
     const salt=crypto.randomBytes(16).toString('hex'), hash=crypto.scryptSync(pin,salt,64).toString('hex');
     await q("update staff_accounts set pin_salt=$2,pin_hash=$3,pin_algo='scrypt-v1',updated_at=now() where id=$1::uuid",[row.id,salt,hash]);
   }
-  await clearStaffFailures(keys); await clearStaffFailures(staffLookupKeys(req,email));
+  await clearStaffFailures(keys.filter(x=>x.email));
   const token=crypto.randomBytes(32).toString('base64url'), tokenHash=sha(token);
   await q('delete from staff_sessions where expires_at<=now()');
   await q('insert into staff_sessions(token_hash,staff_id,owner_id,expires_at) values($1,$2::uuid,$3,now()+interval \'12 hours\')',[tokenHash,row.id,row.owner_id]);
