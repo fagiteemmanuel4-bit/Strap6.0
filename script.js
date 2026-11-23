@@ -14,6 +14,7 @@
     sendReset: email => auth && auth.sendReset ? auth.sendReset(email) : Promise.resolve(authUnavailable()),
     verifyCode: (email, code) => auth && auth.verifyCode ? auth.verifyCode(email, code) : Promise.resolve(authUnavailable()),
     verifySignupCode: (email, code) => auth && auth.verifySignupCode ? auth.verifySignupCode(email, code) : Promise.resolve(authUnavailable()),
+    verifyLoginCode: (email, code) => auth && auth.verifyLoginCode ? auth.verifyLoginCode(email, code) : Promise.resolve(authUnavailable()),
     resetPassword: (email, code, password) => auth && auth.resetPassword ? auth.resetPassword(email, code, password) : Promise.resolve(authUnavailable()),
     createAccount: data => auth && auth.createAccount ? auth.createAccount(data) : Promise.resolve(authUnavailable()),
     async subscribe({ amount, card }) {
@@ -67,6 +68,7 @@
       note: 'New to Strap? <a href="#" data-flow="email">Create an account</a>', next: 'lpass' },
     lpass: { t: 'Enter your password', s: () => `Signing in as ${D.lemail}`, f: [{ key: 'lpw', type: 'password', ph: 'Password', ac: 'current-password', v: v => v ? '' : 'Enter your password.' }], btn: 'Sign in',
       act: async () => { const r = await api.signIn(D.lemail, D.lpw); if (!r.ok) r.msg = r.msg || 'Email or password is incorrect.'; return r; }, next: 'lok' },
+    'login-code': { k: 'code', len: 6, wait: 30, mail: 'lemail', verify: (m, c) => api.verifyLoginCode(m, c), t: 'Verify your email', s: () => `We sent a 6-digit code to ${D.lemail}.`, next: 'lok' },
     lok: { k: 'success', noBack: 1, t: 'You’re signed in', s: 'Welcome back to Strap.', label: 'Open dashboard', auto: 2200, go: () => { location.href = 'dashboard.html'; } },
     fgemail: { t: 'Reset your password', s: 'Enter your account email and we’ll send you a 6 digit code.', f: [{ key: 'fgemail', type: 'email', ph: 'example@email.com', ac: 'email', def: () => D.lemail, v: emailError }], btn: 'Send code',
       act: () => api.sendReset(D.fgemail), next: 'fgcode' },
@@ -77,7 +79,7 @@
       act: () => api.resetPassword(D.fgemail, D.fgcode, D.fgpw), next: 'fgdone' },
     fgdone: { k: 'success', noBack: 1, t: 'Password updated', s: 'You can now sign in with your new password.', label: 'Back to sign in', go: () => { hist = []; D.fgpw = D.fgpw2 = D.lpw = ''; go('lemail'); } },
     email: { t: 'Enter your email address', s: 'We’ll send you a verification code', f: [{ key: 'email', type: 'email', ph: 'example@email.com', ac: 'email', v: emailError }], btn: 'Continue',
-      note: 'By continuing, you agree to receive transactional messaging about your account. <a href="#" data-legal="privacy">Privacy Policy</a> &amp; <a href="#" data-legal="terms">Terms</a>', next: 'password' },
+      note: 'Already have an account? <a href="#" data-flow="lemail">Sign in</a><br>By continuing, you agree to receive transactional messaging about your account. <a href="#" data-legal="privacy">Privacy Policy</a> &amp; <a href="#" data-legal="terms">Terms</a>', next: 'password' },
     password: { t: 'Set Password', s: 'You’ll verify your email next', f: [{ key: 'password', type: 'password', ph: 'Create a password', ac: 'new-password', meter: 1, v: pwErr }], btn: 'Continue',
       act: () => api.startSignup(D.email, D.password), next: 'code' },
     code: { k: 'code', t: 'Code sent to your Email', s: 'If you can’t find the mail, check spam before you resend the code.', next: 'verified' },
@@ -214,7 +216,18 @@
         try {
           const r = await st.act();
           lock(btn, false);
-          if (!r || !r.ok) { gerr.textContent = (r && r.msg) || 'We could not complete that step. Please try again.'; return; }
+          if (!r || !r.ok) {
+            if (r && r.code === 'ACCOUNT_EXISTS') {
+              D.lemail = String(D.email || '').trim().toLowerCase(); D.lpw = '';
+              toast('Account already exists. Enter your login password.');
+              go('lpass'); return;
+            }
+            if (r && r.code === 'EMAIL_VERIFICATION_REQUIRED') {
+              toast('Email verification required. Enter the code we sent.');
+              go('login-code'); return;
+            }
+            gerr.textContent = (r && r.msg) || 'We could not complete that step. Please try again.'; return;
+          }
         } catch (error) {
           console.error('Strap form action failed:', error);
           lock(btn, false);
