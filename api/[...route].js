@@ -186,7 +186,7 @@ H['auth/pin/send-code'] = async (req, res, user) => {
 H['auth/pin/verify-code'] = async (req, res, user) => {
   if (!user) return [401, { ok: false, msg: 'Your session expired. Sign in again.' }];
   const email = lower(user.email), requested = lower(req.body.email), otp = String(req.body.otp || '').trim();
-  if (!email || (requested && requested !== email) || !/^\\d{6}$/.test(otp))
+  if (!email || (requested && requested !== email) || !/^\d{6}$/.test(otp))
     return [400, { ok: false, msg: 'Enter the 6-digit code sent to your account email.' }];
   if (await accountSuspension(email)) return [423, { ok: false, code: 'ACCOUNT_SUSPENDED', msg: 'This account is suspended. Request a review to restore access.' }];
   const wait = await actionBlocked(req, email, 'otp-verify');
