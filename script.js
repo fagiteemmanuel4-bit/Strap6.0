@@ -194,7 +194,7 @@
         if (f.max) i.maxLength = f.max;
         if (f.mode) i.inputMode = f.mode;
         if (f.type === 'date') i.max = new Date().toISOString().slice(0, 10);
-        if (f.digits) i.addEventListener('input', () => { i.value = i.value.replace(/\\D/g, '').slice(0, f.max || 6); });
+        if (f.digits) i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, f.max || 6); });
         if (f.ac) i.autocomplete = f.ac;
       }
       i.setAttribute('aria-label', f.ph && typeof f.ph === 'string' ? f.ph : f.key);
