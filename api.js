@@ -29,7 +29,7 @@
   /* Dashboard gate: needs a signed-in user, then loads that user's data from Neon BEFORE the app starts. */
   function guard() {
     const r = xhr('GET', '/api/data');
-    if (r.status === 401) { wipe(); location.replace('index.html'); return; }
+    if (r.status === 401) { wipe(); try { sessionStorage.removeItem('staff.session'); } catch(e) {} location.replace('index.html'); return; }
     if (r.status === 200 && r.j && r.j.blob && !r.j.blob['ss:strap.session']) { call('POST', 'auth/signout'); wipe(); location.replace('index.html'); return; }
     if (r.status === 200 && r.j && r.j.blob) {
       wipe();
