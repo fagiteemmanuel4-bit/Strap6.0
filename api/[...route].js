@@ -239,6 +239,7 @@ H['auth/request-review'] = async (req) => {
   const row=await accountSuspension(email); if(!row) return [404,{ok:false,msg:'No suspended account was found for this email.'}];
   await q("update auth_account_security set review_status='pending',review_message=$2,review_requested_at=now(),updated_at=now() where email=$1",[email,message||'Please review my account suspension.']);
   await q("insert into support_messages(user_id,email,kind,message) values(null,$1,'account-review',$2)",[email,message||'Please review my account suspension.']);
+  if(E.SUPPORT_EMAIL) await mail(E.SUPPORT_EMAIL,`[Account review] ${email}`,wrap('Account review requested',`<p><b>${esc(email)}</b></p><p>${esc(message||'Please review my account suspension.')}</p>`));
   return [200,{ok:true,msg:'Your review request has been submitted.'}];
 };
 H['auth/signout'] = async (req, res) => { const c = upCookie(req); if (c) await na(req, 'POST', '/sign-out', {}, c); clearMine(res); return [200, { ok: true }]; };
