@@ -18,12 +18,12 @@ async function na(req, method, path, body, cookie) {
   if (!base) return { ok: false, status: 500, j: { message: 'NEON_AUTH_BASE_URL is not set.' }, cookies: [] };
   try {
     const r = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', Origin: origin(req), ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
-    let j = null; try { j = await r.json(); } catch (e) {}
+    const raw = await r.text(); let j = null; try { j = JSON.parse(raw); } catch (e) {} if (!r.ok) console.log('NEON AUTH', method, path, r.status, raw.slice(0, 300));
     const sc = typeof r.headers.getSetCookie === 'function' ? r.headers.getSetCookie() : [];
-    return { ok: r.ok, status: r.status, j, cookies: sc.map(c => c.split(';')[0]).filter(c => /=./.test(c)) };
+    return { ok: r.ok, status: r.status, j, raw, cookies: sc.map(c => c.split(';')[0]).filter(c => /=./.test(c)) };
   } catch (e) { return { ok: false, status: 502, j: { message: 'Could not reach Neon Auth.' }, cookies: [] }; }
 }
-const errMsg = r => (r.j && (r.j.message || (r.j.error && r.j.error.message))) || 'Something went wrong.';
+const errMsg = r => (r.j && (r.j.message || (r.j.error && r.j.error.message))) || ('Error ' + r.status + ': ' + String(r.raw || '').slice(0, 120));
 const mine = (res, cookies) => { if (cookies.length) res.setHeader('Set-Cookie', `strap_auth=${Buffer.from(cookies.join('; ')).toString('base64url')}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`); };
 const clearMine = res => res.setHeader('Set-Cookie', 'strap_auth=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
 const upCookie = req => { const m = /(?:^|;\s*)strap_auth=([\w-]+)/.exec(req.headers.cookie || ''); return m ? Buffer.from(m[1], 'base64url').toString() : ''; };
@@ -170,7 +170,9 @@ H['account/delete'] = async (req, res, user) => {
 
 module.exports = async (req, res) => {
   try {
-    const route = String(req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/\/+$/, ''), h = H[route];    if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
+    const route = String(req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/\/+$/, ''), h = H[route];
+    if (!req.query || !req.query.id) req.query = Object.assign({}, req.query, Object.fromEntries(new URLSearchParams(String(req.url).split('?')[1] || '')));
+    if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
     if (typeof req.body === 'string') { try { req.body = JSON.parse(req.body); } catch (e) { req.body = {}; } }
     req.body = req.body || {};
     const out = await h(req, res, await me(req));
