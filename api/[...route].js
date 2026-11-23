@@ -30,7 +30,7 @@ const upCookie = req => { const m = /(?:^|;\s*)strap_auth=([\w-]+)/.exec(req.hea
 const cache = global.__sc || (global.__sc = new Map());
 
 const staffToken = req => { const m = /(?:^|;\\s*)strap_staff=([\\w-]+)/.exec(req.headers.cookie || ''); return m ? m[1] : ''; };
-const setStaffCookie = (res, token) => res.setHeader('Set-Cookie', 'strap_staff=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200');
+const setStaffCookie = (res, token) => res.setHeader('Set-Cookie', ['strap_auth=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0', 'strap_staff=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200']);
 const clearStaffCookie = res => res.setHeader('Set-Cookie', [
   'strap_staff=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0',
   'strap_auth=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'
@@ -73,11 +73,15 @@ async function migrateLegacyStaffForOwner(ownerId) {
       values($1,$2,$3,$4,$5,$6,$7,'legacy-sha256-v1') on conflict do nothing`,
       [ownerId,String(x.name||'Staff').slice(0,80),role,x.branch||null,email,String(x.salt).slice(0,120),String(x.pin).toLowerCase()]);
   }
+  const safe=await safeStaffRows(ownerId), clean={...(row.blob||{})};
+  state.staff=safe.map(x=>({id:x.id,name:x.name,role:x.role,branch:x.branch,email:x.email,at:Number(x.at)}));
+  clean['ls:strap.f1']=JSON.stringify(state);
+  await q('update user_data set blob=$2,updated_at=now() where user_id=$1',[ownerId,clean]);
 }
 async function migrateLegacyStaffByEmail(email) {
   const rows=await q(`select u.user_id,u.blob from user_data u join app_users a on a.id=u.user_id
     where a.deleted_at is null and u.blob ? 'ls:strap.f1'
-    and exists (select 1 from jsonb_array_elements(coalesce((u.blob->>'ls:strap.f1')::jsonb->'staff','[]'::jsonb)) x
+    and exists (select 1 from jsonb_array_elements(case when jsonb_typeof((u.blob->>'ls:strap.f1')::jsonb->'staff')='array' then (u.blob->>'ls:strap.f1')::jsonb->'staff' else '[]'::jsonb end) x
       where lower(x->>'email')=$1) limit 3`,[lower(email)]);
   for(const row of rows) {
     const list=JSON.parse(row.blob['ls:strap.f1']||'{}').staff||[];
@@ -162,7 +166,7 @@ async function staffWriteBlob(ownerId, staff, incoming) {
     if(role==='Stock keeper'||role==='Manager') blob[key]=JSON.stringify(next.slice(0,10000));
     else if(role==='Cashier') {
       const current=parseStored(blob[key],[]), map=new Map(next.filter(x=>x&&x.id).map(x=>[String(x.id),x]));
-      blob[key]=JSON.stringify(current.map(p=>{const n=map.get(String(p.id));return n&&Number.isFinite(+n.qty)?{...p,qty:Math.max(0,Math.min(100000000,+n.qty))}:p;}));
+      blob[key]=JSON.stringify(current.map(p=>{const n=map.get(String(p.id));return n&&Number.isFinite(+n.qty)?{...p,qty:Math.max(0,Math.min(Number(p.qty)||0,+n.qty))}:p;}));
     }
   }
   if(role==='Cashier'||role==='Manager'||role==='Customer care') {
