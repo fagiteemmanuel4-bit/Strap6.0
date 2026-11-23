@@ -8,6 +8,8 @@
   const auth = window.StrapAPI && window.StrapAPI.auth;
   const authUnavailable = () => ({ ok: false, msg: 'The authentication service is not available. Please refresh and try again.' });
   const api = {
+    lookupStaff: email => auth && auth.lookupStaff ? auth.lookupStaff(email) : Promise.resolve(authUnavailable()),
+    signInStaff: (email, pin) => auth && auth.signInStaff ? auth.signInStaff(email, pin) : Promise.resolve(authUnavailable()),
     signIn: (email, password) => auth && auth.signIn ? auth.signIn(email, password) : Promise.resolve(authUnavailable()),
     startSignup: (email, password) => auth && auth.startSignup ? auth.startSignup(email, password) : Promise.resolve(authUnavailable()),
     sendCode: email => auth && auth.sendCode ? auth.sendCode(email) : Promise.resolve(authUnavailable()),
@@ -66,7 +68,11 @@
   const STEPS = {
     /* ---- log in: same look and motion as creating an account ---- */
     lemail: { t: 'Welcome back', s: 'Enter your email address to sign in.', f: [{ key: 'lemail', type: 'email', ph: 'example@email.com', ac: 'email', v: emailError, link: ['Forgot password?', 'fgemail'] }], btn: 'Continue',
-      note: 'New to Strap? <a href="#" data-flow="email">Create an account</a>', next: 'lpass' },
+      act: async () => { D.staffFound = false; D.staffPin = ''; const r = await api.lookupStaff(D.lemail); if (r.ok) D.staffFound = !!r.staff; return r; },
+      note: 'New to Strap? <a href="#" data-flow="email">Create an account</a>', next: () => D.staffFound ? 'staff-pin' : 'lpass' },
+    'staff-pin': { t: 'Enter your staff PIN', s: () => `Signing in as ${D.lemail}. Use the 6-digit PIN given to you by your business owner.`, f: [{ key: 'staffPin', type: 'password', ph: '6-digit staff PIN', ac: 'one-time-code', max: 6, mode: 'numeric', digits: true, v: v => /^\d{6}$/.test(v) ? '' : 'Enter your 6-digit staff PIN.' }], btn: 'Sign in',
+      act: () => api.signInStaff(D.lemail, D.staffPin), next: 'staff-ok' },
+    'staff-ok': { k: 'success', noBack: 1, t: 'You’re signed in', s: 'Opening your assigned work area.', label: 'Continue', auto: 900, go: () => { location.href = 'dashboard.html'; } },
     lpass: { t: 'Enter your password', s: () => `Signing in as ${D.lemail}`, f: [{ key: 'lpw', type: 'password', ph: 'Password', ac: 'current-password', v: v => v ? '' : 'Enter your password.' }], btn: 'Sign in',
       act: async () => { const r = await api.signIn(D.lemail, D.lpw); if (!r.ok) r.msg = r.msg || 'Email or password is incorrect.'; return r; }, next: 'lok' },
     'login-code': { k: 'code', len: 6, wait: 30, mail: 'lemail', verify: (m, c) => api.verifyLoginCode(m, c), t: 'Verify your email', s: () => `We sent a 6-digit code to ${D.lemail}.`, next: 'lok' },
@@ -185,7 +191,10 @@
       } else {
         i = el('input', 'fi'); i.type = f.type || 'text'; if (f.type === 'date') i.dataset.dd = f.key;
         i.placeholder = typeof f.ph === 'function' ? f.ph() : f.ph;
+        if (f.max) i.maxLength = f.max;
+        if (f.mode) i.inputMode = f.mode;
         if (f.type === 'date') i.max = new Date().toISOString().slice(0, 10);
+        if (f.digits) i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, f.max || 6); });
         if (f.ac) i.autocomplete = f.ac;
       }
       i.setAttribute('aria-label', f.ph && typeof f.ph === 'string' ? f.ph : f.key);
@@ -221,6 +230,7 @@
           lock(btn, false);
           if (!r || !r.ok) {
             if (r && r.code === 'ACCOUNT_SUSPENDED') { D.reviewEmail = D.lemail || D.email || ''; go('suspended'); return; }
+            if (r && r.code === 'STAFF_EMAIL') { D.lemail=String(D.email||'').trim().toLowerCase(); D.staffFound=true; D.staffPin=''; toast('This is a staff login. Enter your staff PIN.'); go('staff-pin'); return; }
             if (r && r.code === 'ACCOUNT_EXISTS') {
               D.lemail = String(D.email || '').trim().toLowerCase(); D.lpw = '';
               toast('Account already exists. Enter your login password.');

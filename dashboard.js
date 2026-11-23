@@ -13,6 +13,7 @@
   try { D = JSON.parse(sessionStorage.getItem('strap.session') || '{}'); } catch (e) {}
   if (!D.bizname) D = { ...D, name: D.name || 'Amaka Obi', bizname: 'Amaka Fashion House', currency: D.currency || 'NGN' };
   const first = () => (D.name || '').split(/\s+/)[0];
+  let STAFF=null; try { STAFF=JSON.parse(sessionStorage.getItem('staff.session')||'null'); } catch(e) {}
 
   const api = {};
   /* ===== DASHBOARD ===== */
@@ -84,13 +85,28 @@
   const TAB_ICONS = ['home', 'inbox', 'tag', 'menu'], TAB_NAMES = ['Home', 'Orders', 'Products', 'Menu'];
   const U = StrapUI, uic = U.ic;
   // sidebar structure: [id, label, icon, extra]
-  const MENU = [
+  const BASE_MENU = [
     ['home', 'Home', 'home'], ['orders', 'Orders', 'inbox'],
     ['products', 'Products', 'tag', [['products', 'All products'], ['collections', 'Collections'], ['inventory', 'Inventory'], ['purchase', 'Purchase orders'], ['transfers', 'Transfers'], ['gift', 'Gift cards']]],
     ['customers', 'Customers', 'users'], ['staff', 'Staff', 'users'], ['growth', 'Growth', 'growth'], ['activity', 'Activity log', 'clock', 'soon'], ['devices', 'Devices & printers', 'phone', 'soon'],
     ['@', 'Sales channels'], ['online', 'Online store', 'store'], ['mcp', 'MCP', 'plug'],
     ['@', ''], ['premium', 'Premium', 'flash'], ['settings', 'Settings', 'gear']
   ];
+  const STAFF_MENU = {
+    'new-sale':['new-sale','Sales desk','receipt'],
+    'sales-today':['sales-today','Today’s sales','receipt'],
+    'sales-history':['sales-history','Sales history','clock'],
+    products:['products','Products','tag'],
+    inventory:['inventory','Inventory','box'],
+    transfers:['transfers','Transfers','transfer'],
+    orders:['orders','Orders','inbox'],
+    customers:['customers','Customers','users']
+  };
+  const MENU = !STAFF ? BASE_MENU : STAFF.role === 'Manager'
+    ? BASE_MENU.filter(m => m[0] !== 'settings')
+    : STAFF.role === 'Stock keeper'
+      ? [['products','Products','tag',[['products','All products'],['inventory','Inventory'],['transfers','Transfers']]]]
+      : (STAFF.allowedRoutes || []).map(id => STAFF_MENU[id]).filter(Boolean);
   const TAB_OF = { home: 0, products: 2, collections: 2, inventory: 2, purchase: 2, transfers: 2, gift: 2 };
 
   function buildDash(d) {
@@ -110,9 +126,10 @@
       if (Array.isArray(ex)) return `<div class="ds-grp"><button type="button" class="ds-i" data-grp="${id}" aria-expanded="false"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span><span class="ds-chev">${uic('chevD', 18, 2)}</span></button><div class="ds-sub"><div>${ex.map(([sid, sl]) => `<button type="button" class="ds-s" data-go="${sid}">${sl}</button>`).join('')}</div></div></div>`;
       return `<button type="button" class="ds-i" data-go="${id}"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span>${ex === 'soon' ? '<em class="ds-b">Coming soon</em>' : ''}</button>`;
     }).join('');
+    const staffToolbar = STAFF && STAFF.role !== 'Manager' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
     dash.innerHTML = `
       <div class="dtop"></div>
-      <section class="dsheet">
+      <section class="dsheet">${staffToolbar}
         <div class="pane" data-id="home">
           <header class="dh in" style="--i:0">
             <div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div>
@@ -167,7 +184,7 @@
     const panes = { home: $('.pane[data-id=home]', dash) }, mods = {};
     let current = 'home';
     const ctx = {
-      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, go: id => show(id), products: () => mods.products,
+      toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products,
       rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
       signOut: async () => { await StrapAPI.signOut(); location.href = 'index.html'; }
     };
@@ -180,6 +197,7 @@
     }
     // inventory needs the products module to exist first
     function show(id) {
+      if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
       if (id === 'ai') { ensure('products'); closeDrawer(); return mods.products.openAI(); }
       if (StrapFeatures.has(id)) { closeDrawer(); return StrapFeatures.open(id); }
       if (id === 'inventory' || id === 'new-sale' || id === 'collections') ensure('products');
@@ -196,6 +214,8 @@
       closeDrawer();
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
+    const staffMenu=$('#staff-menu',dash); if(staffMenu) staffMenu.addEventListener('click',openDrawer);
+    if(STAFF && STAFF.role!=='Manager') { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
     function openDrawer() { drawer.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); document.body.classList.add('pm-open'); }
     function closeDrawer() { if (!drawer.classList.contains('on')) return; drawer.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pm-open'); }
 
@@ -222,6 +242,7 @@
     ensure('products'); StrapFeatures.bind(mods.products); StrapFeatures.mountHome(ctx, panes.home);
     const bell = $('.bell', dash);
     bell.addEventListener('click', () => { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); StrapFeatures.open('notifications'); });
+    if(STAFF && STAFF.defaultRoute) show(STAFF.defaultRoute);
   }
 
   // numbers climb to their value as each card arrives
