@@ -4,12 +4,23 @@
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  /* ===== Backend hooks: replace these with real API calls ===== */
+  /* ===== Real authentication: use the same-origin Neon backend from api.js ===== */
+  const auth = window.StrapAPI && window.StrapAPI.auth;
+  const authUnavailable = () => ({ ok: false, msg: 'The authentication service is not available. Please refresh and try again.' });
   const api = {
-    async signIn(email, password) { await sleep(700); return { ok: true }; },
-    async sendCode(email) { await sleep(700); return { ok: true }; },
-    async verifyCode(email, code) { await sleep(700); return { ok: code === '123456' }; }, // demo code
-    async resetPassword(email, code, password) { await sleep(700); return { ok: true }; }
+    signIn: (email, password) => auth && auth.signIn ? auth.signIn(email, password) : Promise.resolve(authUnavailable()),
+    startSignup: (email, password) => auth && auth.startSignup ? auth.startSignup(email, password) : Promise.resolve(authUnavailable()),
+    sendCode: email => auth && auth.sendCode ? auth.sendCode(email) : Promise.resolve(authUnavailable()),
+    sendReset: email => auth && auth.sendReset ? auth.sendReset(email) : Promise.resolve(authUnavailable()),
+    verifyCode: (email, code) => auth && auth.verifyCode ? auth.verifyCode(email, code) : Promise.resolve(authUnavailable()),
+    verifySignupCode: (email, code) => auth && auth.verifySignupCode ? auth.verifySignupCode(email, code) : Promise.resolve(authUnavailable()),
+    resetPassword: (email, code, password) => auth && auth.resetPassword ? auth.resetPassword(email, code, password) : Promise.resolve(authUnavailable()),
+    createAccount: data => auth && auth.createAccount ? auth.createAccount(data) : Promise.resolve(authUnavailable()),
+    async subscribe({ amount, card }) {
+      await sleep(1100);
+      if (card.number === '4000000000000002') return { ok: false, msg: 'Your card was declined. Try another card.' };
+      return { ok: true };
+    }
   };
 
   /* ===== helpers ===== */
@@ -20,17 +31,6 @@
   const emailError = v => !v.trim() ? 'Enter your email address.' :
     !emailRe.test(v.trim()) ? 'That email doesn’t look right. Use a format like name@example.com.' : '';
   /* ===== SIGN-UP / BUSINESS SETUP FLOW ===== */
-  Object.assign(api, {
-    async verifySignupCode(email, code) { await sleep(700); return { ok: code === '12345678' }; }, // demo code
-    async createAccount(data) { await sleep(900); return { ok: true }; },
-    // Charge the first plan payment. In production, do NOT post raw card data to your own server:
-    // use your payment provider's hosted/inline fields (e.g. Paystack or Flutterwave) and send only their token.
-    async subscribe({ amount, card }) {
-      await sleep(1100);
-      if (card.number === '4000000000000002') return { ok: false, msg: 'Your card was declined. Try another card.' }; // demo decline
-      return { ok: true };
-    }
-  });
   const flow = $('#flow'), land = $('#land');
   const SUB = new URLSearchParams(location.search).get('subscribe') === '1';
   const D = {}; let hist = [], tmr, tmr2;
@@ -210,8 +210,17 @@
       if (btn.disabled) return;
       rows.forEach(([f, i]) => D[f.key] = i.value.trim());
       if (st.act) {
-        lock(btn, true); const r = await st.act(); lock(btn, false);
-        if (!r.ok) { gerr.textContent = r.msg || 'Something went wrong. Try again.'; return; }
+        lock(btn, true);
+        try {
+          const r = await st.act();
+          lock(btn, false);
+          if (!r || !r.ok) { gerr.textContent = (r && r.msg) || 'We could not complete that step. Please try again.'; return; }
+        } catch (error) {
+          console.error('Strap form action failed:', error);
+          lock(btn, false);
+          gerr.textContent = 'We could not connect to Strap. Check your internet and try again.';
+          return;
+        }
       }
       go(nxt(st));
     };
