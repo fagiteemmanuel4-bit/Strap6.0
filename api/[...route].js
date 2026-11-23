@@ -76,7 +76,7 @@ H['auth/send-code'] = async (req) => {
 /* sign up step 2: verify the code, which signs the user in */
 H['auth/verify-email'] = async (req, res) => {
   const email = lower(req.body.email), otp = String(req.body.otp || '').trim();
-  if (!emailRe.test(email) || !/^\\d{6}$/.test(otp)) return [400, { ok: false, msg: 'Enter the complete 6-digit verification code.' }];
+  if (!emailRe.test(email) || !/^\d{6}$/.test(otp)) return [400, { ok: false, msg: 'Enter the complete 6-digit verification code.' }];
   const r = await na(req, 'POST', '/email-otp/verify-email', { email, otp });
   if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
   let cookies = r.cookies;
