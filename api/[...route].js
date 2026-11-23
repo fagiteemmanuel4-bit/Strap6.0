@@ -12,7 +12,7 @@ const APP = E.APP_NAME || 'Strap';
 const lower = s => String(s || '').trim().toLowerCase();
 
 /* ---- talk to Neon Auth (managed Better Auth) ---- */
-const origin = req => (E.SITE_URL || 'https://' + req.headers.host).replace(/\/$/, '');
+const origin = req => (E.SITE_URL || 'https://strap60.vercel.app').replace(/\/$/, '');
 async function na(req, method, path, body, cookie) {
   const base = String(E.NEON_AUTH_BASE_URL || '').replace(/\/$/, '');
   if (!base) return { ok: false, status: 500, j: { message: 'NEON_AUTH_BASE_URL is not set.' }, cookies: [] };
@@ -52,7 +52,7 @@ H['health'] = async (req) => {
   return [200, out];
 };
 
-/* sign up step 1: create the account in Neon Auth. Neon emails the 6-digit code. */
+/* sign up step 1: create the account, then explicitly request Neon Auth's 6-digit verification OTP. */
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || password.length < 8) return [400, { ok: false, msg: 'Check your email and password.' }];
@@ -60,9 +60,11 @@ H['auth/signup-start'] = async (req) => {
   if (!r.ok) {
     const s = await na(req, 'POST', '/sign-in/email', { email, password });
     if (s.ok) return [409, { ok: false, msg: 'An account with this email already exists. Sign in instead.' }];
-    if (s.status === 403) { await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return [200, { ok: true }]; } // unverified earlier signup: resend code
+    if (s.status === 403) { const resend = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return resend.ok ? [200, { ok: true }] : [resend.status === 429 ? 429 : 502, { ok: false, msg: 'Your account exists, but we could not send the verification code. ' + errMsg(resend) }]; } // unverified earlier signup: resend code
     return [400, { ok: false, msg: /exist/i.test(errMsg(r)) ? 'An account with this email already exists. Sign in instead.' : errMsg(r) }];
   }
+  const sent = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' });
+  if (!sent.ok) return [sent.status === 429 ? 429 : 502, { ok: false, msg: 'Your account was created, but the verification email could not be sent. Please try again. ' + errMsg(sent) }];
   return [200, { ok: true }];
 };
 H['auth/send-code'] = async (req) => {
@@ -74,8 +76,9 @@ H['auth/send-code'] = async (req) => {
 /* sign up step 2: verify the code, which signs the user in */
 H['auth/verify-email'] = async (req, res) => {
   const email = lower(req.body.email), otp = String(req.body.otp || '').trim();
+  if (!emailRe.test(email) || !/^\\d{6}$/.test(otp)) return [400, { ok: false, msg: 'Enter the complete 6-digit verification code.' }];
   const r = await na(req, 'POST', '/email-otp/verify-email', { email, otp });
-  if (!r.ok) return [200, { ok: false }];
+  if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
   let cookies = r.cookies;
   if (!cookies.length && req.body.password) { const s = await na(req, 'POST', '/sign-in/email', { email, password: String(req.body.password) }); if (s.ok) cookies = s.cookies; }
   if (!cookies.length) return [200, { ok: false, msg: 'Verified, but sign in failed. Please sign in.' }];

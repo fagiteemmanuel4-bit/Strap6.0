@@ -229,7 +229,7 @@
   function kVerified(st, body, foot) { const b = pill('Get Started'); b.onclick = () => go(st.next); foot.append(b); }
 
   function kCode(st, body, foot) {
-    const N = st.len || 8, mail = () => D[st.mail || 'email'];
+    const N = st.len || 6, mail = () => D[st.mail || 'email'];
     const g = el('div', 'fg fields'), i = el('input', 'fi code8'), err = el('p', 'ferr'); err.setAttribute('role', 'alert');
     i.inputMode = 'numeric'; i.maxLength = N; i.autocomplete = 'one-time-code'; i.placeholder = `Enter the ${N} digit code`; i.setAttribute('aria-label', `${N} digit code`);
     const tl = el('div', 'tl'), note = el('span'), rs = el('button', '', 'Resend'); rs.type = 'button';
@@ -241,12 +241,12 @@
       tick(); tmr = setInterval(tick, 1000);
     };
     start();
-    rs.onclick = async () => { await api.sendCode(mail()); i.value = ''; btn.disabled = true; err.textContent = ''; start(); toast('New code sent'); };
+    rs.onclick = async () => { rs.disabled = true; const r = await api.sendCode(mail()); if (!r.ok) { err.textContent = r.msg || 'We could not send a new code. Please try again.'; rs.disabled = false; return; } i.value = ''; btn.disabled = true; err.textContent = ''; start(); toast('New code sent'); };
     i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, N); err.textContent = ''; btn.disabled = i.value.length < N; if (i.value.length === N) btn.click(); });
     btn.onclick = async () => {
       if (btn.disabled) return; lock(btn, true, 'Verifying…');
       const r = await (st.verify || api.verifySignupCode)(mail(), i.value); lock(btn, false);
-      if (!r.ok) { err.textContent = 'That code isn’t right. Check it and try again.'; i.value = ''; btn.disabled = true; i.focus(); return; }
+      if (!r.ok) { err.textContent = r.msg || 'That code isn’t right or has expired. Check it and try again.'; i.value = ''; btn.disabled = true; i.focus(); return; }
       if (st.save) D[st.save] = i.value;
       clearInterval(tmr); go(st.next);
     };
