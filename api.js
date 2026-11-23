@@ -33,6 +33,8 @@
     if (r.status === 200 && r.j && r.j.blob && !r.j.blob['ss:strap.session']) { call('POST', 'auth/signout'); wipe(); location.replace('index.html'); return; }
     if (r.status === 200 && r.j && r.j.blob) {
       wipe();
+      if (r.j.staff) sessionStorage.setItem('staff.session', JSON.stringify(r.j.staff));
+      else sessionStorage.removeItem('staff.session');
       Object.entries(r.j.blob).forEach(([k, v]) => { try { (k.startsWith('ss:') ? sessionStorage : localStorage).setItem(k.slice(3), v); } catch (e) {} });
     }
     active = true;
@@ -52,11 +54,11 @@
     } catch (e) { return null; }
   }
   let sMail = '', sPw = '', rMail = '', lMail = '', lPw = '';
-  const fresh = () => { active = false; clearTimeout(timer); wipe(); };
+  const fresh = () => { active = false; clearTimeout(timer); wipe(); try { sessionStorage.removeItem('staff.session'); } catch (e) {} };
   window.StrapAPI = {
     call, upload, guard, fresh, flush: async () => { clearTimeout(timer); return push(); },
     contact: (kind, message, email, name) => call('POST', 'contact', { kind, message, email, name }),
-    signOut: async () => { await call('POST', 'auth/signout'); fresh(); },
+    signOut: async () => { const staff = (() => { try { return !!sessionStorage.getItem('staff.session'); } catch (e) { return false; } })(); await call('POST', staff ? 'staff/signout' : 'auth/signout'); fresh(); },
     auth: {
       async checkEmail(email) { const r = await call('POST', 'auth/email-status', { email: String(email).trim().toLowerCase() }); return { ok: !!r.ok, code: r.code, msg: r.msg }; },
       async startSignup(email, password) { const r = await call('POST', 'auth/signup-start', { email, password }); if (r.ok) { sMail = email.trim().toLowerCase(); sPw = password; } return { ok: !!r.ok, code: r.code, msg: r.msg }; },
@@ -66,6 +68,11 @@
       async sendCode(email) { const e = String(email).trim().toLowerCase(); if (e === sMail || e === lMail) return call('POST', 'auth/send-code', { email: e, type: 'email-verification' }); if (e === rMail) return call('POST', 'auth/send-code', { email: e, type: 'forget-password' }); return { ok: false, msg: 'This verification session expired. Please sign in again.' }; },
       async verifySignupCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== sMail) return { ok: false, msg: 'This signup session expired. Start again with your email.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: sPw }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
       async verifyCode(email, code) { const e = String(email).trim().toLowerCase(); if (e === rMail) { const r = await call('POST', 'auth/check-code', { email: e, code }); return { ok: !!r.ok, msg: r.msg }; } return { ok: false, msg: 'This verification session expired. Please request a new code.' }; },
+      async lookupStaff(email) { return call('POST', 'staff/lookup', { email: String(email).trim().toLowerCase() }); },
+      async signInStaff(email, pin) { const r = await call('POST', 'staff/login', { email: String(email).trim().toLowerCase(), pin: String(pin) }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
+      async listStaff() { return call('GET', 'staff/list'); },
+      async createStaff(data) { return call('POST', 'staff/create', data); },
+      async removeStaff(id) { return call('POST', 'staff/remove', { id }); },
       async signIn(email, password) { const e = String(email).trim().toLowerCase(); const r = await call('POST', 'auth/signin', { email: e, password }); if (r.code === 'EMAIL_VERIFICATION_REQUIRED') { lMail = e; lPw = password; } if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, code: r.code, msg: r.msg }; },
       async verifyLoginCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== lMail || !lPw) return { ok: false, msg: 'This sign-in verification session expired. Please sign in again.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: lPw }); if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, msg: r.msg }; },
       async resetPassword(email, code, password) { const r = await call('POST', 'auth/reset', { email, code, password }); return { ok: !!r.ok, msg: r.msg }; },
