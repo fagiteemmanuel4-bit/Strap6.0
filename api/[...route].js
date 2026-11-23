@@ -133,6 +133,16 @@ H['health'] = async (req) => {
   return [200, out];
 };
 
+/* Check an email before asking the visitor to create a password. */
+H['auth/email-status'] = async (req) => {
+  const email = lower(req.body.email);
+  if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email address.' }];
+  const existing = await q('select 1 from auth_email_registry where lower(email)=$1 union all select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
+  return existing.length
+    ? [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }]
+    : [200, { ok: true }];
+};
+
 /* sign up step 1: Neon Auth sends the verification OTP automatically because Verify at Sign-up is enabled with the OTP method. */
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
