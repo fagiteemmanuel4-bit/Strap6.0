@@ -126,10 +126,10 @@
       if (Array.isArray(ex)) return `<div class="ds-grp"><button type="button" class="ds-i" data-grp="${id}" aria-expanded="false"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span><span class="ds-chev">${uic('chevD', 18, 2)}</span></button><div class="ds-sub"><div>${ex.map(([sid, sl]) => `<button type="button" class="ds-s" data-go="${sid}">${sl}</button>`).join('')}</div></div></div>`;
       return `<button type="button" class="ds-i" data-go="${id}"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span>${ex === 'soon' ? '<em class="ds-b">Coming soon</em>' : ''}</button>`;
     }).join('');
-    const staffToolbar = STAFF && STAFF.role !== 'Manager' ? `<header class="staff-bar"><div><b>${'${esc(store)}'}</b><small>${'${esc(STAFF.role)}'} access</small></div><button type="button" id="staff-menu">Menu ${'${uic(\'menu\',20,2)}'}</button></header>` : '';
+    const staffToolbar = STAFF && STAFF.role !== 'Manager' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
     dash.innerHTML = `
       <div class="dtop"></div>
-      <section class="dsheet">${'${staffToolbar}'}
+      <section class="dsheet">${staffToolbar}
         <div class="pane" data-id="home">
           <header class="dh in" style="--i:0">
             <div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div>
