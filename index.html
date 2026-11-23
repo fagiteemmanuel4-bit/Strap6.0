@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e6f53a">
+<title>Strap</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="loader.css">
+<link rel="stylesheet" href="picker.css">
+</head>
+<body>
+<section class="land" id="land">
+  <div class="l-art" aria-hidden="true">
+    <svg viewBox="0 0 360 330" fill="none">
+      <circle class="l-blob" cx="180" cy="176" r="138" fill="#e6f53a"/>
+      <circle cx="58" cy="84" r="9" fill="#0a0a0a" class="l-dot d1"/><circle cx="312" cy="246" r="6" fill="#0a0a0a" class="l-dot d2"/>
+      <g class="l-phone"><rect x="112" y="40" width="136" height="252" rx="26" fill="#fff" stroke="#0a0a0a" stroke-width="3"/>
+        <path d="M112 84h136" stroke="#0a0a0a" stroke-width="3"/>
+        <path d="M122 84l6 24h24l-4-24M156 84l4 24h20l4-24M188 84l-4 24h24l6-24M220 84l4 24h14l8-24" stroke="#0a0a0a" stroke-width="2.4" stroke-linejoin="round" fill="#e6f53a"/>
+        <rect x="128" y="124" width="104" height="52" rx="14" fill="#0a0a0a"/><rect x="138" y="136" width="36" height="6" rx="3" fill="#e6f53a" opacity=".6"/><rect x="138" y="148" width="62" height="12" rx="4" fill="#e6f53a"/>
+        <path class="l-line" d="M130 214c14-2 18-22 32-20s18 18 32 8 22-26 36-22" stroke="#0a0a0a" stroke-width="3.2" stroke-linecap="round" pathLength="1"/>
+        <g class="l-bars" fill="#0a0a0a"><rect x="134" y="248" width="14" height="22" rx="4"/><rect x="156" y="238" width="14" height="32" rx="4"/><rect x="178" y="228" width="14" height="42" rx="4"/><rect x="200" y="242" width="14" height="28" rx="4"/></g></g>
+      <g class="l-chip c1"><rect x="14" y="120" width="112" height="44" rx="22" fill="#0a0a0a"/><circle cx="38" cy="142" r="11" fill="#e6f53a"/><path d="M33 142l4 4 7-8" stroke="#0a0a0a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><text x="56" y="147" font-family="Sora,sans-serif" font-size="14" font-weight="700" fill="#e6f53a">+₦24,500</text></g>
+      <g class="l-chip c2"><rect x="238" y="82" width="108" height="42" rx="21" fill="#fff" stroke="#0a0a0a" stroke-width="2.6"/><circle cx="260" cy="103" r="6" fill="#0a0a0a"/><text x="274" y="108" font-family="Sora,sans-serif" font-size="12.5" font-weight="600" fill="#0a0a0a">3 low stock</text></g>
+      <g class="l-chip c3"><rect x="228" y="200" width="118" height="42" rx="21" fill="#fff" stroke="#0a0a0a" stroke-width="2.6"/><circle cx="250" cy="221" r="6" fill="#e6f53a" stroke="#0a0a0a" stroke-width="2"/><text x="264" y="226" font-family="Sora,sans-serif" font-size="12.5" font-weight="600" fill="#0a0a0a">New branch</text></g>
+    </svg>
+  </div>
+  <div class="l-copy">
+    <div class="l-brand"><svg width="30" height="30" viewBox="0 0 136 136" aria-hidden="true"><circle cx="68" cy="68" r="65" fill="none" stroke="#0a0a0a" stroke-width="6"/><circle cx="68" cy="68" r="49" fill="#0a0a0a"/><circle cx="68" cy="68" r="19" fill="#e6f53a"/></svg><b>Strap</b></div>
+    <h1>Manage your business <span>in one place.</span></h1>
+    <p>Sales, stock, branches and staff, together in one simple app.</p>
+  </div>
+  <div class="l-act"><button class="pill" type="button" id="l-signup">Create account</button><button class="pill alt" type="button" id="l-login">Log in</button><p class="terms">By continuing, you agree to our <a href="#" data-legal="terms">Terms of Use</a> and <a href="#" data-legal="privacy">Privacy Policy</a>.<br>Need help? <a href="#" data-legal="support">Contact support</a></p></div>
+</section>
+<main class="flow" id="flow" hidden></main>
+<div class="loader" id="loader" role="status" aria-live="polite" hidden>
+  <div class="ld-in">
+    <svg class="ld-logo" viewBox="0 0 136 136" aria-hidden="true">
+      <circle class="ld-ring" cx="68" cy="68" r="65" fill="none" stroke="#0a0a0a" stroke-width="3" pathLength="1"/>
+      <g class="ld-orb"><circle cx="68" cy="3" r="6" fill="#0a0a0a"/></g>
+      <circle class="ld-disc" cx="68" cy="68" r="49" fill="#0a0a0a"/>
+      <circle class="ld-dot" cx="68" cy="68" r="19" fill="#e6f53a"/>
+    </svg>
+    <p class="ld-msg" id="loader-msg">Setting up your store</p>
+    <div class="ld-bar"><i></i></div>
+  </div>
+</div>
+<div class="notice" id="notice" hidden>
+  <div class="n-scrim"></div>
+  <section class="n-card" role="dialog" aria-modal="true" aria-labelledby="notice-t">
+    <div class="n-tick" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.1"/></svg></div>
+    <h2 id="notice-t">Being updated</h2>
+    <p id="notice-d">This page is being updated.</p>
+    <button class="pill" type="button" id="notice-x">Got it</button>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="api.js"></script>
+<script src="picker.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

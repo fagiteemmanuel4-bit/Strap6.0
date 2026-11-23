@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e6f53a">
+<title>Strap – Dashboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;600;700&family=Space+Mono:wght@400;700&family=DM+Serif+Display&display=swap">
+<link rel="stylesheet" href="loader.css">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="products.css">
+<link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="sales.css">
+<link rel="stylesheet" href="features.css">
+<link rel="stylesheet" href="picker.css">
+</head>
+<body class="lock">
+<main class="dash" id="dash" hidden></main>
+<div class="loader" id="loader" role="status" aria-live="polite" hidden>
+  <div class="ld-in">
+    <svg class="ld-logo" viewBox="0 0 136 136" aria-hidden="true">
+      <circle class="ld-ring" cx="68" cy="68" r="65" fill="none" stroke="#0a0a0a" stroke-width="3" pathLength="1"/>
+      <g class="ld-orb"><circle cx="68" cy="3" r="6" fill="#0a0a0a"/></g>
+      <circle class="ld-disc" cx="68" cy="68" r="49" fill="#0a0a0a"/>
+      <circle class="ld-dot" cx="68" cy="68" r="19" fill="#e6f53a"/>
+    </svg>
+    <p class="ld-msg" id="loader-msg">Setting up your store</p>
+    <div class="ld-bar"><i></i></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="api.js"></script>
+<script src="picker.js"></script>
+<script src="ui.js"></script>
+<script src="store.js"></script>
+<script src="kit.js"></script>
+<script src="receipt.js"></script>
+<script src="security.js"></script>
+<script src="products.js"></script>
+<script src="sales.js"></script>
+<script src="settings.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="features.js"></script>
+<script src="pages.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
