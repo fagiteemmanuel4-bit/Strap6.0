@@ -11,6 +11,31 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&am
 const APP = E.APP_NAME || 'Strap';
 const lower = s => String(s || '').trim().toLowerCase();
 
+/* Persistent login protection: counters live in Neon, not a serverless instance. */
+const loginKey = (kind, value) => crypto.createHmac('sha256', String(E.DATABASE_URL || E.NEON_AUTH_BASE_URL || 'strap')).update(kind + ':' + String(value)).digest('hex');
+const loginIp = req => String((req.headers && (req.headers['x-real-ip'] || req.headers['x-forwarded-for'])) || '').split(',')[0].trim().slice(0, 100);
+async function loginBlocked(key) {
+  const row = (await q('select blocked_until > now() as blocked from auth_login_limits where bucket_key=$1', [key]))[0];
+  return !!(row && row.blocked);
+}
+async function recordLoginFailure(key, limit) {
+  const row = (await q(`insert into auth_login_limits(bucket_key,attempt_count,window_started_at,updated_at)
+    values($1,1,now(),now())
+    on conflict(bucket_key) do update set
+      attempt_count = case when auth_login_limits.window_started_at < now() - interval '15 minutes' then 1 else auth_login_limits.attempt_count + 1 end,
+      window_started_at = case when auth_login_limits.window_started_at < now() - interval '15 minutes' then now() else auth_login_limits.window_started_at end,
+      blocked_until = case
+        when (case when auth_login_limits.window_started_at < now() - interval '15 minutes' then 1 else auth_login_limits.attempt_count + 1 end) >= $2
+        then now() + case auth_login_limits.lock_level when 0 then interval '15 minutes' when 1 then interval '1 hour' else interval '24 hours' end
+        else auth_login_limits.blocked_until end,
+      lock_level = case
+        when (case when auth_login_limits.window_started_at < now() - interval '15 minutes' then 1 else auth_login_limits.attempt_count + 1 end) >= $2
+        then auth_login_limits.lock_level + 1 else auth_login_limits.lock_level end,
+      updated_at=now()
+    returning attempt_count, blocked_until, blocked_until > now() as blocked`, [key, limit]))[0];
+  return row || { blocked: false, attempt_count: 0 };
+}
+
 /* ---- talk to Neon Auth (managed Better Auth) ---- */
 const origin = req => (E.SITE_URL || 'https://strap60.vercel.app').replace(/\/$/, '');
 async function na(req, method, path, body, cookie) {
@@ -96,10 +121,38 @@ H['auth/reset'] = async (req) => {
 };
 H['auth/signin'] = async (req, res) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
-  const r = await na(req, 'POST', '/sign-in/email', { email, password });
-  if (r.status === 403) { await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return [403, { ok: false, msg: 'Your email is not verified. We sent a new code: tap Create account, use the same email and password, and enter it.' }]; }
-  if (!r.ok || !r.cookies.length) return [r.status === 429 ? 429 : 401, { ok: false, msg: r.status === 429 ? 'Too many attempts. Try again soon.' : undefined }];
-  mine(res, r.cookies); return [200, { ok: true }];
+  if (!emailRe.test(email) || !password) return [400, { ok: false, msg: 'Enter your email and password.' }];
+  const ip = loginIp(req);
+  const emailBucket = loginKey('email', email);
+  const ipBucket = ip ? loginKey('ip', ip) : '';
+  try {
+    if (await loginBlocked(emailBucket) || (ipBucket && await loginBlocked(ipBucket))) {
+      return [429, { ok: false, msg: 'Too many incorrect sign-in attempts. Please wait before trying again.' }];
+    }
+    // Opportunistic cleanup: retain active lockouts, remove stale hashed identifiers.
+    if (ipBucket && parseInt(ipBucket.slice(0, 2), 16) === 0) {
+      await q("delete from auth_login_limits where updated_at < now() - interval '2 days'");
+    }
+    const r = await na(req, 'POST', '/sign-in/email', { email, password });
+    if (r.status === 403) {
+      await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' });
+      return [403, { ok: false, msg: 'Your email is not verified. We sent a new code: tap Create account, use the same email and password, and enter it.' }];
+    }
+    if (r.status === 401) {
+      const e = await recordLoginFailure(emailBucket, 5);
+      const ipResult = ipBucket ? await recordLoginFailure(ipBucket, 30) : { blocked: false };
+      if (e.blocked || ipResult.blocked) return [429, { ok: false, msg: 'Too many incorrect sign-in attempts. Your sign-in is temporarily locked. Please try again later.' }];
+      return [401, { ok: false, msg: 'Email or password is incorrect.' }];
+    }
+    if (r.status === 429) return [429, { ok: false, msg: 'Too many sign-in attempts. Please wait before trying again.' }];
+    if (!r.ok) return [502, { ok: false, msg: 'Sign-in is temporarily unavailable. Please try again shortly.' }];
+    if (!r.cookies.length) return [502, { ok: false, msg: 'Sign-in succeeded but no session was returned. Please try again.' }];
+    await q('delete from auth_login_limits where bucket_key=$1', [emailBucket]);
+    mine(res, r.cookies); return [200, { ok: true }];
+  } catch (e) {
+    console.error('SIGNIN SECURITY CHECK FAILED', e && e.message);
+    return [503, { ok: false, msg: 'Secure sign-in is temporarily unavailable. Please try again shortly.' }];
+  }
 };
 H['auth/signout'] = async (req, res) => { const c = upCookie(req); if (c) await na(req, 'POST', '/sign-out', {}, c); clearMine(res); return [200, { ok: true }]; };
 H['auth/change-password'] = async (req, res, user) => {
