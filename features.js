@@ -226,14 +226,14 @@ window.StrapFeatures = (() => {
   }
 
   /* --- Staff --- */
-  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers'], ['Customer care', 'Customers and orders'], ['Manager', 'Everything except settings']];
+  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers']];
   const slug = (n, max = 14) => {
     const skip = new Set(['and', 'the', 'ltd', 'limited', 'store', 'stores', 'shop', 'house', 'enterprises', 'global', 'ventures', 'company', 'co', 'inc', 'of']);
     let w = n.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean), k = w.filter(x => !skip.has(x)); if (!k.length) k = w;
     let s = k.join(''); if (s.length > max) s = k[0].slice(0, max - (k.length - 1)) + k.slice(1).map(x => x[0]).join(''); return (s || 'mystore').slice(0, max);
   };
   const mailFor = (name, dom) => { const p = name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean); let m; do m = `${p[0] || 'staff'}${p[1] ? '.' + p[1][0] : ''}${10 + Math.floor(Math.random() * 90)}@${dom}.com`; while (S.staff.some(x => x.email === m)); return m; };
-  function staffFlow() { cover('Opening', () => { const o = ob(); if(ctx && ctx.staff && ctx.staff.role==='Manager') staffHome(o); else ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
+  function staffFlow() { cover('Opening', () => { const o = ob(); ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
   function staffHome(o) {
     const draw = () => {
       o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,

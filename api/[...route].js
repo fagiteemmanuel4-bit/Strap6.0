@@ -37,9 +37,7 @@ const clearStaffCookie = res => res.setHeader('Set-Cookie', [
 ]);
 const staffAccess = role => ({
   'Cashier': { defaultRoute: 'new-sale', allowedRoutes: ['new-sale','sales-today','sales-history'] },
-  'Stock keeper': { defaultRoute: 'products', allowedRoutes: ['products','inventory','transfers'] },
-  'Customer care': { defaultRoute: 'orders', allowedRoutes: ['orders','customers'] },
-  'Manager': { defaultRoute: 'home', allowedRoutes: ['home','staff','orders','products','collections','inventory','purchase','transfers','gift','customers','growth','sales-today','sales-history','new-sale','online','mcp','activity','devices','premium'] }
+  'Stock keeper': { defaultRoute: 'products', allowedRoutes: ['products','inventory','transfers'] }
 }[role] || { defaultRoute: '', allowedRoutes: [] });
 function staffLookupKeys(req,email) {
   const forwarded=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'').split(',')[0].trim();
@@ -98,7 +96,7 @@ async function migrateLegacyStaffByEmail(email) {
 async function safeStaffRows(ownerId, branchId=null) {
   return q(`select id::text as id,name,role,branch_id as branch,email,
     (extract(epoch from created_at)*1000)::bigint as at
-    from staff_accounts where owner_id=$1 and status='active'
+    from staff_accounts where owner_id=$1 and status='active' and role in ('Cashier','Stock keeper')
       and ($2::text is null or branch_id=$2 or branch_id is null) order by created_at desc`,[ownerId,branchId]);
 }
 function parseStored(raw, fallback={}) { try { return typeof raw==='string' ? JSON.parse(raw) : (raw||fallback); } catch (_) { return fallback; } }
@@ -136,7 +134,7 @@ async function staffSession(req) {
       a.profile,a.email as owner_email,ss.last_seen_at
     from staff_sessions ss join staff_accounts s on s.id=ss.staff_id
     join app_users a on a.id=s.owner_id
-    where ss.token_hash=$1 and ss.expires_at>now() and s.status='active' and a.deleted_at is null limit 1`,[tokenHash]))[0];
+    where ss.token_hash=$1 and ss.expires_at>now() and s.status='active' and s.role in ('Cashier','Stock keeper') and a.deleted_at is null limit 1`,[tokenHash]))[0];
   if(!row || await accountSuspension(row.owner_email)) {
     await q('delete from staff_sessions where token_hash=$1',[tokenHash]).catch(()=>[]);
     return null;
@@ -152,8 +150,8 @@ function staffAllowedBranches(staff, state) {
 function staffReadBlob(blob, staff) {
   const role=staff.role, state=parseStored(blob['ls:strap.f1'],{}), branches=staffAllowedBranches(staff,state);
   const active=branches.some(b=>String(b.id)===String(state.active))?state.active:(branches[0]&&branches[0].id)||'b0';
-  const f1={plan:role==='Manager'?(state.plan||'free'):'free',branches,active,imports:{m:new Date().toISOString().slice(0,7),n:0},theme:state.theme||'light',
-    staff:[],twofa:{on:false,secret:''},backup:{email:'',phone:''},mcp:[],transfers:role==='Stock keeper'||role==='Manager'?(state.transfers||[]):[],dismissed:[]};
+  const f1={plan:'free',branches,active,imports:{m:new Date().toISOString().slice(0,7),n:0},theme:state.theme||'light',
+    staff:[],twofa:{on:false,secret:''},backup:{email:'',phone:''},mcp:[],transfers:role==='Stock keeper'?(state.transfers||[]):[],dismissed:[]};
   const out={'ls:strap.f1':JSON.stringify(f1)};
   const profile=staff.profile||{};
   out['ss:strap.session']=JSON.stringify({name:staff.name,bizname:profile.bizname||'My Store',currency:profile.currency||'NGN',photoUrl:profile.photoUrl||''});
@@ -162,12 +160,9 @@ function staffReadBlob(blob, staff) {
     const branchId=key.slice('ls:strap.f1.items.'.length);
     if(branches.some(b=>String(b.id)===branchId)) out[key]=value;
   }
-  if(role==='Cashier'||role==='Manager'||role==='Customer care') {
+  if(role==='Cashier') {
     const v=parseStored(blob['ls:strap.v1'],{});
-    let data={};
-    if(role==='Cashier') data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],seq:v.seq||0,closed:v.closed||null,staffSalesOpen:v.staffSalesOpen===true};
-    if(role==='Customer care') data={orders:v.orders||[],credits:v.credits||[]};
-    if(role==='Manager') { data={...v}; for(const k of ['pin','lock','receipt','prefs']) delete data[k]; }
+    const data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],seq:v.seq||0,closed:v.closed||null,staffSalesOpen:v.staffSalesOpen===true};
     out['ls:strap.v1']=JSON.stringify(data);
   }
   return out;
@@ -178,10 +173,6 @@ async function staffWriteBlob(ownerId, staff, incoming) {
   const incomingF1=parseStored(incoming['ls:strap.f1'],{});
   if(incomingF1.active && branchIds.has(String(incomingF1.active))) state.active=incomingF1.active;
   if(role==='Stock keeper' && Array.isArray(incomingF1.transfers)) state.transfers=incomingF1.transfers.slice(0,500);
-  if(role==='Manager') {
-    for(const k of ['theme','active','notifs','reports','lowSeen','dismissed','transfers','pushAsked']) if(k in incomingF1) state[k]=incomingF1[k];
-    if(state.active && !branchIds.has(String(state.active))) state.active=(allowed[0]&&allowed[0].id)||'b0';
-  }
   state.staff=Array.isArray(state.staff)?state.staff:[];
   blob['ls:strap.f1']=JSON.stringify(state);
   for(const [key,value] of Object.entries(incoming||{})) {
@@ -190,27 +181,20 @@ async function staffWriteBlob(ownerId, staff, incoming) {
     if(!branchIds.has(branchId)) continue;
     let next; try { next=JSON.parse(value); } catch (_) { continue; }
     if(!Array.isArray(next)) continue;
-    if(role==='Stock keeper'||role==='Manager') blob[key]=JSON.stringify(next.slice(0,10000));
+    if(role==='Stock keeper') blob[key]=JSON.stringify(next.slice(0,10000));
     else if(role==='Cashier') {
       const current=parseStored(blob[key],[]), map=new Map(next.filter(x=>x&&x.id).map(x=>[String(x.id),x]));
       blob[key]=JSON.stringify(current.map(p=>{const n=map.get(String(p.id));return n&&Number.isFinite(+n.qty)?{...p,qty:Math.max(0,Math.min(Number(p.qty)||0,+n.qty))}:p;}));
     }
   }
-  if(role==='Cashier'||role==='Manager'||role==='Customer care') {
+  if(role==='Cashier') {
     const next=parseStored(incoming['ls:strap.v1'],{}), current=parseStored(blob['ls:strap.v1'],{});
-    if(role==='Cashier') {
-      current.sales=appendOnlyRows(current.sales,next.sales,true);
-      current.payments=appendOnlyRows(current.payments,next.payments,false);
-      current.credits=mergeCreditPayments(current.credits,next.credits);
-      if(Array.isArray(next.held)) current.held=next.held.slice(0,500);
-      current.seq=Math.max(Number(current.seq)||0,Number(next.seq)||0);
-      // Cashiers cannot change the closed-day flag, order book, receipt settings or owner preferences.
-    } else if(role==='Customer care') {
-      if(Array.isArray(next.orders)) current.orders=next.orders.slice(0,10000);
-      current.credits=mergeCreditPayments(current.credits,next.credits);
-    } else if(role==='Manager') {
-      for(const k of Object.keys(next)) if(!['pin','lock','receipt','prefs'].includes(k)) current[k]=next[k];
-    }
+    current.sales=appendOnlyRows(current.sales,next.sales,true);
+    current.payments=appendOnlyRows(current.payments,next.payments,false);
+    current.credits=mergeCreditPayments(current.credits,next.credits);
+    if(Array.isArray(next.held)) current.held=next.held.slice(0,500);
+    current.seq=Math.max(Number(current.seq)||0,Number(next.seq)||0);
+    // Cashiers cannot change the closed-day flag, order book, receipt settings or owner preferences.
     blob['ls:strap.v1']=JSON.stringify(current);
   }
   await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[ownerId,blob]);
@@ -524,14 +508,14 @@ H['auth/signup'] = async (req, res, user) => {
 
 /* ---- staff accounts: owner-managed PIN identities and isolated staff sessions ---- */
 H['staff/list'] = async (req,res,user,staff) => {
-  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to manage staff.'}];
-  const ownerId=staff?staff.owner_id:user.id;
+  if(!user || staff) return [403,{ok:false,msg:'Only the business owner can manage staff.'}];
+  const ownerId=user.id;
   await migrateLegacyStaffForOwner(ownerId);
   return [200,{ok:true,staff:await safeStaffRows(ownerId,staff?staff.branch_id:null)}];
 };
 H['staff/create'] = async (req,res,user,staff) => {
-  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to add staff.'}];
-  const ownerId=staff?staff.owner_id:user.id;
+  if(!user || staff) return [403,{ok:false,msg:'Only the business owner can add staff.'}];
+  const ownerId=user.id;
   const b=req.body||{}, name=String(b.name||'').trim().slice(0,80), role=String(b.role||''), email=lower(b.email), pin=String(b.pin||''), branchId=b.branch||null;
   if(!name||!staffAccess(role).allowedRoutes.length||!emailRe.test(email)||!/^[0-9]{6}$/.test(pin)) return [400,{ok:false,msg:'Check the staff name, role, email and 6-digit PIN.'}];
   if(/^(\d)\1{5}$/.test(pin)||'0123456789'.includes(pin)||'9876543210'.includes(pin)) return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
@@ -541,9 +525,8 @@ H['staff/create'] = async (req,res,user,staff) => {
   const savedPlan=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.plan'],{});
   const maxStaff=f1.plan==='premium'||savedPlan.status==='active'?50:3;
   if(used>=maxStaff) return [403,{ok:false,code:'STAFF_LIMIT',msg:`Your current plan allows ${maxStaff} staff accounts.`}];
-  const managerBranches=staff?staffAllowedBranches(staff,f1):branches;
-  if(branchId&&!managerBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
-  if(staff&&staff.branch_id&&!branchId) return [403,{ok:false,msg:'You can only add staff to your assigned branch.'}];
+  const availableBranches=branches;
+  if(branchId&&!availableBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
   let collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth.\"user\" where lower(email)=$1 union all select 1 from auth_email_registry where lower(email)=$1 limit 1',[email]);
   if(!collision.length) { await migrateLegacyStaffByEmail(email); collision=await q('select 1 from staff_accounts where lower(email)=$1 union all select 1 from neon_auth.\"user\" where lower(email)=$1 union all select 1 from auth_email_registry where lower(email)=$1 limit 1',[email]); }
   if(collision.length) return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}];
@@ -557,8 +540,8 @@ H['staff/create'] = async (req,res,user,staff) => {
   } catch(e) { if(e.code==='23505') return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}]; throw e; }
 };
 H['staff/remove'] = async (req,res,user,staff) => {
-  if(!user && !(staff && staff.role==='Manager')) return [401,{ok:false,msg:'You do not have permission to remove staff.'}];
-  const ownerId=staff?staff.owner_id:user.id, id=String(req.body.id||'');
+  if(!user || staff) return [403,{ok:false,msg:'Only the business owner can remove staff.'}];
+  const ownerId=user.id, id=String(req.body.id||'');
   if(staff && id===staff.id) return [403,{ok:false,msg:'You cannot remove your own staff login.'}];
   const rows=await q('delete from staff_accounts where id=$1::uuid and owner_id=$2 and ($3::text is null or branch_id=$3) returning id',[id,ownerId,staff?staff.branch_id:null]).catch(()=>[]);
   if(!rows.length) return [404,{ok:false,msg:'Staff account not found.'}];
@@ -571,10 +554,10 @@ H['staff/lookup'] = async (req) => {
   if(blocked) return [429,{ok:false,msg:'Too many staff email checks. Please wait before trying again.'}];
   await recordStaffFailure(lookupKeys);
   let found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id
-    where lower(s.email)=$1 and s.status='active' and a.deleted_at is null limit 1`,[email]);
+    where lower(s.email)=$1 and s.status='active' and s.role in ('Cashier','Stock keeper') and a.deleted_at is null limit 1`,[email]);
   if(!found.length) {
     const ownerExists=await q('select 1 from neon_auth.\"user\" where lower(email)=$1 limit 1',[email]);
-    if(!ownerExists.length) { await migrateLegacyStaffByEmail(email); found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id where lower(s.email)=$1 and s.status='active' and a.deleted_at is null limit 1`,[email]); }
+    if(!ownerExists.length) { await migrateLegacyStaffByEmail(email); found=await q(`select 1 from staff_accounts s join app_users a on a.id=s.owner_id where lower(s.email)=$1 and s.status='active' and s.role in ('Cashier','Stock keeper') and a.deleted_at is null limit 1`,[email]); }
   }
   return [200,{ok:true,staff:!!found.length}];
 };
@@ -588,7 +571,7 @@ H['staff/login'] = async (req,res) => {
   const row=(await q(`select s.id::text as id,s.owner_id,s.name,s.role,s.branch_id,s.email,s.pin_salt,s.pin_hash,s.pin_algo,
       a.email as owner_email,a.profile
     from staff_accounts s join app_users a on a.id=s.owner_id
-    where lower(s.email)=$1 and s.status='active' and a.deleted_at is null limit 1`,[email]))[0];
+    where lower(s.email)=$1 and s.status='active' and s.role in ('Cashier','Stock keeper') and a.deleted_at is null limit 1`,[email]))[0];
   let valid=false;
   if(row && !await accountSuspension(row.owner_email)) {
     try {
@@ -665,7 +648,7 @@ H['media'] = async (req, res, user, staff) => {
     if (!r) { res.statusCode = 404; res.end(); return null; }
     res.setHeader('Content-Type', r.mime); res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); res.end(r.data); return null;
   }
-  if (!user && !(staff && ['Stock keeper','Manager'].includes(staff.role))) return [401, { ok: false }];
+  if (!user && !(staff && staff.role === 'Stock keeper')) return [403, { ok: false }];
   const { name, type, data } = req.body || {};
   if (!/^image\/(jpeg|png|webp|gif)$/.test(type || '') || !data) return [400, { ok: false, msg: 'Only JPG, PNG, WEBP or GIF images.' }];
   const buf = Buffer.from(String(data), 'base64');
