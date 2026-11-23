@@ -99,12 +99,12 @@ async function recordAction(req,email,action) {
         when 0 then interval '30 seconds' when 1 then interval '1 minute' when 2 then interval '5 minutes'
         when 3 then interval '15 minutes' when 4 then interval '1 hour' when 5 then interval '6 hours' else interval '24 hours' end,
       updated_at=now() returning lock_level`,[key]);
-  if (Number(rows[0].lock_level)>=6 && action==='otp-send') await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
+  if (Number(rows[0].lock_level)>=6 && (action==='otp-send' || action==='otp-verify')) await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
 }
 async function clearAction(req,email,action) { const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim(); const key=sha('strap-action:'+action+':'+lower(email)+':'+ip); await q('delete from auth_action_limits where bucket_key=$1',[key]); }
 async function me(req) {
   const c = upCookie(req); if (!c) return null;
-  const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) return hit.u;
+  const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) { if (await accountSuspension(hit.u.email)) { cache.delete(k); return null; } return hit.u; }
   const r = await na(req, 'GET', '/get-session', null, c);
   const u = r.ok && r.j && r.j.user && r.j.user.emailVerified !== false ? { id: String(r.j.user.id), email: lower(r.j.user.email), name: r.j.user.name } : null;
   if (u) { if (await accountSuspension(u.email)) return null; await q('insert into app_users(id,email) values($1,$2) on conflict(id) do nothing', [u.id, u.email]); cache.set(k, { u, t: Date.now() + 30000 }); }
@@ -218,6 +218,8 @@ H['auth/signin'] = async (req, res) => {
 H['auth/request-review'] = async (req) => {
   const email=lower(req.body.email), message=String(req.body.message||'').trim().slice(0,1500);
   if(!emailRe.test(email)) return [400,{ok:false,msg:'Enter the email address on the suspended account.'}];
+  if(await actionBlocked(req,email,'review-request')) return [429,{ok:false,msg:'A review request was recently submitted. Please wait before sending another.'}];
+  await recordAction(req,email,'review-request');
   const row=await accountSuspension(email); if(!row) return [404,{ok:false,msg:'No suspended account was found for this email.'}];
   await q("update auth_account_security set review_status='pending',review_message=$2,review_requested_at=now(),updated_at=now() where email=$1",[email,message||'Please review my account suspension.']);
   await q("insert into support_messages(user_id,email,kind,message) values(null,$1,'account-review',$2)",[email,message||'Please review my account suspension.']);
