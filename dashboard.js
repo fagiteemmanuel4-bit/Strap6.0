@@ -171,6 +171,7 @@
         <div class="ic">${svg(ic, 26)}</div>
         <div class="tx"><span class="lb">${label}</span><b class="vl" data-count="${val}" data-kind="${key}">0</b><span class="sb">${sub}</span></div>
       </article>`;
+    const salesOpen = (()=>{try{return JSON.parse(localStorage.getItem('strap.v1')||'{}').staffSalesOpen===true;}catch(e){return false;}})();
     const menuHtml = MENU.map(m => {
       if (m[0] === '@') return m[1] ? `<p class="ds-h">${m[1]}</p>` : '<div class="ds-sep"></div>';
       const [id, lbl, ico, ex] = m;
@@ -227,7 +228,7 @@
         <aside class="dr-panel" role="dialog" aria-label="Menu">
           <div class="dr-top"><div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div><button type="button" class="pm-x" id="dr-x" aria-label="Close menu">${uic('close', 20, 2.2)}</button></div>
           <button type="button" class="ds-open" data-go="new-sale"><span>Open sale</span><i>${uic('arrow', 22, 2.4)}</i></button>
-          ${!STAFF ? `<button type="button" class="ds-open ds-session" data-sales-session data-open="${JSON.parse(localStorage.getItem('strap.v1')||'{}').staffSalesOpen===true?'true':'false'}"><span>${JSON.parse(localStorage.getItem('strap.v1')||'{}').staffSalesOpen===true?'Pause cashier sales':'Open cashier sales'}</span><i>${uic('arrow', 22, 2.4)}</i></button>` : ''}
+          ${!STAFF ? `<button type="button" class="ds-open ds-session" data-sales-session data-open="${salesOpen?'true':'false'}"><span>${salesOpen?'Pause cashier sales':'Open cashier sales'}</span><i>${uic('arrow', 22, 2.4)}</i></button>` : ''}
           <nav class="ds-nav">${menuHtml}</nav>
           ${STAFF ? `<div class="staff-drawer-foot"><button type="button" data-staff-messages>Messages <em>Coming soon</em></button><button type="button" data-staff-logout>${uic('out',20,2)}<span>Log out</span></button></div>` : ''}
         </aside>
