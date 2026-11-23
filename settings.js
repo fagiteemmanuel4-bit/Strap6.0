@@ -41,8 +41,8 @@ window.StrapSettings = (() => {
         <div class="pg-rows">${sw('orderAlerts', 'bell', 'Order alerts', P.orderAlerts)}${sw('lowStock', 'inbox', 'Low stock alerts', P.lowStock)}</div>
         <h2 class="pm-h">Help & legal</h2>
         <div class="pg-rows st-help-links">
-          <a class="pg-r st-nav" href="support.html"><span class="st-ri">${ic('help', 20, 1.8)}</span><span>Contact Support<small>Questions, complaints and feedback</small></span>${ic('chevR', 18, 2)}</a>
-          <a class="pg-r st-nav" href="legal.html?doc=terms"><span class="st-ri">${ic('file', 20, 1.8)}</span><span>Terms of Use</span>${ic('chevR', 18, 2)}</a>
+          <a class="pg-r st-nav" href="support.html"><span class="st-ri">${ic('info', 20, 1.8)}</span><span>Contact Support<small>Questions, complaints and feedback</small></span>${ic('chevR', 18, 2)}</a>
+          <a class="pg-r st-nav" href="legal.html?doc=terms"><span class="st-ri">${ic('book', 20, 1.8)}</span><span>Terms of Use</span>${ic('chevR', 18, 2)}</a>
           <a class="pg-r st-nav" href="legal.html?doc=privacy"><span class="st-ri">${ic('shield', 20, 1.8)}</span><span>Privacy Policy</span>${ic('chevR', 18, 2)}</a>
         </div>
         <h2 class="pm-h">Account</h2>
