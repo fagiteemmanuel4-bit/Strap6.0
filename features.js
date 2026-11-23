@@ -241,7 +241,8 @@ window.StrapFeatures = (() => {
         foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
       $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
       const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
-      $$('[data-del]', o.el).forEach(d => d.onclick = async () => {
+      if(ctx && ctx.staff && ctx.staff.branchId) $('[data-del]',o.el).forEach(d => { const item=S.staff.find(x=>x.id===d.dataset.del); if(item && !item.branch) d.hidden=true; });
+      $('[data-del]', o.el).forEach(d => d.onclick = async () => {
         if (!(await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true }))) return;
         const r=await api.removeStaff(d.dataset.del);
         if(!r.ok) return toast(r.msg||'Could not remove this staff member. Try again.');
