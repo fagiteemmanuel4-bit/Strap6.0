@@ -486,7 +486,7 @@ H['staff/create'] = async (req,res,user,staff) => {
   const ownerId=staff?staff.owner_id:user.id;
   const b=req.body||{}, name=String(b.name||'').trim().slice(0,80), role=String(b.role||''), email=lower(b.email), pin=String(b.pin||''), branchId=b.branch||null;
   if(!name||!staffAccess(role).allowedRoutes.length||!emailRe.test(email)||!/^[0-9]{6}$/.test(pin)) return [400,{ok:false,msg:'Check the staff name, role, email and 6-digit PIN.'}];
-  if(/^(\\d)\\1{5}$/.test(pin)||pin==='123456'||pin==='654321'||pin==='012345') return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
+  if(/^(\d)\1{5}$/.test(pin)||pin==='123456'||pin==='654321'||pin==='012345') return [400,{ok:false,msg:'Choose a less predictable 6-digit PIN.'}];
   const stateRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], f1=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.f1'],{});
   const branches=Array.isArray(f1.branches)?f1.branches:[{id:'b0'}];
   const used=Number((await q('select count(*)::int as n from staff_accounts where owner_id=$1 and status=\'active\'',[ownerId]))[0].n||0);
