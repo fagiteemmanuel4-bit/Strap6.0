@@ -171,6 +171,34 @@ H['auth/signup-start'] = async (req) => {
   // Managed Auth sends the initial verification code during /sign-up/email.
   return [200, { ok: true }];
 };
+/* Activity PIN verification is bound to the signed-in account, not signup/reset in-memory state. */
+H['auth/pin/send-code'] = async (req, res, user) => {
+  if (!user) return [401, { ok: false, msg: 'Your session expired. Sign in again.' }];
+  const email = lower(user.email), requested = lower(req.body.email);
+  if (!email || (requested && requested !== email)) return [403, { ok: false, msg: 'The verification email must match your signed-in account.' }];
+  if (await accountSuspension(email)) return [423, { ok: false, code: 'ACCOUNT_SUSPENDED', msg: 'This account is suspended. Request a review to restore access.' }];
+  const wait = await actionBlocked(req, email, 'otp-send');
+  if (wait) return [429, { ok: false, code: 'RATE_LIMITED', msg: 'Too many code requests. Please wait before trying again.' }];
+  await recordAction(req, email, 'otp-send');
+  const r = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'sign-in' });
+  return r.ok ? [200, { ok: true }] : [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
+};
+H['auth/pin/verify-code'] = async (req, res, user) => {
+  if (!user) return [401, { ok: false, msg: 'Your session expired. Sign in again.' }];
+  const email = lower(user.email), requested = lower(req.body.email), otp = String(req.body.otp || '').trim();
+  if (!email || (requested && requested !== email) || !/^\\d{6}$/.test(otp))
+    return [400, { ok: false, msg: 'Enter the 6-digit code sent to your account email.' }];
+  if (await accountSuspension(email)) return [423, { ok: false, code: 'ACCOUNT_SUSPENDED', msg: 'This account is suspended. Request a review to restore access.' }];
+  const wait = await actionBlocked(req, email, 'otp-verify');
+  if (wait) return [429, { ok: false, code: 'RATE_LIMITED', msg: 'Too many code attempts. Please wait before trying again.' }];
+  await recordAction(req, email, 'otp-verify');
+  const r = await na(req, 'POST', '/sign-in/email-otp', { email, otp });
+  if (!r.ok) return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
+  await clearAction(req, email, 'otp-verify');
+  mine(res, r.cookies);
+  return [200, { ok: true }];
+};
+
 H['auth/send-code'] = async (req) => {
   const email = lower(req.body.email), type = req.body.type === 'forget-password' ? 'forget-password' : 'email-verification';
   if (!emailRe.test(email)) return [400, { ok: false, msg: 'Enter a valid email.' }];
