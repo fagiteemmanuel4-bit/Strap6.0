@@ -52,7 +52,7 @@ H['health'] = async (req) => {
   return [200, out];
 };
 
-/* sign up step 1: create the account, then explicitly request Neon Auth's 6-digit verification OTP. */
+/* sign up step 1: Neon Auth sends the verification OTP automatically because Verify at Sign-up is enabled with the OTP method. */
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || password.length < 8) return [400, { ok: false, msg: 'Check your email and password.' }];
@@ -63,8 +63,7 @@ H['auth/signup-start'] = async (req) => {
     if (s.status === 403) { const resend = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return resend.ok ? [200, { ok: true }] : [resend.status === 429 ? 429 : 502, { ok: false, msg: 'Your account exists, but we could not send the verification code. ' + errMsg(resend) }]; } // unverified earlier signup: resend code
     return [400, { ok: false, msg: /exist/i.test(errMsg(r)) ? 'An account with this email already exists. Sign in instead.' : errMsg(r) }];
   }
-  const sent = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' });
-  if (!sent.ok) return [sent.status === 429 ? 429 : 502, { ok: false, msg: 'Your account was created, but the verification email could not be sent. Please try again. ' + errMsg(sent) }];
+  // Do not send a second OTP here: Managed Auth already sends it during /sign-up/email.
   return [200, { ok: true }];
 };
 H['auth/send-code'] = async (req) => {
