@@ -163,9 +163,8 @@ html[data-theme=dark] .pn{filter:invert(.92) hue-rotate(180deg)}
 /* Strap – support page (front end only). Wire your backend in SUPPORT below. */
 (() => {
   const SUPPORT = {
-    endpoint: '',            // POST target for tickets. JSON in: {topic,email,store,message}. JSON out: {ref}. Empty = demo mode.
     statusEndpoint: '',      // optional GET -> [{name, state:'ok'|'warn'|'down', note}]. Empty = the list below.
-    email: 'support@example.com', phone: '+234 800 000 0000', whatsapp: '2348000000000',
+    phone: '07058098581', phoneLink: '+2347058098581', whatsapp: '2347058098581',
     hours: 'Mon to Sat, 8am to 6pm',
     home: 'dashboard.html', terms: '#', privacy: '#',
     status: [['Sales and receipts', 'ok'], ['Online stores', 'ok'], ['Stock sync across branches', 'ok'], ['Premium payments', 'ok']]
@@ -286,8 +285,7 @@ html[data-theme=dark] .pn{filter:invert(.92) hue-rotate(180deg)}
     view.innerHTML = `<div class="view"><section class="hero" style="padding-top:20px">${il('mail')}</section>
       <h2 class="h" style="margin-top:6px">Reach us directly</h2>
       <div class="rows">
-        <a class="row" href="mailto:${esc(SUPPORT.email)}"><i>${ic('mail', 20)}</i><span><b>Email</b><small>${esc(SUPPORT.email)}</small></span>${ic('chevR', 18, 2)}</a>
-        <a class="row" href="tel:${esc(SUPPORT.phone.replace(/\s/g, ''))}"><i>${ic('phone', 20)}</i><span><b>Call us</b><small>${esc(SUPPORT.phone)}, ${esc(SUPPORT.hours)}</small></span>${ic('chevR', 18, 2)}</a>
+        <a class="row" href="tel:${esc(SUPPORT.phoneLink)}"><i>${ic('phone', 20)}</i><span><b>Call us</b><small>${esc(SUPPORT.phone)}, ${esc(SUPPORT.hours)}</small></span>${ic('chevR', 18, 2)}</a>
         ${wa ? `<a class="row" href="${wa}" target="_blank" rel="noopener"><i>${ic('chat', 20)}</i><span><b>WhatsApp</b><small>Quick questions, quick replies</small></span>${ic('chevR', 18, 2)}</a>` : ''}
       </div>
       <h2 class="h">Send a message</h2><p class="lead">Tell us what happened and what you expected. Screenshots of the problem help, so mention if you have one and we will ask for it.</p>
@@ -314,9 +312,15 @@ html[data-theme=dark] .pn{filter:invert(.92) hue-rotate(180deg)}
     b.disabled = true; b.textContent = 'Sending';
     try {
       let ref = '';
-      if (window.StrapAPI) { const r = await StrapAPI.contact(data.topic, data.message, data.email, data.store); if (!r || !r.ok) throw new Error((r && r.msg) || ''); ref = r.ref || ''; }
-      else if (SUPPORT.endpoint) { const r = await fetch(SUPPORT.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw 0; ref = (await r.json()).ref; }
-      else { await new Promise(r => setTimeout(r, 900)); ref = 'ST-' + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+      const response = await fetch('https://formsubmit.co/ajax/Ayodelee87@gmail.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name: data.store || 'Strap support user', email: data.email, topic: data.topic, store: data.store, message: data.message, _subject: 'Strap Support: ' + data.topic, _template: 'table' })
+      });
+      let result = {};
+      try { result = await response.json(); } catch (_) {}
+      if (!response.ok || !(result.success === true || result.success === 'true')) throw new Error(result.message || 'FormSubmit could not accept your message. Please try again.');
+      ref = 'ST-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       contact({ email: data.email, ref });
       scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) { b.disabled = false; b.innerHTML = `${ic('send', 20, 2)} Send message`; toast((err && err.message) || 'Could not send. Check your connection and try again.'); }
