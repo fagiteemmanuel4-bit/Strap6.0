@@ -133,4 +133,4 @@ body.is-dash{background:var(--black)}
 .staff-bar{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px 12px;background:var(--paper,#fff)}
 .staff-bar b{display:block;font-size:14px;font-weight:700;color:var(--black,#0a0a0a)}
 .staff-bar small{display:block;margin-top:3px;font-size:11px;color:var(--mute,#85857e)}
-.staff-bar button{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:var(--black,#0a0a0a);color:var(--lemon,#e6f53a);padding:10px 15px;font:600 12px inherit}
+.staff-bar button{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:var(--black,#0a0a0a);color:var(--lemon,#e6f53a);padding:10px 15px;font-family:inherit;font-size:12px;font-weight:600}
