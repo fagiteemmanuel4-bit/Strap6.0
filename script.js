@@ -70,7 +70,7 @@
     lemail: { t: 'Welcome back', s: 'Enter your email address to sign in.', f: [{ key: 'lemail', type: 'email', ph: 'example@email.com', ac: 'email', v: emailError, link: ['Forgot password?', 'fgemail'] }], btn: 'Continue',
       act: async () => { D.staffFound = false; D.staffPin = ''; const r = await api.lookupStaff(D.lemail); if (r.ok) D.staffFound = !!r.staff; return r; },
       note: 'New to Strap? <a href="#" data-flow="email">Create an account</a>', next: () => D.staffFound ? 'staff-pin' : 'lpass' },
-    'staff-pin': { t: 'Enter your staff PIN', s: () => `Signing in as ${D.lemail}. Use the 6-digit PIN given to you by your business owner.`, f: [{ key: 'staffPin', type: 'password', ph: '6-digit staff PIN', ac: 'one-time-code', max: 6, mode: 'numeric', digits: true, v: v => /^\\d{6}$/.test(v) ? '' : 'Enter your 6-digit staff PIN.' }], btn: 'Sign in',
+    'staff-pin': { t: 'Enter your staff PIN', s: () => `Signing in as ${D.lemail}. Use the 6-digit PIN given to you by your business owner.`, f: [{ key: 'staffPin', type: 'password', ph: '6-digit staff PIN', ac: 'one-time-code', max: 6, mode: 'numeric', digits: true, v: v => /^\d{6}$/.test(v) ? '' : 'Enter your 6-digit staff PIN.' }], btn: 'Sign in',
       act: () => api.signInStaff(D.lemail, D.staffPin), next: 'staff-ok' },
     'staff-ok': { k: 'success', noBack: 1, t: 'You’re signed in', s: 'Opening your assigned work area.', label: 'Continue', auto: 900, go: () => { location.href = 'dashboard.html'; } },
     lpass: { t: 'Enter your password', s: () => `Signing in as ${D.lemail}`, f: [{ key: 'lpw', type: 'password', ph: 'Password', ac: 'current-password', v: v => v ? '' : 'Enter your password.' }], btn: 'Sign in',
