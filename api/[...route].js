@@ -102,6 +102,26 @@ async function safeStaffRows(ownerId, branchId=null) {
       and ($2::text is null or branch_id=$2 or branch_id is null) order by created_at desc`,[ownerId,branchId]);
 }
 function parseStored(raw, fallback={}) { try { return typeof raw==='string' ? JSON.parse(raw) : (raw||fallback); } catch (_) { return fallback; } }
+
+function appendOnlyRows(existing,incoming,prepend=false) {
+  const old=Array.isArray(existing)?existing:[], next=Array.isArray(incoming)?incoming:[];
+  const ids=new Set(old.map(x=>String(x&& (x.id||x.no) || JSON.stringify(x))));
+  const added=next.filter(x=>{const id=String(x&&(x.id||x.no)||JSON.stringify(x));if(ids.has(id))return false;ids.add(id);return true;});
+  return prepend?[...added,...old]:[...old,...added];
+}
+function mergeCreditPayments(existing,incoming) {
+  const old=Array.isArray(existing)?existing:[], next=Array.isArray(incoming)?incoming:[];
+  const oldIds=new Set(old.map(x=>String(x.id)));
+  const merged=old.map(item=>{
+    const fresh=next.find(x=>String(x.id)===String(item.id)); if(!fresh)return item;
+    const payments=Array.isArray(item.payments)?item.payments:[], keys=new Set(payments.map(p=>String(p.ts)+':'+String(p.amount)));
+    const additions=(Array.isArray(fresh.payments)?fresh.payments:[]).filter(p=>!keys.has(String(p.ts)+':'+String(p.amount)));
+    return additions.length?{...item,payments:[...payments,...additions]}:item;
+  });
+  const added=next.filter(x=>!oldIds.has(String(x.id)));
+  return [...added,...merged];
+}
+
 async function safeOwnerBlob(ownerId, blob) {
   const out={...(blob||{})}, rows=await safeStaffRows(ownerId);
   const f1=parseStored(out['ls:strap.f1'],{});
@@ -145,9 +165,9 @@ function staffReadBlob(blob, staff) {
   if(role==='Cashier'||role==='Manager'||role==='Customer care') {
     const v=parseStored(blob['ls:strap.v1'],{});
     let data={};
-    if(role==='Cashier') data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],collections:v.collections||[],seq:v.seq||0,closed:v.closed||null,oseq:v.oseq||1000,prefs:v.prefs||{}};
-    if(role==='Customer care') data={orders:v.orders||[],credits:v.credits||[],collections:v.collections||[],oseq:v.oseq||1000};
-    if(role==='Manager') { data={...v}; delete data.pin; delete data.lock; }
+    if(role==='Cashier') data={sales:v.sales||[],payments:v.payments||[],held:v.held||[],credits:v.credits||[],seq:v.seq||0,closed:v.closed||null};
+    if(role==='Customer care') data={orders:v.orders||[],credits:v.credits||[]};
+    if(role==='Manager') { data={...v}; for(const k of ['pin','lock','receipt','prefs']) delete data[k]; }
     out['ls:strap.v1']=JSON.stringify(data);
   }
   return out;
@@ -178,10 +198,19 @@ async function staffWriteBlob(ownerId, staff, incoming) {
   }
   if(role==='Cashier'||role==='Manager'||role==='Customer care') {
     const next=parseStored(incoming['ls:strap.v1'],{}), current=parseStored(blob['ls:strap.v1'],{});
-    const keys=role==='Customer care'?['orders','credits','collections','oseq']:
-      role==='Cashier'?['sales','payments','held','credits','collections','seq','orders','oseq']:
-      Object.keys(next).filter(k=>!['pin','lock'].includes(k));
-    for(const k of keys) if(k in next) current[k]=next[k];
+    if(role==='Cashier') {
+      current.sales=appendOnlyRows(current.sales,next.sales,true);
+      current.payments=appendOnlyRows(current.payments,next.payments,false);
+      current.credits=mergeCreditPayments(current.credits,next.credits);
+      if(Array.isArray(next.held)) current.held=next.held.slice(0,500);
+      current.seq=Math.max(Number(current.seq)||0,Number(next.seq)||0);
+      // Cashiers cannot change the closed-day flag, order book, receipt settings or owner preferences.
+    } else if(role==='Customer care') {
+      if(Array.isArray(next.orders)) current.orders=next.orders.slice(0,10000);
+      current.credits=mergeCreditPayments(current.credits,next.credits);
+    } else if(role==='Manager') {
+      for(const k of Object.keys(next)) if(!['pin','lock','receipt','prefs'].includes(k)) current[k]=next[k];
+    }
     blob['ls:strap.v1']=JSON.stringify(current);
   }
   await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[ownerId,blob]);
