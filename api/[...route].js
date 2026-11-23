@@ -172,8 +172,8 @@ H['account/delete'] = async (req, res, user) => {
 
 module.exports = async (req, res) => {
   try {
-    const route = String((req.query && req.query.__strap_route) || req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/^health\//, '').replace(/\/+$/, ''), h = H[route];
-    if (!req.query || !req.query.id) req.query = Object.assign({}, req.query, Object.fromEntries(new URLSearchParams(String(req.url).split('?')[1] || '')));
+    req.query = Object.assign({}, req.query || {}, Object.fromEntries(new URLSearchParams(String(req.url || '').split('?')[1] || '')));
+    const route = String(req.query.__strap_route || req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/^health\//, '').replace(/\/+$/, ''), h = H[route];
     if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
     if (typeof req.body === 'string') { try { req.body = JSON.parse(req.body); } catch (e) { req.body = {}; } }
     req.body = req.body || {};
