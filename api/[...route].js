@@ -123,7 +123,7 @@ const formInbox = () => lower(E.FORMSUBMIT_EMAIL || E.SUPPORT_EMAIL || '');
 async function mail(to, subject, html) {
   const inbox = formInbox();
   if (!inbox || !emailRe.test(inbox) || !emailRe.test(lower(to))) return false;
-  const plain = String(html || '').replace(/<br\\s*\\/?\\s*>/gi, '\\n').replace(/<\\/(p|div|h[1-6])>/gi, '\\n').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const plain = String(html || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   const form = new URLSearchParams({ name: APP, email: lower(to), _subject: subject, message: plain.slice(0, 4000), _autoresponse: plain.slice(0, 4000), _template: 'table', _url: (E.SITE_URL || 'https://strap60.vercel.app') + '/dashboard.html' });
   try {
     const r = await fetch('https://formsubmit.co/' + encodeURIComponent(inbox), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'text/html' }, body: form.toString(), redirect: 'manual' });
