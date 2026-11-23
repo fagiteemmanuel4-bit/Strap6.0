@@ -14,16 +14,10 @@
   if (!D.bizname) D = { ...D, name: D.name || 'Amaka Obi', bizname: 'Amaka Fashion House', currency: D.currency || 'NGN' };
   const first = () => (D.name || '').split(/\s+/)[0];
   let STAFF=null; try { STAFF=JSON.parse(sessionStorage.getItem('staff.session')||'null'); } catch(e) {}
-  // Dedicated, editable single-file staff dashboards. Branch-scoped Managers use the Branch Manager mode.
-  if (STAFF && STAFF.role) {
-    const staffMode = STAFF.role === 'Cashier' ? 'cashier'
-      : STAFF.role === 'Stock keeper' ? 'stock-keeper'
-      : STAFF.role === 'Customer care' ? 'customer-care'
-      : STAFF.role === 'Manager' ? (STAFF.branchId ? 'branch-manager' : 'manager') : '';
-    if (staffMode && STAFF.role !== 'Cashier') {
-      location.replace('staff-modes/' + staffMode + '.html');
-      return;
-    }
+  // Staff workspaces are limited to the two supported roles.
+  if (STAFF && STAFF.role === 'Stock keeper') {
+    location.replace('staff-modes/stock-keeper.html');
+    return;
   }
 
   const api = {};
@@ -153,8 +147,7 @@
     orders:['orders','Orders','inbox'],
     customers:['customers','Customers','users']
   };
-  const MENU = !STAFF ? BASE_MENU : STAFF.role === 'Manager'
-    ? BASE_MENU.filter(m => m[0] !== 'settings')
+  const MENU = !STAFF ? BASE_MENU
     : STAFF.role === 'Stock keeper'
       ? [['products','Products','tag',[['products','All products'],['inventory','Inventory'],['transfers','Transfers']]]]
       : (STAFF.allowedRoutes || []).map(id => STAFF_MENU[id]).filter(Boolean);
@@ -178,7 +171,7 @@
       if (Array.isArray(ex)) return `<div class="ds-grp"><button type="button" class="ds-i" data-grp="${id}" aria-expanded="false"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span><span class="ds-chev">${uic('chevD', 18, 2)}</span></button><div class="ds-sub"><div>${ex.map(([sid, sl]) => `<button type="button" class="ds-s" data-go="${sid}">${sl}</button>`).join('')}</div></div></div>`;
       return `<button type="button" class="ds-i" data-go="${id}"><span class="ds-ic">${uic(ico, 24, 1.8)}</span><span>${lbl}</span>${ex === 'soon' ? '<em class="ds-b">Coming soon</em>' : ''}</button>`;
     }).join('');
-    const staffToolbar = STAFF && STAFF.role !== 'Manager' && STAFF.role !== 'Cashier' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
+    const staffToolbar = STAFF && STAFF.role === 'Stock keeper' ? `<header class="staff-bar"><div><b>${esc(store)}</b><small>${esc(STAFF.role)} access</small></div><button type="button" id="staff-menu">Menu ${uic('menu',20,2)}</button></header>` : '';
     dash.innerHTML = `
       <div class="dtop"></div>
       <section class="dsheet">${staffToolbar}
@@ -282,7 +275,7 @@
       try{const state=JSON.parse(localStorage.getItem('strap.v1')||'{}');state.staffSalesOpen=open;if(open)state.closed=null;localStorage.setItem('strap.v1',JSON.stringify(state));}catch(e){}
       toast(open?'Cashier sales are now open.':'Cashier sales have been paused.');
     });
-    if(STAFF && STAFF.role!=='Manager') { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
+    if(STAFF) { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
     function openDrawer() { drawer.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); document.body.classList.add('pm-open'); }
     function closeDrawer() { if (!drawer.classList.contains('on')) return; drawer.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pm-open'); }
 
