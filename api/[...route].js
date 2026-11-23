@@ -170,8 +170,7 @@ H['account/delete'] = async (req, res, user) => {
 
 module.exports = async (req, res) => {
   try {
-    const route = [].concat(req.query.route || []).join('/'), h = H[route];
-    if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
+    const route = String(req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/\/+$/, ''), h = H[route];    if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
     if (typeof req.body === 'string') { try { req.body = JSON.parse(req.body); } catch (e) { req.body = {}; } }
     req.body = req.body || {};
     const out = await h(req, res, await me(req));
