@@ -68,18 +68,58 @@
   async function boot() {
     loader.hidden = false; loader.classList.add('on');
     const msgs = startMsgs(), t0 = Date.now();
-    let data; try { data = await api.getDashboard(D); } catch (e) { data = null; }
+    let data;
+    try {
+      data = await api.getDashboard(D);
+    } catch (e) {
+      console.error('[Strap dashboard] Data startup failed:', e);
+      data = null;
+    }
     await sleep(Math.max(0, LOAD_MIN - (Date.now() - t0)));
     clearInterval(msgs);
-    if (!data) { loaderMsg.textContent = 'We couldn’t load your dashboard. Refresh to try again.'; return; }
-    buildDash(data);
-    dash.hidden = false; document.body.classList.add('is-dash');
-    const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = '#0a0a0a';
-    window.scrollTo(0, 0);
-    await sleep(80);
-    dash.classList.add('go'); loader.classList.add('out'); runCounts();
-    await sleep(reduced() ? 0 : 850);
-    loader.hidden = true; loader.className = 'loader'; document.body.classList.remove('lock');
+    if (!data || typeof data !== 'object') {
+      showBootError('We couldn’t load your workspace. Check your connection and try again.');
+      return;
+    }
+    // Staff accounts may receive a deliberately limited data set. Keep dashboard
+    // rendering resilient when a role does not have every owner-only statistic.
+    data = {
+      revenue: 0, deltaPct: null, hourly: Array(12).fill(0), sold: 0,
+      orders: 0, customers: 0, stock: 0, products: 0, low: 0, ...data
+    };
+    if (!Array.isArray(data.hourly) || !data.hourly.length) data.hourly = Array(12).fill(0);
+    try {
+      buildDash(data);
+      dash.hidden = false; document.body.classList.add('is-dash');
+      const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = '#0a0a0a';
+      window.scrollTo(0, 0);
+      await sleep(80);
+      dash.classList.add('go'); loader.classList.add('out'); runCounts();
+      await sleep(reduced() ? 0 : 850);
+      loader.hidden = true; loader.className = 'loader'; document.body.classList.remove('lock');
+    } catch (e) {
+      console.error('[Strap dashboard] Workspace render failed:', e);
+      dash.replaceChildren();
+      showBootError('Your sign-in worked, but your workspace could not finish opening. Tap to retry.');
+    }
+  }
+  function showBootError(message) {
+    loaderMsg.textContent = message;
+    const bar = $('.ld-bar', loader);
+    if (bar) bar.hidden = true;
+    let retry = $('#loader-retry');
+    if (!retry) {
+      retry = document.createElement('button');
+      retry.id = 'loader-retry'; retry.type = 'button'; retry.className = 'ld-retry';
+      retry.textContent = 'Retry';
+      retry.addEventListener('click', () => {
+        retry.remove();
+        const bar = $('.ld-bar', loader); if (bar) bar.hidden = false;
+        boot();
+      });
+      loader.querySelector('.ld-in').appendChild(retry);
+    }
+    retry.hidden = false;
   }
 
   const TAB_ICONS = ['home', 'inbox', 'tag', 'menu'], TAB_NAMES = ['Home', 'Orders', 'Products', 'Menu'];
