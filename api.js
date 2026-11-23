@@ -58,7 +58,7 @@
     contact: (kind, message, email) => call('POST', 'contact', { kind, message, email }),
     signOut: async () => { await call('POST', 'auth/signout'); fresh(); },
     auth: {
-      async startSignup(email, password) { const r = await call('POST', 'auth/signup-start', { email, password }); if (r.ok) { sMail = email.trim().toLowerCase(); sPw = password; } return { ok: !!r.ok, msg: r.msg }; },
+      async startSignup(email, password) { const r = await call('POST', 'auth/signup-start', { email, password }); if (r.ok) { sMail = email.trim().toLowerCase(); sPw = password; } return { ok: !!r.ok, code: r.code, msg: r.msg }; },
       async sendReset(email) { rMail = email.trim().toLowerCase(); const r = await call('POST', 'auth/send-code', { email, type: 'forget-password' }); return { ok: !!r.ok, msg: r.msg }; },
       async sendCode(email) { const e = String(email).trim().toLowerCase(); if (e === sMail || e === lMail) return call('POST', 'auth/send-code', { email: e, type: 'email-verification' }); if (e === rMail) return call('POST', 'auth/send-code', { email: e, type: 'forget-password' }); return { ok: false, msg: 'This verification session expired. Please sign in again.' }; },
       async verifySignupCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== sMail) return { ok: false, msg: 'This signup session expired. Start again with your email.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: sPw }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
