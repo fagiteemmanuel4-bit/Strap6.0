@@ -278,6 +278,7 @@
       if(!result.ok){toast(result.msg||'Could not update cashier sales.');return;}
       salesSession.dataset.open=String(open);
       salesSession.querySelector('span').textContent=open?'Pause cashier sales':'Open cashier sales';
+      try{const state=JSON.parse(localStorage.getItem('strap.v1')||'{}');state.staffSalesOpen=open;if(open)state.closed=null;localStorage.setItem('strap.v1',JSON.stringify(state));}catch(e){}
       toast(open?'Cashier sales are now open.':'Cashier sales have been paused.');
     });
     if(STAFF && STAFF.role!=='Manager') { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
