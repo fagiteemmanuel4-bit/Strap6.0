@@ -18,7 +18,9 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    async createStaff(s) { await sleep(300); return { ok: true }; },
+    createStaff: s => StrapAPI.auth.createStaff(s),
+    listStaff: () => StrapAPI.auth.listStaff(),
+    removeStaff: id => StrapAPI.auth.removeStaff(id),
     async checkout() { await sleep(600); return { ok: false }; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
@@ -233,12 +235,21 @@ window.StrapFeatures = (() => {
   const mailFor = (name, dom) => { const p = name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean); let m; do m = `${p[0] || 'staff'}${p[1] ? '.' + p[1][0] : ''}${10 + Math.floor(Math.random() * 90)}@${dom}.com`; while (S.staff.some(x => x.email === m)); return m; };
   function staffFlow() { cover('Opening', () => { const o = ob(); ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
   function staffHome(o) {
-    o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
-      body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx" data-del="${x.id}" aria-label="Remove ${esc(x.name)}">${ic('trash', 20, 1.8)}</button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
-      foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
-    $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
-    const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
-    $$('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
+    const draw = () => {
+      o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
+        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx" data-del="${x.id}" aria-label="Remove ${esc(x.name)}">${ic('trash', 20, 1.8)}</button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
+        foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
+      $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
+      const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
+      $$('[data-del]', o.el).forEach(d => d.onclick = async () => {
+        if (!(await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true }))) return;
+        const r=await api.removeStaff(d.dataset.del);
+        if(!r.ok) return toast(r.msg||'Could not remove this staff member. Try again.');
+        S.staff=S.staff.filter(x=>x.id!==d.dataset.del); save(); staffHome(o);
+      });
+    };
+    draw();
+    api.listStaff().then(r => { if(r.ok && Array.isArray(r.staff)) { S.staff=r.staff; save(); draw(); } }).catch(()=>{});
   }
   function addStaff(o) {
     const A = { name: '', role: '', branch: null, pin: '', dom: slug(ctx.store.bizname || 'store'), email: '' }, fn = () => esc(A.name.split(' ')[0]);
@@ -279,8 +290,11 @@ window.StrapFeatures = (() => {
           if (!a || !d) return bad($('#e1', sh.body).parentNode); if (S.staff.some(x => x.email === `${a}@${d}.com`)) return toast('That email is taken'); A.dom = d; A.email = `${a}@${d}.com`; sh.close(); email(); });
       };
       $('[data-fin]', o.el).onclick = async () => {
-        const salt = Math.random().toString(36).slice(2), st = { id: 's' + Date.now().toString(36), name: A.name, role: A.role, branch: A.branch, email: A.email, salt, pin: await sha(salt + ':' + A.pin), at: Date.now() };
-        await api.createStaff({ ...st, pin: undefined }); S.staff.push(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
+        const b=$('[data-fin]',o.el); b.disabled=true;
+        const r=await api.createStaff({ name:A.name, role:A.role, branch:A.branch, email:A.email, pin:A.pin });
+        b.disabled=false;
+        if(!r.ok) { toast(r.msg||'Could not create the staff account.'); return; }
+        const st=r.staff; S.staff.unshift(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
         o.ok('Staff added', `${esc(st.name)} can now sign in as ${esc(st.role)}.`, 'Back to staff', home);
       };
     };
