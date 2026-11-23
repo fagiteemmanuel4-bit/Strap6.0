@@ -119,3 +119,7 @@ body.is-dash{background:var(--black)}
 .tab:focus-visible{outline:3px solid var(--lemon);outline-offset:-3px}
 @media(prefers-reduced-motion:reduce){.sl{stroke-dashoffset:0}.sa,.sd{opacity:1}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Settings legal footer */
+.st-legal{padding:22px 4px 12px;margin-top:18px;text-align:center;color:#85857e;font-size:11px;line-height:1.8}
+.st-legal a{color:var(--black);font-weight:600;text-decoration:underline;text-underline-offset:3px}

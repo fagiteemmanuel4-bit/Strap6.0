@@ -55,7 +55,7 @@
   const fresh = () => { active = false; clearTimeout(timer); wipe(); };
   window.StrapAPI = {
     call, upload, guard, fresh, flush: async () => { clearTimeout(timer); return push(); },
-    contact: (kind, message, email) => call('POST', 'contact', { kind, message, email }),
+    contact: (kind, message, email, name) => call('POST', 'contact', { kind, message, email, name }),
     signOut: async () => { await call('POST', 'auth/signout'); fresh(); },
     auth: {
       async checkEmail(email) { const r = await call('POST', 'auth/email-status', { email: String(email).trim().toLowerCase() }); return { ok: !!r.ok, code: r.code, msg: r.msg }; },
