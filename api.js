@@ -51,7 +51,7 @@
       return r.ok ? r.url : null;
     } catch (e) { return null; }
   }
-  let sMail = '', sPw = '', rMail = '';
+  let sMail = '', sPw = '', rMail = '', lMail = '', lPw = '';
   const fresh = () => { active = false; clearTimeout(timer); wipe(); };
   window.StrapAPI = {
     call, upload, guard, fresh, flush: async () => { clearTimeout(timer); return push(); },
@@ -60,10 +60,11 @@
     auth: {
       async startSignup(email, password) { const r = await call('POST', 'auth/signup-start', { email, password }); if (r.ok) { sMail = email.trim().toLowerCase(); sPw = password; } return { ok: !!r.ok, msg: r.msg }; },
       async sendReset(email) { rMail = email.trim().toLowerCase(); const r = await call('POST', 'auth/send-code', { email, type: 'forget-password' }); return { ok: !!r.ok, msg: r.msg }; },
-      async sendCode(email) { const e = String(email).trim().toLowerCase(); if (e === sMail) return call('POST', 'auth/send-code', { email: e, type: 'email-verification' }); if (e === rMail) return call('POST', 'auth/send-code', { email: e, type: 'forget-password' }); return { ok: true }; },
+      async sendCode(email) { const e = String(email).trim().toLowerCase(); if (e === sMail || e === lMail) return call('POST', 'auth/send-code', { email: e, type: 'email-verification' }); if (e === rMail) return call('POST', 'auth/send-code', { email: e, type: 'forget-password' }); return { ok: false, msg: 'This verification session expired. Please sign in again.' }; },
       async verifySignupCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== sMail) return { ok: false, msg: 'This signup session expired. Start again with your email.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: sPw }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
       async verifyCode(email, code) { const e = String(email).trim().toLowerCase(); if (e === rMail) { const r = await call('POST', 'auth/check-code', { email: e, code }); return { ok: !!r.ok, msg: r.msg }; } return { ok: false, msg: 'This verification session expired. Please request a new code.' }; },
-      async signIn(email, password) { const r = await call('POST', 'auth/signin', { email, password }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
+      async signIn(email, password) { const e = String(email).trim().toLowerCase(); const r = await call('POST', 'auth/signin', { email: e, password }); if (r.code === 'EMAIL_VERIFICATION_REQUIRED') { lMail = e; lPw = password; } if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, code: r.code, msg: r.msg }; },
+      async verifyLoginCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== lMail || !lPw) return { ok: false, msg: 'This sign-in verification session expired. Please sign in again.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: lPw }); if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, msg: r.msg }; },
       async resetPassword(email, code, password) { const r = await call('POST', 'auth/reset', { email, code, password }); return { ok: !!r.ok, msg: r.msg }; },
       async createAccount(data) { const { photo, password, ...d } = data; const r = await call('POST', 'auth/signup', { data: d }); return { ok: !!r.ok, msg: r.msg }; },
       async changePassword(current, next) { const r = await call('POST', 'auth/change-password', { current, next }); return { ok: !!r.ok, msg: r.msg }; },
