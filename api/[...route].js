@@ -118,10 +118,26 @@ async function me(req) {
   return u;
 }
 
-/* ---- optional extra emails (welcome + support) through Resend. Neon Auth itself sends the codes. ---- */
+/* FormSubmit handles optional welcome messages and support submissions. Neon Auth still sends security codes. */
+const formInbox = () => lower(E.FORMSUBMIT_EMAIL || E.SUPPORT_EMAIL || '');
 async function mail(to, subject, html) {
-  if (!E.RESEND_API_KEY || !E.MAIL_FROM) return false;
-  try { const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: 'Bearer ' + E.RESEND_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: E.MAIL_FROM, to, subject, html, reply_to: E.SUPPORT_EMAIL || undefined }) }); return r.ok; } catch (e) { return false; }
+  const inbox = formInbox();
+  if (!inbox || !emailRe.test(inbox) || !emailRe.test(lower(to))) return false;
+  const plain = String(html || '').replace(/<br\\s*\\/?\\s*>/gi, '\\n').replace(/<\\/(p|div|h[1-6])>/gi, '\\n').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const form = new URLSearchParams({ name: APP, email: lower(to), _subject: subject, message: plain.slice(0, 4000), _autoresponse: plain.slice(0, 4000), _template: 'table', _url: (E.SITE_URL || 'https://strap60.vercel.app') + '/dashboard.html' });
+  try {
+    const r = await fetch('https://formsubmit.co/' + encodeURIComponent(inbox), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'text/html' }, body: form.toString(), redirect: 'manual' });
+    return r.ok || (r.status >= 300 && r.status < 400);
+  } catch (e) { console.error('FormSubmit welcome email failed:', e); return false; }
+}
+async function formSubmitSupport(fields) {
+  const inbox = formInbox();
+  if (!inbox || !emailRe.test(inbox)) return false;
+  try {
+    const r = await fetch('https://formsubmit.co/ajax/' + encodeURIComponent(inbox), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ ...fields, _template: 'table', _subject: '[Strap Support] ' + fields.category }) });
+    const raw = await r.text(); let data = {}; try { data = JSON.parse(raw); } catch (e) {}
+    return r.ok && data.success !== false;
+  } catch (e) { console.error('FormSubmit support submission failed:', e); return false; }
 }
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
 
@@ -331,14 +347,21 @@ H['media'] = async (req, res, user) => {
   const r = (await q('insert into media(user_id,name,mime,data) values($1,$2,$3,$4) returning id', [user.id, String(name || '').slice(0, 120), type, buf]))[0];
   return [200, { ok: true, url: '/api/media?id=' + r.id }];
 };
-/* ---- support / contact form ---- */
+/* ---- support / contact form: save locally, then forward to the verified FormSubmit inbox ---- */
 H['contact'] = async (req, res, user) => {
-  const b = req.body || {}, email = lower(b.email || (user && user.email)), msg = String(b.message || '').trim().slice(0, 4000);
-  if (!emailRe.test(email) || msg.length < 3) return [400, { ok: false, msg: 'Add your email and a message.' }];
-  await q('insert into support_messages(user_id,email,kind,message) values($1,$2,$3,$4)', [user ? user.id : null, email, String(b.kind || 'support').slice(0, 30), msg]);
-  if (E.SUPPORT_EMAIL) await mail(E.SUPPORT_EMAIL, `[${b.kind || 'support'}] from ${email}`, wrap('New message', `<p><b>${esc(email)}</b></p><p>${esc(msg).replace(/\n/g, '<br>')}</p>`));
-  await mail(email, 'We got your message', wrap('Thanks for reaching out', `<p>${esc(APP)} support received your message and will reply soon.</p>`));
-  return [200, { ok: true }];
+  const b = req.body || {}, email = lower(b.email || (user && user.email));
+  const msg = String(b.message || '').trim().slice(0, 4000);
+  const category = String(b.kind || 'General support').trim().slice(0, 60);
+  const name = String(b.name || (user && user.name) || 'Strap user').trim().slice(0, 100);
+  if (!emailRe.test(email) || msg.length < 5) return [400, { ok: false, msg: 'Enter a valid email and a message of at least 5 characters.' }];
+  if (!formInbox()) return [503, { ok: false, msg: 'Support email is not configured yet. Please try again later.' }];
+  const wait = await actionBlocked(req, email, 'support');
+  if (wait) return [429, { ok: false, msg: 'You have sent a message recently. Please wait before sending another.' }];
+  await recordAction(req, email, 'support');
+  const sent = await formSubmitSupport({ name, email, category, message: msg, _replyto: email, _url: (E.SITE_URL || 'https://strap60.vercel.app') + '/support.html' });
+  if (!sent) return [502, { ok: false, msg: 'We could not send your message. Please try again shortly.' }];
+  await q('insert into support_messages(user_id,email,kind,message) values($1,$2,$3,$4)', [user ? user.id : null, email, category, msg]);
+  return [200, { ok: true, msg: 'Your message has been sent to Strap Support.' }];
 };
 /* ---- delete account ---- */
 H['account/delete'] = async (req, res, user) => {
