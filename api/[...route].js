@@ -81,28 +81,34 @@ async function recordLoginFailures(keys, email) {
 async function clearLoginFailures(email) {
   await q('delete from auth_login_limits where bucket_key=$1', [sha('strap-login-email:' + lower(email))]);
 }
-async function actionBlocked(req,email,action) {
+function actionKeys(req,email,action) {
   const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim();
-  const key=sha('strap-action:'+action+':'+lower(email)+':'+ip);
-  const row=(await q('select blocked_until from auth_action_limits where bucket_key=$1 and blocked_until>now()', [key]))[0];
+  return [{key:sha('strap-action-email:'+action+':'+lower(email)),account:true},
+    {key:sha('strap-action-ip:'+action+':'+ip),account:false}];
+}
+async function actionBlocked(req,email,action) {
+  const keys=actionKeys(req,email,action).map(x=>x.key);
+  const row=(await q('select blocked_until from auth_action_limits where bucket_key=any($1::text[]) and blocked_until>now() limit 1',[keys]))[0];
   return row && row.blocked_until;
 }
 async function recordAction(req,email,action) {
-  const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim();
-  const key=sha('strap-action:'+action+':'+lower(email)+':'+ip);
-  const rows=await q(`insert into auth_action_limits(bucket_key,attempt_count,window_started_at,blocked_until,lock_level,updated_at)
-    values($1,1,now(),now()+interval '30 seconds',0,now())
-    on conflict(bucket_key) do update set
-      attempt_count=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 1 else auth_action_limits.attempt_count+1 end,
-      window_started_at=case when auth_action_limits.window_started_at<now()-interval '24 hours' then now() else auth_action_limits.window_started_at end,
-      lock_level=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else least(6,auth_action_limits.lock_level+1) end,
-      blocked_until=now()+case least(6,case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else auth_action_limits.lock_level+1 end)
-        when 0 then interval '30 seconds' when 1 then interval '1 minute' when 2 then interval '5 minutes'
-        when 3 then interval '15 minutes' when 4 then interval '1 hour' when 5 then interval '6 hours' else interval '24 hours' end,
-      updated_at=now() returning lock_level`,[key]);
-  if (Number(rows[0].lock_level)>=6 && (action==='otp-send' || action==='otp-verify')) await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
+  const keys=actionKeys(req,email,action);
+  for(const item of keys) {
+    const rows=await q(`insert into auth_action_limits(bucket_key,attempt_count,window_started_at,blocked_until,lock_level,updated_at)
+      values($1,1,now(),now()+interval '30 seconds',0,now())
+      on conflict(bucket_key) do update set
+        attempt_count=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 1 else auth_action_limits.attempt_count+1 end,
+        window_started_at=case when auth_action_limits.window_started_at<now()-interval '24 hours' then now() else auth_action_limits.window_started_at end,
+        lock_level=case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else least(6,auth_action_limits.lock_level+1) end,
+        blocked_until=now()+case least(6,case when auth_action_limits.window_started_at<now()-interval '24 hours' then 0 else auth_action_limits.lock_level+1 end)
+          when 0 then interval '30 seconds' when 1 then interval '1 minute' when 2 then interval '5 minutes'
+          when 3 then interval '15 minutes' when 4 then interval '1 hour' when 5 then interval '6 hours' else interval '24 hours' end,
+        updated_at=now() returning lock_level`,[item.key]);
+    if(item.account && Number(rows[0].lock_level)>=6 && (action==='otp-send'||action==='otp-verify'))
+      await suspendEmail(email,'Repeated verification-code abuse triggered the security threshold.');
+  }
 }
-async function clearAction(req,email,action) { const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].trim(); const key=sha('strap-action:'+action+':'+lower(email)+':'+ip); await q('delete from auth_action_limits where bucket_key=$1',[key]); }
+async function clearAction(req,email,action) { const keys=actionKeys(req,email,action).map(x=>x.key); await q('delete from auth_action_limits where bucket_key=any($1::text[])',[keys]); }
 async function me(req) {
   const c = upCookie(req); if (!c) return null;
   const k = sha(c), hit = cache.get(k); if (hit && hit.t > Date.now()) { if (await accountSuspension(hit.u.email)) { cache.delete(k); return null; } return hit.u; }
