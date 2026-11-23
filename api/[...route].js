@@ -509,7 +509,8 @@ H['staff/create'] = async (req,res,user,staff) => {
   const stateRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], f1=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.f1'],{});
   const branches=Array.isArray(f1.branches)?f1.branches:[{id:'b0'}];
   const used=Number((await q('select count(*)::int as n from staff_accounts where owner_id=$1 and status=\'active\'',[ownerId]))[0].n||0);
-  const maxStaff=f1.plan==='premium'?50:3;
+  const savedPlan=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.plan'],{});
+  const maxStaff=f1.plan==='premium'||savedPlan.status==='active'?50:3;
   if(used>=maxStaff) return [403,{ok:false,code:'STAFF_LIMIT',msg:`Your current plan allows ${maxStaff} staff accounts.`}];
   const managerBranches=staff?staffAllowedBranches(staff,f1):branches;
   if(branchId&&!managerBranches.some(x=>String(x.id)===String(branchId))) return [400,{ok:false,msg:'Choose a valid branch for this staff member.'}];
