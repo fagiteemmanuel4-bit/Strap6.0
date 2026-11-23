@@ -89,14 +89,23 @@ H['health'] = async (req) => {
 H['auth/signup-start'] = async (req) => {
   const email = lower(req.body.email), password = String(req.body.password || '');
   if (!emailRe.test(email) || password.length < 8) return [400, { ok: false, msg: 'Check your email and password.' }];
-  let r = await na(req, 'POST', '/sign-up/email', { email, password, name: email.split('@')[0] });
+
+  // Check Neon Managed Auth directly. Never attempt a sign-in with the password
+  // supplied on the create-account screen to detect an existing identity.
+  const existing = await q('select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]);
+  if (existing.length) return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
+
+  const r = await na(req, 'POST', '/sign-up/email', { email, password, name: email.split('@')[0] });
   if (!r.ok) {
-    const s = await na(req, 'POST', '/sign-in/email', { email, password });
-    if (s.ok) return [409, { ok: false, msg: 'An account with this email already exists. Sign in instead.' }];
-    if (s.status === 403) { const resend = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return resend.ok ? [200, { ok: true }] : [resend.status === 429 ? 429 : 502, { ok: false, msg: 'Your account exists, but we could not send the verification code. ' + errMsg(resend) }]; } // unverified earlier signup: resend code
-    return [400, { ok: false, msg: /exist/i.test(errMsg(r)) ? 'An account with this email already exists. Sign in instead.' : errMsg(r) }];
+    // Covers a signup race: another request may have created the same email
+    // after the existence check but before Neon processed this request.
+    const appeared = await q('select 1 from neon_auth."user" where lower(email)=$1 limit 1', [email]).catch(() => []);
+    if (appeared.length || /already exists|user exists|email.*taken/i.test(errMsg(r))) {
+      return [409, { ok: false, code: 'ACCOUNT_EXISTS', msg: 'An account with this email already exists. Sign in with your password.' }];
+    }
+    return [r.status === 429 ? 429 : r.status >= 500 ? 502 : 400, { ok: false, msg: errMsg(r) }];
   }
-  // Do not send a second OTP here: Managed Auth already sends it during /sign-up/email.
+  // Managed Auth sends the initial verification code during /sign-up/email.
   return [200, { ok: true }];
 };
 H['auth/send-code'] = async (req) => {
@@ -133,7 +142,12 @@ H['auth/signin'] = async (req, res) => {
   const keys = loginLimitKeys(req, email);
   if (await loginIsBlocked(keys)) return [429, { ok: false, msg: 'Too many incorrect attempts. Please wait before trying again.' }];
   const r = await na(req, 'POST', '/sign-in/email', { email, password });
-  if (r.status === 403) { await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' }); return [403, { ok: false, msg: 'Your email is not verified. We sent a new code: tap Create account, use the same email and password, and enter it.' }]; }
+  if (r.status === 403) {
+    const resend = await na(req, 'POST', '/email-otp/send-verification-otp', { email, type: 'email-verification' });
+    return resend.ok
+      ? [403, { ok: false, code: 'EMAIL_VERIFICATION_REQUIRED', msg: 'Your email is not verified. We sent you a new 6-digit code.' }]
+      : [resend.status === 429 ? 429 : 502, { ok: false, msg: 'Your email needs verification, but we could not send a new code. ' + errMsg(resend) }];
+  }
   if (!r.ok || !r.cookies.length) {
     if (r.status === 401 || r.status === 400 || r.status === 403) await recordLoginFailures(keys);
     return [r.status === 429 ? 429 : 401, { ok: false, msg: r.status === 429 ? 'Too many attempts. Try again later.' : 'Email or password is incorrect.' }];
