@@ -233,7 +233,7 @@ window.StrapFeatures = (() => {
     let s = k.join(''); if (s.length > max) s = k[0].slice(0, max - (k.length - 1)) + k.slice(1).map(x => x[0]).join(''); return (s || 'mystore').slice(0, max);
   };
   const mailFor = (name, dom) => { const p = name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean); let m; do m = `${p[0] || 'staff'}${p[1] ? '.' + p[1][0] : ''}${10 + Math.floor(Math.random() * 90)}@${dom}.com`; while (S.staff.some(x => x.email === m)); return m; };
-  function staffFlow() { cover('Opening', () => { const o = ob(); ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
+  function staffFlow() { cover('Opening', () => { const o = ob(); if(ctx && ctx.staff && ctx.staff.role==='Manager') staffHome(o); else ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
   function staffHome(o) {
     const draw = () => {
       o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
@@ -252,7 +252,7 @@ window.StrapFeatures = (() => {
     api.listStaff().then(r => { if(r.ok && Array.isArray(r.staff)) { S.staff=r.staff; save(); draw(); } }).catch(()=>{});
   }
   function addStaff(o) {
-    const A = { name: '', role: '', branch: null, pin: '', dom: slug(ctx.store.bizname || 'store'), email: '' }, fn = () => esc(A.name.split(' ')[0]);
+    const A = { name: '', role: '', branch: ctx && ctx.staff && ctx.staff.branchId ? ctx.staff.branchId : null, pin: '', dom: slug(ctx.store.bizname || 'store'), email: '' }, fn = () => esc(A.name.split(' ')[0]);
     const home = () => staffHome(o);
     const privacy = () => { let agree = false;
       o.step({ t: 'Before you add staff', s: 'Staff can see parts of your business. Please confirm the privacy policy.', back: home,
