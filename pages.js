@@ -16,7 +16,7 @@ window.StrapPages = (() => {
     transfers: { t: 'Transfers', i: 'transfer', ill: 'transfers', h: 'Move stock between places', p: 'Transfer inventory between your shop, warehouse and other locations.', cta: 'Create transfer',
       fields: [['From', 'text', 'e.g. Warehouse'], ['To', 'text', 'e.g. Shop location'], ['Notes', 'text', 'Optional']] },
     gift: { t: 'Gift cards', i: 'gift', ill: 'gift', h: 'Give customers a QR gift card or discount pass', p: 'Create a receipt-style slip customers can show at checkout. Scan its QR code to apply the saved value or discount.', cta: 'Create gift card',
-      fields: [['Card type', 'select', '', [{ value: 'value', label: 'Gift card — Naira balance' }, { value: 'discount', label: 'Discount pass — percentage' }]], ['Amount', 'number', 'Enter amount'], ['Customer email', 'email', 'Optional']] },
+      fields: [['Card type', 'select', '', [{ value: 'value', label: 'Gift card — Naira balance' }, { value: 'discount', label: 'Discount pass — percentage' }]], ['Amount', 'number', 'Enter amount'], ['Customer email', 'email', 'Optional'], ['Expires on', 'date', 'Optional']] },
     customers: { t: 'Customers', i: 'users', ill: 'customers', h: 'No customers yet', p: 'Add customers to keep track of who buys from you.', cta: 'Add customer',
       fields: [['Full name', 'text', 'e.g. Ada Okafor'], ['Email', 'email', 'Optional'], ['Phone', 'tel', 'Optional']] }
   };
@@ -59,7 +59,7 @@ window.StrapPages = (() => {
         StrapStore.addRecord(key, { name, email, phone });
       } else if (id === 'purchase') StrapStore.addRecord(key, { supplier: v[0], expectedDate: v[1], notes: v[2] });
       else if (id === 'transfers') StrapStore.addRecord(key, { from: v[0], to: v[1], notes: v[2], status: 'draft' });
-      else if (id === 'gift') { const type = String(v[0] || '').trim().toLowerCase(); const amount = Number(v[1]); if (!['value', 'discount'].includes(type)) return ctx.toast('Choose a gift card or discount pass'); if (!Number.isFinite(amount) || !(amount > 0) || (type === 'discount' && amount > 100)) return ctx.toast(type === 'discount' ? 'Discount must be between 1% and 100%' : 'Enter a gift-card value above ₦0'); StrapStore.addRecord(key, { type, value: amount, balance: type === 'value' ? amount : 0, email: v[2], code: genCode(), status: 'active' }); }
+      else if (id === 'gift') { const type = String(v[0] || '').trim().toLowerCase(); const amount = Number(v[1]); if (!['value', 'discount'].includes(type)) return ctx.toast('Choose a gift card or discount pass'); if (!Number.isFinite(amount) || !(amount > 0) || (type === 'discount' && amount > 100)) return ctx.toast(type === 'discount' ? 'Discount must be between 1% and 100%' : 'Enter a gift-card value above ₦0'); if (v[3] && v[3] < StrapStore.dayKey()) return ctx.toast('Expiry date must be today or later'); StrapStore.addRecord(key, { type, value: amount, balance: type === 'value' ? amount : 0, email: v[2], expiresOn: v[3] || '', code: genCode(), status: 'active', redemptions: [] }); }
       draw(); ctx.toast('Saved to your store');
     });
     function draw() {
@@ -69,7 +69,7 @@ window.StrapPages = (() => {
           const f = id === 'customers' ? { t: v.name, s: [v.phone, v.email].filter(Boolean).join(' · ') }
             : id === 'purchase' ? { t: v.supplier, s: [v.expectedDate, v.notes, v.status].filter(Boolean).join(' · ') }
             : id === 'transfers' ? { t: `${v.from} → ${v.to}`, s: [v.status, v.notes].filter(Boolean).join(' · ') }
-            : { t: v.type === 'discount' ? `${v.value}% discount pass` : `${ctxRef.money(v.balance ?? v.value ?? 0)} gift card`, s: [v.code, v.email, v.status, v.type === 'value' ? `Issued ${ctxRef.money(v.value || 0)}` : 'QR receipt'].filter(Boolean).join(' · ') };
+            : { t: v.type === 'discount' ? `${v.value}% discount pass` : `${ctxRef.money(v.balance ?? v.value ?? 0)} gift card`, s: [v.code, v.email, v.expiresOn ? `Expires ${v.expiresOn}` : '', v.status, v.type === 'value' ? `Issued ${ctxRef.money(v.value || 0)}` : 'QR receipt'].filter(Boolean).join(' · ') };
           return `<li class="pg-row"><span class="pg-ico">${ic(c.i, 22, 1.8)}</span><div><b>${esc(f.t || '')}</b>${f.s ? `<small>${esc(f.s)}</small>` : ''}</div>${id === 'gift' ? `<button type="button" class="gc-view" data-view="${esc(v.id)}">View slip</button>` : ''}<button type="button" class="pg-x" data-del="${esc(v.id || i)}" aria-label="Remove">${ic('trash', 20, 1.8)}</button></li>`;
         }).join('')}</ul>`
           : empty(c.ill, c.h, c.p, cta));
@@ -100,7 +100,7 @@ window.StrapPages = (() => {
       '<p class="gc-hint">Tap the card to flip it and view the QR code side.</p><div class="gc-terms"><h4>Card information</h4><ul>' +
       '<li>Use only at the store that issued this card.</li><li>' + (discount ? 'This discount pass is single-use and applies to one purchase.' : 'Any unused balance remains available until it is spent.') + '</li>' +
       '<li>Keep the code private. Anyone with the code may redeem it.</li></ul></div>' +
-      '<button type="button" class="gc-download" data-gc-download>Download A4 PDF</button><div class="gc-slip-actions"><button type="button" data-gc-done>Done</button></div></section>';
+      '<button type="button" class="gc-download" data-gc-download>Download</button><div class="gc-slip-actions"><button type="button" data-gc-done>Done</button></div></section>';
     document.body.appendChild(layer); document.body.classList.add('pm-open');
     const qr = $('#gc-slip-qr', layer);
     if (window.QRCode) new QRCode(qr, { text: 'STRAPGC|' + card.code, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.H });
@@ -113,7 +113,7 @@ window.StrapPages = (() => {
       const btn = e.target.closest('[data-gc-download]'); if (!btn) return;
       if (!window.jspdf || !window.jspdf.jsPDF) return ctx.toast('PDF service did not load. Refresh Strap and try again.');
       if (!qr.querySelector('canvas') && !qr.querySelector('img')) return ctx.toast('The gift-card QR code is not ready yet. Try again.');
-      btn.disabled = true; btn.textContent = 'Preparing PDF…';
+      btn.disabled = true; btn.textContent = 'Preparing…';
       try {
         const pdf = await buildGiftCardPdf(card, ctx, qr, storeName, amount, discount);
         pdf.save('strap-gift-card-' + String(card.code || 'card').replace(/[^a-z0-9-]/gi, '-') + '.pdf');
@@ -121,7 +121,7 @@ window.StrapPages = (() => {
       } catch (err) {
         console.error('Gift card PDF generation failed:', err);
         ctx.toast('Could not create a secured PDF. Please try again.');
-      } finally { btn.disabled = false; btn.textContent = 'Download A4 PDF'; }
+      } finally { btn.disabled = false; btn.textContent = 'Download'; }
     });
   }
 
