@@ -133,6 +133,13 @@ window.StrapPages = (() => {
     rr(fc,0,0,W,H,42); fc.clip(); fc.fillStyle='#efefe9'; fc.fillRect(0,0,W,H);
     let seed=29; const rand=()=>((seed=(seed*9301+49297)%233280)/233280);
     for(let i=0;i<4500;i++){fc.fillStyle='rgba(50,50,42,'+(rand()*.075).toFixed(3)+')';fc.fillRect(rand()*W,rand()*H,2,2);}
+    // Subtle dot-matrix STRAP watermark, matching the on-screen card preview.
+    const mark=document.createElement('canvas');mark.width=W;mark.height=H;
+    const mc=mark.getContext('2d');mc.fillStyle='rgba(230,245,58,.62)';
+    for(let y=0;y<H;y+=10)for(let x=0;x<W;x+=10){mc.beginPath();mc.arc(x+2,y+2,2.1,0,Math.PI*2);mc.fill();}
+    mc.globalCompositeOperation='destination-in';mc.fillStyle='#fff';
+    mc.font='900 176px Sora,Arial,sans-serif';mc.textAlign='center';mc.textBaseline='middle';mc.fillText('STRAP',W*.5,H*.49);
+    fc.drawImage(mark,0,0);
     fc.fillStyle=lime;fc.beginPath();fc.arc(W*.91,H*.88,W*.23,0,Math.PI*2);fc.fill();
     fc.strokeStyle=ink;fc.lineWidth=7;fc.beginPath();fc.arc(W*.91,H*.88,W*.275,0,Math.PI*2);fc.stroke();
     fc.fillStyle=ink;fc.font='800 92px Sora,Arial,sans-serif';fc.textAlign='left';fc.fillText(amount,61,140,850);
