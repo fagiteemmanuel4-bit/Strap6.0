@@ -701,7 +701,7 @@ H['sales/session'] = async (req,res,user,staff) => {
 
 /* Gift card redemption: lock the owner's blob row so simultaneous checkouts cannot spend the same balance. */
 H['gift/redeem'] = async (req, res, user, staff) => {
-  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
+  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];\n  if(staff && !await premiumActive(staff.owner_id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
   if (!user && !(staff && staff.role === 'Cashier')) return [403, { ok:false, msg:'Only the store owner or a cashier can redeem gift cards.' }];
   const ownerId = staff ? staff.owner_id : user.id;
   if (staff) {
@@ -837,9 +837,11 @@ H['data'] = async (req, res, user, staff) => {
         return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales, gift cards and collections require Strap Premium.'}];
       const nextF1=parseStored(b['ls:strap.f1'],{}), oldF1=parseStored(oldBlob['ls:strap.f1'],{});
       if(count(nextF1.mcp)>count(oldF1.mcp)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP requires Strap Premium.'}];
-      let products=0;
-      for(const [key,value] of Object.entries(b)) if(key.startsWith('ls:strap.f1.items.')) products+=count(parseStored(value,[]));
-      if(products>30) return [403,{ok:false,code:'PRODUCT_LIMIT',msg:'The free plan allows up to 30 products. Upgrade to Premium for unlimited products.'}];
+      const collectProducts=(blob)=>{const out=[];for(const [key,value] of Object.entries(blob||{}))if(key.startsWith('ls:strap.f1.items.'))out.push(...(Array.isArray(parseStored(value,[]))?parseStored(value,[]):[]));return out;};
+      const oldProducts=collectProducts(oldBlob), nextProducts=collectProducts(b), oldIds=new Set(oldProducts.map(p=>String(p&&p.id||'')));
+      const addedProducts=nextProducts.filter(p=>p&&!oldIds.has(String(p.id||'')));
+      if((oldProducts.length<=30&&nextProducts.length>30)||(oldProducts.length>30&&addedProducts.length>0))
+        return [403,{ok:false,code:'PRODUCT_LIMIT',msg:'The free plan allows up to 30 products. Existing products are preserved; upgrade to Premium to add more.'}];
     }
     const clean=await safeOwnerBlob(ownerId,b);
     const client=await pool.connect();
