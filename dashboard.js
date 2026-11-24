@@ -44,9 +44,25 @@
   const svg = (k, s = 24, w = 1.9) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const initials = n => (n.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('') || 'S').toUpperCase();
+  // Compact currency display for dashboards, roll-ups, balances, sales and gift cards.
+  // This only changes presentation; stored values and calculations remain full precision.
   const money = n => {
-    try { return new Intl.NumberFormat('en', { style: 'currency', currency: D.currency || 'NGN', maximumFractionDigits: 0, currencyDisplay: 'narrowSymbol' }).format(n); }
-    catch (e) { return Math.round(n).toLocaleString('en'); }
+    const value = Number(n);
+    const amount = Number.isFinite(value) ? value : 0;
+    const absolute = Math.abs(amount);
+    const divisor = absolute >= 999950 ? 1000000 : absolute >= 1000 ? 1000 : 1;
+    const suffix = divisor === 1000000 ? 'M' : divisor === 1000 ? 'K' : '';
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: D.currency || 'NGN',
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 0,
+        currencyDisplay: 'narrowSymbol'
+      }).format(amount / divisor) + suffix;
+    } catch (e) {
+      return (amount / divisor).toLocaleString('en', { maximumFractionDigits: 2 }) + suffix;
+    }
   };
   const num = n => Math.round(n).toLocaleString('en');
 
