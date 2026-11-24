@@ -73,6 +73,7 @@
       async listStaff() { return call('GET', 'staff/list'); },
       async createStaff(data) { return call('POST', 'staff/create', data); },
       async removeStaff(id) { return call('POST', 'staff/remove', { id }); },
+      async setStaffShift(id, shift) { return call('POST', 'staff/shift', { id, shift }); },
       async signIn(email, password) { const e = String(email).trim().toLowerCase(); const r = await call('POST', 'auth/signin', { email: e, password }); if (r.code === 'EMAIL_VERIFICATION_REQUIRED') { lMail = e; lPw = password; } if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, code: r.code, msg: r.msg }; },
       async verifyLoginCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== lMail || !lPw) return { ok: false, msg: 'This sign-in verification session expired. Please sign in again.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: lPw }); if (r.ok) { lMail = ''; lPw = ''; fresh(); } return { ok: !!r.ok, msg: r.msg }; },
       async resetPassword(email, code, password) { const r = await call('POST', 'auth/reset', { email, code, password }); return { ok: !!r.ok, msg: r.msg }; },
