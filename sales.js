@@ -24,7 +24,7 @@ window.StrapSales = (() => {
     const giftDiscount = () => { if (!appliedGift) return 0; const subtotal = cartSubtotal(); return appliedGift.type === 'discount' ? Math.min(subtotal, subtotal * Math.min(100, +appliedGift.value || 0) / 100) : Math.min(subtotal, Math.max(0, +(appliedGift.balance ?? appliedGift.value) || 0)); };
     const cartTotal = () => Math.max(0, Math.round((cartSubtotal() - giftDiscount()) * 100) / 100);
     function findGiftCard(code) { const raw = String(code || '').trim().replace(/^STRAPGC\|/i, '').replace(/^STRAPGC:/i, '').trim().toUpperCase(); return S.records('gift').find(g => String(g.code || '').toUpperCase() === raw) || null; }
-    function applyGiftCode(code) { const card = findGiftCard(code); if (!card) return { ok: false, message: 'No gift card matches that QR or code.' }; if (['redeemed','revoked','expired'].includes(String(card.status || '').toLowerCase())) return { ok: false, message: 'This gift card has already been used or is no longer active.' }; const type = card.type || 'value'; const balance = type === 'discount' ? 0 : +(card.balance ?? card.value ?? 0); if (type === 'value' && balance <= 0) return { ok: false, message: 'This gift card has no remaining balance.' }; appliedGift = { id: card.id, code: card.code, type, value: +card.value || 0, balance }; if (cartSheet) drawCart(); else drawBar(); return { ok: true, message: type === 'discount' ? `${card.value}% discount applied` : `Gift balance of ${money(balance)} applied` }; }
+    function applyGiftCode(code) { const card = findGiftCard(code); const valid = GiftRules.validate(card, S.dayKey()); if (!valid.ok) return { ok: false, message: valid.message }; appliedGift = { id: card.id, code: card.code, type: valid.type, value: valid.value, balance: valid.balance }; if (cartSheet) drawCart(); else drawBar(); return { ok: true, message: valid.type === 'discount' ? `${valid.value}% discount applied` : `Gift balance of ${money(valid.balance)} applied` }; }
     const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
     const lineOf = id => cart.find(l => l.id === id);
     const prod = id => items().find(p => p.id === id);
@@ -181,12 +181,13 @@ window.StrapSales = (() => {
     }
     function redrawAll() { drawList(); drawBar(); drawCounts(); updateScn(); }
 
+    let completing = false, pendingSaleId = null;
     async function complete() {
-      if (!cart.length) return;
-      const subtotal = cartSubtotal(), discount = giftDiscount(), total = cartTotal(), giftCard = appliedGift ? { ...appliedGift } : null, credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
-      let deposit = 0;
+      if (!cart.length || completing) return;
+      const subtotal = cartSubtotal(), giftCard = appliedGift ? { ...appliedGift } : null, credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
+      let discount = giftDiscount(), total = cartTotal(), deposit = 0;
+      const bad = m => { fx('err'); if (er) er.textContent = m; };
       if (credit) {
-        const bad = m => { fx('err'); if (er) er.textContent = m; };
         if (!draft.name.trim()) return bad('Enter the customer’s name.');
         if (draft.phone.replace(/\D/g, '').length < 7) return bad('Enter a phone number so you can contact them.');
         if (draft.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(draft.email.trim())) return bad('That email doesn’t look right.');
@@ -195,24 +196,45 @@ window.StrapSales = (() => {
         deposit = Math.max(0, +draft.paid || 0);
         if (deposit >= total) return bad('If they’ve paid in full, choose Cash, Card or Transfer instead.');
       }
-      const btn = $('[data-done]', cartSheet.body); btn.disabled = true;
-      const sale = {
-        id: 'sale' + Date.now(), no: S.nextNo(), ts: Date.now(), lines: cart.map(l => ({ ...l })), subtotal, discount, total, giftCard: giftCard ? { id: giftCard.id, code: giftCard.code, type: giftCard.type, applied: discount } : null, method: draft.method,
-        cashier: ctx.store.name || '', customer: credit ? { name: draft.name.trim(), phone: draft.phone.trim(), email: draft.email.trim() } : null,
-        paidNow: credit ? deposit : total, due: credit ? draft.due : ''
-      };
-      // stock comes off as soon as the sale is recorded
-      sale.lines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
-      S.addSale(sale);
-      if (giftCard) { const stored = S.records('gift').find(g => g.id === giftCard.id); if (stored) { if (giftCard.type === 'discount') stored.status = 'redeemed'; else { stored.balance = Math.max(0, +(stored.balance ?? stored.value ?? 0) - discount); stored.status = stored.balance > 0 ? 'active' : 'redeemed'; } stored.lastRedeemedAt = Date.now(); stored.lastSaleId = sale.id; S.save(); } }
-      if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
-      if (sale.discount > 0) { /* Gift value/discount is recorded on the sale; only the remaining amount is collected from the selected payment method. */ }
-      if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
-      else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
-      const synced = await StrapAPI.flush();
-      if (!synced || !synced.ok) ctx.toast('Sale recorded on this device. Cloud sync will retry when your connection is available.');
-      cart = []; appliedGift = null; draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' };
-      cartSheet.close(); redrawAll(); fx('ok'); showDone(sale);
+      const btn = $('[data-done]', cartSheet.body);
+      completing = true; if (btn) btn.disabled = true;
+      if (!pendingSaleId) pendingSaleId = 'sale' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+      try {
+        if (giftCard) {
+          const redemption = await StrapAPI.call('POST', 'gift/redeem', { cardId: giftCard.id, code: giftCard.code, saleId: pendingSaleId, subtotal });
+          if (!redemption || !redemption.ok) {
+            bad(redemption && redemption.msg || 'Gift card could not be redeemed. Nothing was charged.');
+            if (redemption && ['NOT_FOUND','EXPIRED','INACTIVE','EMPTY','INVALID_CARD'].includes(redemption.code)) pendingSaleId = null;
+            return;
+          }
+          discount = Number(redemption.discount) || 0;
+          total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+          const stored = S.records('gift').find(g => String(g.id) === String(giftCard.id));
+          if (stored && redemption.card) Object.assign(stored, redemption.card);
+          S.save();
+        }
+        const sale = {
+          id: pendingSaleId, no: S.nextNo(), ts: Date.now(), lines: cart.map(l => ({ ...l })), subtotal, discount, total,
+          giftCard: giftCard ? { id: giftCard.id, code: giftCard.code, type: giftCard.type, applied: discount } : null, method: draft.method,
+          cashier: ctx.store.name || '', customer: credit ? { name: draft.name.trim(), phone: draft.phone.trim(), email: draft.email.trim() } : null,
+          paidNow: credit ? deposit : total, due: credit ? draft.due : ''
+        };
+        sale.lines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
+        S.addSale(sale);
+        if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
+        if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
+        else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
+        const synced = await StrapAPI.flush();
+        if (!synced || !synced.ok) ctx.toast('Sale recorded on this device. Cloud sync will retry when your connection is available.');
+        cart = []; appliedGift = null; draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' };
+        pendingSaleId = null; cartSheet.close(); redrawAll(); fx('ok'); showDone(sale);
+      } catch (error) {
+        console.error('Sale completion failed:', error);
+        bad('Sale could not be completed. Retry safely; the same gift-card redemption will not be deducted twice.');
+      } finally {
+        completing = false;
+        if (btn && btn.isConnected) btn.disabled = false;
+      }
     }
 
     function showDone(sale) {
