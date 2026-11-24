@@ -1277,6 +1277,9 @@ html[data-theme=dark] .dd-sheet{filter:invert(.92) hue-rotate(180deg)}
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../api.js"></script>
+<script>/* Hydrate the authenticated staff workspace and enable real backend sync before the sales modules load. */
+if (window.StrapAPI && typeof StrapAPI.guard === "function") StrapAPI.guard();
+</script>
 <script>
 /* ===== connection stand-in (the real api.js talks to your server) =====
    Only here so this file runs on its own. When you connect your real api.js, delete this block.
@@ -2265,7 +2268,8 @@ window.StrapSales = (() => {
     //   closed = nobody can sell until the admin opens sales (default)   open = selling is on until the admin closes it
     //   auto   = opens at `from` and closes at `to` by itself, every day
     // Swap this one function for a call to your server so every cashier on every device sees the same thing.
-    const getShift = () => { try { return Object.assign({ mode: 'closed', from: '', to: '' }, JSON.parse(localStorage.getItem('strap.shift') || '{}')); } catch (e) { return { mode: 'closed', from: '', to: '' }; } };
+    let serverSalesOpen = (() => { try { return JSON.parse(localStorage.getItem('strap.v1') || '{}').staffSalesOpen === true; } catch (e) { return false; } })();
+    const getShift = () => ({ mode: serverSalesOpen ? 'open' : 'closed', from: '', to: '' });
     const mins = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
     const t12 = m => { const h = Math.floor(m / 60); return `${((h + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
     function shiftNow() {
@@ -2284,8 +2288,22 @@ window.StrapSales = (() => {
       } else ctx.toast('Sales is open. You can start selling');
       render();
     }
-    function tick() {
+    let shiftPoll = 0, shiftFetchBusy = false;
+    async function tick() {
       if (!root.isConnected) return clearInterval(tick.id);
+      // The backend is authoritative: refresh its per-cashier opening state every 15 seconds,
+      // so a cashier already signed in sees an owner opening/closing sales without re-login.
+      if (++shiftPoll % 15 === 0 && !shiftFetchBusy) {
+        shiftFetchBusy = true;
+        try {
+          const remote = await StrapAPI.call('GET', 'data');
+          if (remote && remote.ok && remote.staff && remote.blob && remote.blob['ls:strap.v1']) {
+            const remoteState = JSON.parse(remote.blob['ls:strap.v1'] || '{}');
+            serverSalesOpen = remoteState.staffSalesOpen === true;
+          }
+        } catch (e) { console.warn('[Strap cashier] Could not refresh sales access:', e); }
+        finally { shiftFetchBusy = false; }
+      }
       const was = shift.open; shift = shiftNow();
       if (shift.open !== was) onShiftChange(was);
       else if (!shift.open && view === 'sales') { const p = $('#sx-lk-p', root); if (p) p.textContent = lockText(); }
@@ -2751,13 +2769,16 @@ window.StrapSales = (() => {
   const LOGIN_URL = 'index.html';
   // [HOOK 1] your products. Replace this empty list with the real ones from your server.
   // Each product looks like:
-  const PRODUCTS = []; // e.g. { id:'p1', title:'Ankara Tote Bag', price:9800, qty:12, tracked:true, status:'active', sku:'', barcode:'' }
+  const F1 = (() => { try { return JSON.parse(localStorage.getItem('strap.f1') || '{}'); } catch (e) { return {}; } })();
+  const PRODUCT_BRANCH = String(F1.active || (F1.branches && F1.branches[0] && F1.branches[0].id) || 'b0');
+  const PRODUCT_KEY = 'strap.f1.items.' + PRODUCT_BRANCH;
+  const PRODUCTS = (() => { try { const rows = JSON.parse(localStorage.getItem(PRODUCT_KEY) || '[]'); return Array.isArray(rows) ? rows : []; } catch (e) { return []; } })();
   // The sales screen asks this small object for the product list and to update stock after a sale.
   const subs = [];
   const products = {
     items: () => PRODUCTS,
     openAdd: () => {},
-    setQty(id, qty) { const p = PRODUCTS.find(x => x.id === id); if (p) { p.qty = Math.max(0, qty); subs.forEach(f => { try { f(); } catch (e) {} }); } return p; },
+    setQty(id, qty) { const p = PRODUCTS.find(x => x.id === id); if (p) { p.qty = Math.max(0, qty); try { localStorage.setItem(PRODUCT_KEY, JSON.stringify(PRODUCTS)); } catch (e) {} subs.forEach(f => { try { f(); } catch (e) {} }); } return p; },
     onChange: fn => subs.push(fn)
   };
   // [HOOK 2] the logged-in cashier and the business. The email shows above Log out in the sidebar.
