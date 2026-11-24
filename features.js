@@ -18,8 +18,6 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    createStaff: s => StrapAPI.auth.createStaff(s),
-    setStaffShift: (id, shift) => StrapAPI.auth.setStaffShift(id, shift),
     async checkout() { await sleep(600); return { ok: false }; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
@@ -619,7 +617,8 @@ window.StrapFeatures = (() => {
   }
   function bind(prod) { if (prod && prod.onChange) prod.onChange(() => setItems(prod.items())); }
 
-  const FLOWS = { staff: staffFlow, branchsw: branchFlow, branches: branchFlow };
+  // Staff management is paused while the feature is rebuilt.
+  const FLOWS = { branchsw: branchFlow, branches: branchFlow };
   function open(key) {
     if (key === 'premium' && S.plan !== 'premium') { cover('Opening secure checkout', async () => { location.href = 'index.html?subscribe=1'; await sleep(4000); }); return true; }
     if (FLOWS[key]) { FLOWS[key](); return true; }
