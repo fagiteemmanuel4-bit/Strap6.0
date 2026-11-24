@@ -237,7 +237,7 @@ window.StrapFeatures = (() => {
   function staffHome(o) {
     const draw = () => {
       o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
-        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro staff-row"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx" data-staff-menu="${x.id}" aria-label="More options for ${esc(x.name)}">${ic('more', 20, 2)}</button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
+        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro staff-row"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx staff-more" data-staff-menu="${x.id}" aria-label="More options for ${esc(x.name)}" title="Staff options"><span aria-hidden="true">⋯</span></button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
         foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
       $('[data-staff-menu]', o.el).forEach(btn => btn.onclick = async () => {
         const person=S.staff.find(x=>x.id===btn.dataset.staffMenu); if(!person)return;
