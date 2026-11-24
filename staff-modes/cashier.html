@@ -1276,11 +1276,12 @@ html[data-theme=dark] .dd-sheet{filter:invert(.92) hue-rotate(180deg)}
   <section class="dsheet"><div class="pane" data-id="new-sale" id="sales-root"></div></section>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="../api.js"></script>
 <script>
 /* ===== connection stand-in (the real api.js talks to your server) =====
    Only here so this file runs on its own. When you connect your real api.js, delete this block.
    The email code for the activity PIN accepts 123456 in this stand-in. */
-window.StrapAPI = {
+if (!window.StrapAPI) window.StrapAPI = {
   upload: async () => null,
   signOut: async () => ({ ok: true }),
   auth: {
@@ -2760,14 +2761,23 @@ window.StrapSales = (() => {
     onChange: fn => subs.push(fn)
   };
   // [HOOK 2] the logged-in cashier and the business. The email shows above Log out in the sidebar.
-  const store = { name: 'Chidi Eze', email: 'chidi@amakafashion.com', bizname: 'Amaka Fashion House', currency: 'NGN' };
+  let store = { name: 'Staff', email: '', bizname: 'My Store', currency: 'NGN' };
   const toast = msg => { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.id); toast.id = setTimeout(() => t.classList.remove('on'), 2600); };
   const money = n => { try { return new Intl.NumberFormat('en', { style: 'currency', currency: store.currency, maximumFractionDigits: 0, currencyDisplay: 'narrowSymbol' }).format(n); } catch (e) { return Math.round(n).toLocaleString('en'); } };
   // Everything the sales screen needs from the app around it.
   // signOut runs when the cashier confirms Log out: tell your server, then go to the login page.
-  const ctx = { toast, esc: StrapUI.esc, money, cur: store.currency, store, go: () => {}, products: () => products, signOut: async () => { try { await StrapAPI.signOut(); } catch (e) {} location.href = LOGIN_URL; } };
-  // Start the screen. It then locks and unlocks itself from the admin's open / close setting.
-  StrapSales.mount(document.getElementById('sales-root'), ctx);
+  const ctx = { toast, esc: StrapUI.esc, money, cur: store.currency, store, go: () => {}, products: () => products, signOut: async () => { try { await StrapAPI.call('POST', 'staff/signout'); } finally { try { localStorage.removeItem('staff.session'); sessionStorage.removeItem('staff.session'); } catch(e) {} location.replace(LOGIN_URL); } } };
+  // Load the authenticated staff identity and the owning business before rendering the sidebar.
+  (async () => {
+    try {
+      const r = await StrapAPI.call('GET', 'data');
+      if (!r || !r.ok || !r.staff) { location.replace(LOGIN_URL); return; }
+      store.name = r.staff.name || 'Staff'; store.email = r.staff.email || '';
+      store.bizname = r.staff.bizname || 'My Store'; store.currency = r.staff.currency || 'NGN';
+      ctx.cur = store.currency;
+      StrapSales.mount(document.getElementById('sales-root'), ctx);
+    } catch (e) { toast('Could not load your staff account. Please sign in again.'); }
+  })();
 })();
 </script>
 </body>
