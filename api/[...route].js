@@ -1,6 +1,7 @@
 /* Strap backend (one Vercel function). Neon Auth handles accounts, passwords and the emailed codes.
    Neon Postgres stores app data + images. Only the "pg" package is needed. */
 const { Pool } = require('pg');
+const GiftRules = require('../gift-card-rules');
 const crypto = require('crypto');
 const E = process.env;
 const pool = global.__sp || (global.__sp = new Pool({ connectionString: E.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } }));
@@ -642,6 +643,53 @@ H['sales/session'] = async (req,res,user,staff) => {
     blob['ls:strap.v1']=JSON.stringify(state);await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
   }
   return [200,{ok:true,open:state.staffSalesOpen===true,schedule:state.staffSalesSchedule||{enabled:false,open:'08:00',close:'20:00',timeZone:'Africa/Lagos'}}];
+};
+
+
+/* Gift card redemption: lock the owner's blob row so simultaneous checkouts cannot spend the same balance. */
+H['gift/redeem'] = async (req, res, user, staff) => {
+  if (!user && !(staff && staff.role === 'Cashier')) return [403, { ok:false, msg:'Only the store owner or a cashier can redeem gift cards.' }];
+  const ownerId = staff ? staff.owner_id : user.id;
+  if (staff) {
+    const row = (await q('select blob from user_data where user_id=$1',[ownerId]))[0];
+    const state = parseStored(row && row.blob && row.blob['ls:strap.v1'], {});
+    if (!currentStaffSalesOpen(state, staff)) return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Your sales session is closed.'}];
+  }
+  const body=req.body||{}, cardId=String(body.cardId||''), code=String(body.code||'').trim().toUpperCase();
+  const saleId=String(body.saleId||'').trim(), subtotal=Number(body.subtotal);
+  if (!cardId || !code || !saleId || !Number.isFinite(subtotal) || subtotal<=0) return [400,{ok:false,code:'INVALID_REQUEST',msg:'The gift-card redemption details are incomplete.'}];
+  const client=await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const locked=await client.query('select blob from user_data where user_id=$1 for update',[ownerId]);
+    if (!locked.rows.length) { await client.query('ROLLBACK'); return [404,{ok:false,code:'STORE_NOT_FOUND',msg:'Store data could not be found.'}]; }
+    const blob=locked.rows[0].blob||{}, state=parseStored(blob['ls:strap.v1'],{}), gifts=Array.isArray(state.gift)?state.gift:[];
+    const card=gifts.find(g=>String(g.id||'')===cardId && String(g.code||'').toUpperCase()===code);
+    if (!card) { await client.query('ROLLBACK'); return [404,{ok:false,code:'NOT_FOUND',msg:'This gift card does not belong to this store.'}]; }
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const today=parts.find(x=>x.type==='year').value+'-'+parts.find(x=>x.type==='month').value+'-'+parts.find(x=>x.type==='day').value;
+    const result=GiftRules.redeem(card,subtotal,saleId,today,Date.now());
+    if (!result.ok) {
+      if (result.code==='EXPIRED') {
+        card.status='expired'; state.gift=gifts;
+        blob['ls:strap.v1']=JSON.stringify(state);
+        await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[ownerId,JSON.stringify(blob)]);
+        await client.query('COMMIT');
+      } else await client.query('ROLLBACK');
+      return [result.code==='EXPIRED'?410:409,{ok:false,code:result.code,msg:result.message}];
+    }
+    if (!result.alreadyProcessed) {
+      const index=gifts.findIndex(g=>String(g.id||'')===cardId);
+      gifts[index]=result.card; state.gift=gifts;
+      blob['ls:strap.v1']=JSON.stringify(state);
+      await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[ownerId,JSON.stringify(blob)]);
+    }
+    await client.query('COMMIT');
+    return [200,{ok:true,discount:result.discount,total:result.total,alreadyProcessed:!!result.alreadyProcessed,card:result.card}];
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    throw error;
+  } finally { client.release(); }
 };
 
 /* ---- app data: the whole dashboard state as one JSON per user ---- */
