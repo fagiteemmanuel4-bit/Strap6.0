@@ -600,20 +600,22 @@ H['staff/signout'] = async (req,res) => {
 };
 
 
+async function applyStaffSalesSchedule(ownerId) {
+  const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0],blob={...(row&&row.blob||{})},state=parseStored(blob['ls:strap.v1'],{}),sc=state.staffSalesSchedule||{};
+  if(!sc.enabled)return {blob,state};
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),now=Number(parts.find(x=>x.type==='hour').value)*60+Number(parts.find(x=>x.type==='minute').value),[oh,om]=String(sc.open||'08:00').split(':').map(Number),[ch,cm]=String(sc.close||'20:00').split(':').map(Number),start=oh*60+om,end=ch*60+cm,active=start<end?(now>=start&&now<end):(now>=start||now<end);
+  if(state.staffSalesOpen!==active){state.staffSalesOpen=active;state.staffSalesOpenedAt=active?new Date().toISOString():null;if(active)state.closed=null;blob['ls:strap.v1']=JSON.stringify(state);await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[ownerId,blob]);}
+  return {blob,state};
+}
 H['sales/session'] = async (req,res,user,staff) => {
-  if (!user || staff) return [403,{ok:false,msg:'Only the business owner can open or pause cashier sales.'}];
-  const row=(await q('select blob from user_data where user_id=$1',[user.id]))[0];
-  const blob={...(row&&row.blob||{})}, state=parseStored(blob['ls:strap.v1'],{});
-  if(req.method==='POST') {
-    if(typeof req.body.open!=='boolean') return [400,{ok:false,msg:'Choose whether cashier sales should be open or paused.'}];
-    state.staffSalesOpen=req.body.open;
-    if(req.body.open) state.closed=null;
-    state.staffSalesOpenedAt=req.body.open?new Date().toISOString():null;
-    state.staffSalesOpenedBy=user.id;
-    blob['ls:strap.v1']=JSON.stringify(state);
-    await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
+  if(!user||staff)return [403,{ok:false,msg:'Only the business owner can manage cashier sales.'}];
+  const applied=await applyStaffSalesSchedule(user.id);let {blob,state}=applied;
+  if(req.method==='POST'){
+    if(req.body.schedule&&typeof req.body.schedule==='object'){const sc=req.body.schedule,open=String(sc.open||''),close=String(sc.close||'');if(typeof sc.enabled!=='boolean'||(sc.enabled&&(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(open)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(close)||open===close)))return [400,{ok:false,msg:'Choose valid opening and closing times.'}];state.staffSalesSchedule={enabled:sc.enabled,open,close,timeZone:'Africa/Lagos'};}
+    else{if(typeof req.body.open!=='boolean')return [400,{ok:false,msg:'Choose whether cashier sales should be open or closed.'}];state.staffSalesOpen=req.body.open;state.staffSalesOpenedAt=req.body.open?new Date().toISOString():null;if(req.body.open)state.closed=null;}
+    blob['ls:strap.v1']=JSON.stringify(state);await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
   }
-  return [200,{ok:true,open:state.staffSalesOpen===true}];
+  return [200,{ok:true,open:state.staffSalesOpen===true,schedule:state.staffSalesSchedule||{enabled:false,open:'08:00',close:'20:00',timeZone:'Africa/Lagos'}}];
 };
 
 /* ---- app data: the whole dashboard state as one JSON per user ---- */
@@ -624,9 +626,8 @@ H['data'] = async (req, res, user, staff) => {
     const b=req.body.blob; if(!b||typeof b!=='object') return [400,{ok:false}];
     if(staff) {
       if(staff.role==='Cashier') {
-        const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0];
-        const current=parseStored(row&&row.blob&&row.blob['ls:strap.v1'],{});
-        if(current.staffSalesOpen!==true) return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Sales are currently closed by the business owner.'}];
+        const scheduled=await applyStaffSalesSchedule(ownerId);
+        if(scheduled.state.staffSalesOpen!==true)return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Sales are closed or outside scheduled sales hours.'}];
       }
       await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}];
     }
@@ -636,7 +637,7 @@ H['data'] = async (req, res, user, staff) => {
     return [200,{ok:true}];
   }
   if(staff) {
-    const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], blob=row?row.blob:{};
+    const scheduled=await applyStaffSalesSchedule(ownerId),blob=scheduled.blob||{};
     return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,branchId:staff.branch_id,email:staff.email,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store',currency:(staff.profile||{}).currency||'NGN'}}];
   }
   await migrateLegacyStaffForOwner(ownerId);
