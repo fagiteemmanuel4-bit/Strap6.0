@@ -13,16 +13,9 @@
   try { D = JSON.parse(sessionStorage.getItem('strap.session') || '{}'); } catch (e) {}
   if (!D.bizname) D = { ...D, name: D.name || 'Amaka Obi', bizname: 'Amaka Fashion House', currency: D.currency || 'NGN' };
   const first = () => (D.name || '').split(/\s+/)[0];
-  let STAFF=null; try { STAFF=JSON.parse(sessionStorage.getItem('staff.session')||'null'); } catch(e) {}
-  // Never let a staff account enter the owner's dashboard shell.
-  if (STAFF && STAFF.role === 'Cashier') {
-    location.replace('staff-modes/cashier.html');
-    return;
-  }
-  if (STAFF && STAFF.role === 'Stock keeper') {
-    location.replace('staff-modes/stock-keeper.html');
-    return;
-  }
+  // Staff access is temporarily disabled while the feature is being rebuilt.
+  const STAFF = null;
+  try { sessionStorage.removeItem('staff.session'); } catch (e) {}
 
   const api = {};
   /* ===== DASHBOARD ===== */
@@ -137,7 +130,7 @@
   const BASE_MENU = [
     ['home', 'Home', 'home'], ['orders', 'Orders', 'inbox'],
     ['products', 'Products', 'tag', [['products', 'All products'], ['collections', 'Collections'], ['inventory', 'Inventory'], ['purchase', 'Purchase orders'], ['transfers', 'Transfers'], ['gift', 'Gift cards']]],
-    ['customers', 'Customers', 'users'], ['staff', 'Staff', 'users'], ['growth', 'Growth', 'growth'], ['activity', 'Activity log', 'clock', 'soon'], ['devices', 'Devices & printers', 'phone', 'soon'],
+    ['customers', 'Customers', 'users'], ['staff', 'Staff', 'users', 'soon'], ['growth', 'Growth', 'growth'], ['activity', 'Activity log', 'clock', 'soon'], ['devices', 'Devices & printers', 'phone', 'soon'],
     ['@', 'Sales channels'], ['online', 'Online store', 'store'], ['mcp', 'MCP', 'plug'],
     ['@', ''], ['premium', 'Premium', 'flash'], ['settings', 'Settings', 'gear']
   ];
@@ -248,6 +241,7 @@
     }
     // inventory needs the products module to exist first
     function show(id) {
+      if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
       if (id === 'ai') { ensure('products'); closeDrawer(); return mods.products.openAI(); }
       if (StrapFeatures.has(id)) { closeDrawer(); return StrapFeatures.open(id); }
