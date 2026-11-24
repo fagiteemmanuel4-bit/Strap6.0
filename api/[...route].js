@@ -352,6 +352,11 @@ const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
 const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
 const flwReady=()=>flwMode()==='test' && flwSecret().startsWith('FLWSECK_TEST-') && !!String(E.FLW_WEBHOOK_SECRET_HASH||'').trim();
 const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
+const premiumStandardAmount=()=>{const n=Number(E.FLW_PREMIUM_STANDARD_AMOUNT_NGN||6000);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:6000;};
+async function premiumCheckoutAmount(userId) {
+  const rows=await q("select count(*)::int as cycles from strap_payments where user_id=$1 and status='successful'",[String(userId)]);
+  return Number(rows[0]&&rows[0].cycles||0)<3?premiumAmount():premiumStandardAmount();
+}
 async function premiumActive(userId) {
   await ensurePremiumSchema();
   const row=(await q("select 1 from strap_subscriptions where user_id=$1 and status='active' and expires_at>now() limit 1",[String(userId)]))[0];
@@ -786,8 +791,8 @@ H['premium/status'] = async (req,res,user) => {
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
   if(!flwReady()) return [503,{ok:false,msg:'Flutterwave test credentials are not configured yet.'}];
-  const amount=premiumAmount();
-  if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the Premium amount when you are ready to charge.'}];
+  const amount=await premiumCheckoutAmount(user.id);
+  if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the introductory Premium amount when you are ready to charge.'}];
   await ensurePremiumSchema();
   const active=await premiumActive(user.id);
   if(active) return [409,{ok:false,msg:'Your Premium subscription is already active.'}];
@@ -797,7 +802,7 @@ H['premium/checkout'] = async (req,res,user) => {
     customer:{email:user.email,name:user.name||'Strap customer'},
     customizations:{title:'Strap Premium',description:'Premium access for your Strap business'},
     configuration:{session_duration:30,max_retry_attempt:3}};
-  if(/^\d+$/.test(String(E.FLW_PAYMENT_PLAN_ID||''))) payload.payment_plan=Number(E.FLW_PAYMENT_PLAN_ID);
+  // Billing is renewed through a fresh verified checkout so the price can move from NGN 4,500 to NGN 6,000 after cycle three.
   const response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
   const body=await response.json().catch(()=>({}));
   if(!response.ok||body.status!=='success'||!body.data||!body.data.link) {
