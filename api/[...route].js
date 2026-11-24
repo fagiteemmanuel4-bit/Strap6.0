@@ -701,7 +701,8 @@ H['sales/session'] = async (req,res,user,staff) => {
 
 /* Gift card redemption: lock the owner's blob row so simultaneous checkouts cannot spend the same balance. */
 H['gift/redeem'] = async (req, res, user, staff) => {
-  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];\n  if(staff && !await premiumActive(staff.owner_id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
+  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
+  if(staff && !await premiumActive(staff.owner_id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
   if (!user && !(staff && staff.role === 'Cashier')) return [403, { ok:false, msg:'Only the store owner or a cashier can redeem gift cards.' }];
   const ownerId = staff ? staff.owner_id : user.id;
   if (staff) {
@@ -829,6 +830,7 @@ H['data'] = async (req, res, user, staff) => {
   if (req.method === 'PUT') {
     const b=req.body.blob; if(!b||typeof b!=='object') return [400,{ok:false}];
     if(staff) {
+      if(!await premiumActive(ownerId)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Staff business access requires Strap Premium.'}];
       if(staff.role==='Cashier') {
         const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], state=parseStored(row&&row.blob&&row.blob['ls:strap.v1'],{});
         if(!currentStaffSalesOpen(state,staff))return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Your sales session is closed or outside your scheduled hours.'}];
@@ -847,7 +849,7 @@ H['data'] = async (req, res, user, staff) => {
          hasNew(nextState.gift,oldState.gift)||hasNew(nextState.collections,oldState.collections))
         return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales, gift cards and collections require Strap Premium.'}];
       const nextF1=parseStored(b['ls:strap.f1'],{}), oldF1=parseStored(oldBlob['ls:strap.f1'],{});
-      if(hasNew(nextF1.mcp,oldF1.mcp)||hasNew(nextF1.branches,oldF1.branches)||hasNew(nextF1.staff,oldF1.staff))
+      if(hasNew(nextF1.mcp,oldF1.mcp)||hasNew((nextF1.branches||[]).filter(x=>String(x&&x.id)!=='b0'),(oldF1.branches||[]).filter(x=>String(x&&x.id)!=='b0'))||hasNew(nextF1.staff,oldF1.staff))
         return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP, branches and staff require Strap Premium.'}];
       const collectProducts=(blob)=>{const out=[];for(const [key,value] of Object.entries(blob||{}))if(key.startsWith('ls:strap.f1.items.'))out.push(...(Array.isArray(parseStored(value,[]))?parseStored(value,[]):[]));return out;};
       const oldProducts=collectProducts(oldBlob), nextProducts=collectProducts(b), oldIds=new Set(oldProducts.map(p=>String(p&&p.id||'')));
