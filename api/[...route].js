@@ -853,9 +853,12 @@ H['data'] = async (req, res, user, staff) => {
         return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP, branches and staff require Strap Premium.'}];
       const collectProducts=(blob)=>{const out=[];for(const [key,value] of Object.entries(blob||{}))if(key.startsWith('ls:strap.f1.items.'))out.push(...(Array.isArray(parseStored(value,[]))?parseStored(value,[]):[]));return out;};
       const oldProducts=collectProducts(oldBlob), nextProducts=collectProducts(b), oldIds=new Set(oldProducts.map(p=>String(p&&p.id||'')));
+      const oldById=new Map(oldProducts.filter(p=>p&&p.id).map(p=>[String(p.id),p]));
       const addedProducts=nextProducts.filter(p=>p&&!oldIds.has(String(p.id||'')));
       if((oldProducts.length<=30&&nextProducts.length>30)||(oldProducts.length>30&&addedProducts.length>0))
         return [403,{ok:false,code:'PRODUCT_LIMIT',msg:'The free plan allows up to 30 products. Existing products are preserved; upgrade to Premium to add more.'}];
+      const stockChanged=nextProducts.some(p=>p&&p.id&&oldById.has(String(p.id))&&Number(oldById.get(String(p.id)).qty||0)!==Number(p.qty||0));
+      if(stockChanged) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Inventory and stock adjustments require Strap Premium.'}];
     }
     const clean=await safeOwnerBlob(ownerId,b);
     const client=await pool.connect();
