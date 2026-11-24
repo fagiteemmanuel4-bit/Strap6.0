@@ -230,7 +230,7 @@
     const ctx = {
       toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products, openMenu: () => openDrawer(),
       rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
-      signOut: async () => { await StrapAPI.signOut(); location.href = 'index.html'; }
+      signOut: async () => { try { await StrapAPI.signOut(); } finally { location.replace('/'); } }
     };
     function ensure(id) {
       if (panes[id]) return panes[id];
@@ -240,13 +240,18 @@
       return p;
     }
     // inventory needs the products module to exist first
-    function show(id) {
+    function show(id, options = {}) {
       if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
       if (id === 'ai') { ensure('products'); closeDrawer(); return mods.products.openAI(); }
       if (StrapFeatures.has(id)) { closeDrawer(); return StrapFeatures.open(id); }
       if (id === 'inventory' || id === 'new-sale' || id === 'collections') ensure('products');
-      const p = ensure(id); current = id;
+      const p = ensure(id);
+      if (options.history !== false && current !== id) {
+        const url = location.pathname + location.search + '#' + encodeURIComponent(id);
+        history.pushState({ strapPage: id }, '', url);
+      }
+      current = id;
       Object.entries(panes).forEach(([k, el]) => { el.hidden = k !== id; });
       if (!p.dataset.seen) p.dataset.seen = 1; else if (mods[id] && mods[id].onShow) mods[id].onShow();
       const t = TAB_OF[id];
@@ -288,6 +293,15 @@
     const pg = $('[data-grp=products]', drawer); pg.setAttribute('aria-expanded', 'true'); pg.parentNode.classList.add('open');
 
     ensure('products'); StrapFeatures.bind(mods.products); StrapFeatures.mountHome(ctx, panes.home);
+    const routeIds = new Set(['home','orders','products','customers','purchase','transfers','gift','sales-today','sales-history','new-sale','inventory','collections','growth','online','mcp','settings']);
+    const initialRoute = decodeURIComponent(location.hash.slice(1));
+    const firstRoute = routeIds.has(initialRoute) ? initialRoute : 'home';
+    history.replaceState({ strapPage: firstRoute }, '', location.pathname + location.search + '#' + encodeURIComponent(firstRoute));
+    if (firstRoute !== 'home') show(firstRoute, { history: false });
+    addEventListener('popstate', () => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      show(routeIds.has(id) ? id : 'home', { history: false });
+    });
     const bell = $('.bell', dash);
     bell.addEventListener('click', () => { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); StrapFeatures.open('notifications'); });
     if(STAFF && STAFF.defaultRoute) show(STAFF.defaultRoute);
