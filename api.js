@@ -20,8 +20,26 @@
   const xhr = (m, u) => { const x = new XMLHttpRequest(); x.open(m, u, false); try { x.send(); } catch (e) { return { status: 0 }; } let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} return { status: x.status, j }; };
   const wipe = () => { [localStorage, sessionStorage].forEach(s => { try { Object.keys(s).filter(own).forEach(k => s.removeItem(k)); } catch (e) {} }); };
   const collect = () => { const b = {}; try { Object.keys(localStorage).filter(own).forEach(k => b['ls:' + k] = localStorage.getItem(k)); Object.keys(sessionStorage).filter(own).forEach(k => b['ss:' + k] = sessionStorage.getItem(k)); } catch (e) {} return b; };
-  async function push() { if (pushing) return schedule(); pushing = true; const r = await call('PUT', 'data', { blob: collect() }); pushing = false; return r; }
-  function schedule() { if (!active) return; clearTimeout(timer); timer = setTimeout(push, 1500); }
+  async function push() {
+    if (!active) return { ok: false, msg: 'Cloud sync is not active yet.' };
+    if (pushing) { try { await pending; } catch (e) {} return push(); }
+    pushing = true;
+    pending = call('PUT', 'data', { blob: collect() });
+    let r;
+    try { r = await pending; }
+    finally { pushing = false; pending = null; }
+    if (!r || !r.ok) {
+      console.error('Strap cloud sync failed:', r && r.msg);
+      if (active && !timer) timer = setTimeout(() => { timer = null; push(); }, 5000);
+    }
+    return r || { ok: false, msg: 'Cloud sync failed.' };
+  }
+  function schedule() { if (!active) return; clearTimeout(timer); timer = setTimeout(() => { timer = null; push(); }, 1500); }
+  async function flush() {
+    clearTimeout(timer); timer = null;
+    if (pushing && pending) { try { await pending; } catch (e) {} }
+    return push();
+  }
   const sp = Storage.prototype, setI = sp.setItem, remI = sp.removeItem;
   sp.setItem = function (k, v) { setI.call(this, k, v); if (own(k)) schedule(); };
   sp.removeItem = function (k) { remI.call(this, k); if (own(k)) schedule(); };
@@ -56,7 +74,7 @@
   let sMail = '', sPw = '', rMail = '', lMail = '', lPw = '';
   const fresh = () => { active = false; clearTimeout(timer); wipe(); try { sessionStorage.removeItem('staff.session'); } catch (e) {} };
   window.StrapAPI = {
-    call, upload, guard, fresh, flush: async () => { clearTimeout(timer); return push(); },
+    call, upload, guard, fresh, flush,
     contact: (kind, message, email, name) => call('POST', 'contact', { kind, message, email, name }),
     signOut: async () => { await call('POST', 'auth/signout'); fresh(); },
     auth: {
