@@ -112,7 +112,7 @@
     if (old && !reduced()) { old.classList.add('leave', 'bk'); setTimeout(fin, 190); } else fin();
   }
   function go(id) { if (id === 'verified') hist = []; hist.push(id); render(id, 1); }
-  function back() { hist.pop(); hist.length ? render(hist[hist.length - 1], -1) : SUB ? (location.href = 'dashboard.html') : closeFlow(); }
+  function back() { hist.pop(); hist.length ? render(hist[hist.length - 1], -1) : closeFlow(); }
   const pill = (label, cls = '') => { const b = el('button', 'pill ' + cls, label); b.type = 'button'; return b; };
   const nxt = st => typeof st.next === 'function' ? st.next(D) : st.next;
   const lock = (b, on, l) => { if (on) { b.dataset.l = b.textContent; b.textContent = l || 'Please wait…'; } else if (b.dataset.l) b.textContent = b.dataset.l; b.disabled = on; };
