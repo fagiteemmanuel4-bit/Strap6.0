@@ -611,7 +611,7 @@ H['sales/session'] = async (req,res,user,staff) => {
   if(!user||staff)return [403,{ok:false,msg:'Only the business owner can manage cashier sales.'}];
   const applied=await applyStaffSalesSchedule(user.id);let {blob,state}=applied;
   if(req.method==='POST'){
-    if(req.body.schedule&&typeof req.body.schedule==='object'){const sc=req.body.schedule,open=String(sc.open||''),close=String(sc.close||'');if(typeof sc.enabled!=='boolean'||(sc.enabled&&(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(open)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(close)||open===close)))return [400,{ok:false,msg:'Choose valid opening and closing times.'}];state.staffSalesSchedule={enabled:sc.enabled,open,close,timeZone:'Africa/Lagos'};}
+    if(req.body.schedule&&typeof req.body.schedule==='object'){const sc=req.body.schedule,open=String(sc.open||''),close=String(sc.close||'');if(typeof sc.enabled!=='boolean'||(sc.enabled&&(!/^([01]\d|2[0-3]):[0-5]\d$/.test(open)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(close)||open===close)))return [400,{ok:false,msg:'Choose valid opening and closing times.'}];state.staffSalesSchedule={enabled:sc.enabled,open,close,timeZone:'Africa/Lagos'};}
     else{if(typeof req.body.open!=='boolean')return [400,{ok:false,msg:'Choose whether cashier sales should be open or closed.'}];state.staffSalesOpen=req.body.open;state.staffSalesOpenedAt=req.body.open?new Date().toISOString():null;if(req.body.open)state.closed=null;}
     blob['ls:strap.v1']=JSON.stringify(state);await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
   }
