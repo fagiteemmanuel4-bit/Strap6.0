@@ -14,7 +14,11 @@
   if (!D.bizname) D = { ...D, name: D.name || 'Amaka Obi', bizname: 'Amaka Fashion House', currency: D.currency || 'NGN' };
   const first = () => (D.name || '').split(/\s+/)[0];
   let STAFF=null; try { STAFF=JSON.parse(sessionStorage.getItem('staff.session')||'null'); } catch(e) {}
-  // Staff workspaces are limited to the two supported roles.
+  // Never let a staff account enter the owner's dashboard shell.
+  if (STAFF && STAFF.role === 'Cashier') {
+    location.replace('staff-modes/cashier.html');
+    return;
+  }
   if (STAFF && STAFF.role === 'Stock keeper') {
     location.replace('staff-modes/stock-keeper.html');
     return;
