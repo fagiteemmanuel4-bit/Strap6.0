@@ -35,11 +35,11 @@ window.StrapPages = (() => {
       <button type="button" class="pm-add wide" data-s>${cta}</button></div></section>`;
     document.body.appendChild(wrap); document.body.classList.add('pm-open'); void wrap.offsetWidth; wrap.classList.add('on');
     const close = () => { wrap.classList.remove('on'); document.body.classList.remove('pm-open'); setTimeout(() => wrap.remove(), 380); };
-    const first = $('input,select', wrap)[0]; setTimeout(() => first && first.focus(), 350);
+    const first = $$('input,select', wrap)[0]; setTimeout(() => first && first.focus(), 350);
     wrap.addEventListener('click', e => {
       if (e.target.closest('.pm-scrim') || e.target.closest('[data-c]')) return close();
       if (e.target.closest('[data-s]')) {
-        const v = $('input,select', wrap).map(i => i.value.trim());
+        const v = $$('input,select', wrap).map(i => i.value.trim());
         if (!v[0] || (fields.some(f => f[1] === 'number') && !(+v[1] > 0))) { const target = !v[0] ? first : $('input[type=number]', wrap); const fl = target.closest('.pm-fl'); fl.classList.add('bad'); setTimeout(() => fl.classList.remove('bad'), 900); return; }
         close(); onSave(v);
       }
