@@ -147,6 +147,17 @@ function staffAllowedBranches(staff, state) {
   const all=Array.isArray(state.branches)&&state.branches.length?state.branches:[{id:'b0',name:'Main branch'}];
   return staff.branch_id ? all.filter(b=>String(b.id)===String(staff.branch_id)) : all;
 }
+function currentStaffSalesOpen(state, staff) {
+  const shift=(state.staffShifts||{})[staff.id]||{mode:'closed'}, mode=shift.mode||'closed';
+  if(mode==='open') return true;
+  if(mode!=='auto') return false;
+  const valid=t=>/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(t||''));
+  if(!valid(shift.from)||!valid(shift.to)||shift.from===shift.to) return false;
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+  const now=Number(parts.find(x=>x.type==='hour').value)*60+Number(parts.find(x=>x.type==='minute').value);
+  const [oh,om]=shift.from.split(':').map(Number),[ch,cm]=shift.to.split(':').map(Number),start=oh*60+om,end=ch*60+cm;
+  return start<end?(now>=start&&now<end):(now>=start||now<end);
+}
 function staffReadBlob(blob, staff) {
   const role=staff.role, state=parseStored(blob['ls:strap.f1'],{}), branches=staffAllowedBranches(staff,state);
   const active=branches.some(b=>String(b.id)===String(state.active))?state.active:(branches[0]&&branches[0].id)||'b0';
@@ -511,7 +522,7 @@ H['staff/list'] = async (req,res,user,staff) => {
   if(!user || staff) return [403,{ok:false,msg:'Only the business owner can manage staff.'}];
   const ownerId=user.id;
   await migrateLegacyStaffForOwner(ownerId);
-  return [200,{ok:true,staff:await safeStaffRows(ownerId,staff?staff.branch_id:null)}];
+  const rows=await safeStaffRows(ownerId,null), stateRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], state=parseStored(stateRow&&stateRow.blob&&stateRow.blob['ls:strap.v1'],{}), shifts=state.staffShifts||{}; return [200,{ok:true,staff:rows.map(x=>({...x,shift:shifts[x.id]||{mode:'closed',from:'',to:''}}))}];
 };
 H['staff/create'] = async (req,res,user,staff) => {
   if(!user || staff) return [403,{ok:false,msg:'Only the business owner can add staff.'}];
@@ -538,6 +549,21 @@ H['staff/create'] = async (req,res,user,staff) => {
       [ownerId,name,role,branchId,email,salt,hash]))[0];
     return [200,{ok:true,staff:row}];
   } catch(e) { if(e.code==='23505') return [409,{ok:false,code:'STAFF_EMAIL_EXISTS',msg:'That email is already linked to an account or another business.'}]; throw e; }
+};
+H['staff/shift'] = async (req,res,user,staff) => {
+  if(!user || staff) return [403,{ok:false,msg:'Only the business owner can manage staff sales hours.'}];
+  const id=String(req.body.id||''), shift=req.body.shift||{};
+  const target=(await q("select id::text as id,role from staff_accounts where id=$1::uuid and owner_id=$2 and status='active' limit 1",[id,user.id]))[0];
+  if(!target) return [404,{ok:false,msg:'Staff account not found.'}];
+  if(target.role!=='Cashier') return [400,{ok:false,msg:'Sales hours are only available for cashiers.'}];
+  if(!['open','closed','auto'].includes(shift.mode)) return [400,{ok:false,msg:'Choose open, closed or automatic hours.'}];
+  const valid=t=>typeof t==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(t);
+  if(shift.mode==='auto'&&(!valid(shift.from)||!valid(shift.to)||shift.from===shift.to)) return [400,{ok:false,msg:'Choose valid, different opening and closing times.'}];
+  const row=(await q('select blob from user_data where user_id=$1',[user.id]))[0], blob={...(row&&row.blob||{})}, state=parseStored(blob['ls:strap.v1'],{});
+  state.staffShifts={...(state.staffShifts||{}),[id]:{mode:shift.mode,from:shift.from||'',to:shift.to||'',updatedAt:new Date().toISOString()}};
+  blob['ls:strap.v1']=JSON.stringify(state);
+  await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[user.id,blob]);
+  return [200,{ok:true,shift:state.staffShifts[id]}];
 };
 H['staff/remove'] = async (req,res,user,staff) => {
   if(!user || staff) return [403,{ok:false,msg:'Only the business owner can remove staff.'}];
@@ -626,8 +652,8 @@ H['data'] = async (req, res, user, staff) => {
     const b=req.body.blob; if(!b||typeof b!=='object') return [400,{ok:false}];
     if(staff) {
       if(staff.role==='Cashier') {
-        const scheduled=await applyStaffSalesSchedule(ownerId);
-        if(scheduled.state.staffSalesOpen!==true)return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Sales are closed or outside scheduled sales hours.'}];
+        const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], state=parseStored(row&&row.blob&&row.blob['ls:strap.v1'],{});
+        if(!currentStaffSalesOpen(state,staff))return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Your sales session is closed or outside your scheduled hours.'}];
       }
       await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}];
     }
@@ -637,8 +663,10 @@ H['data'] = async (req, res, user, staff) => {
     return [200,{ok:true}];
   }
   if(staff) {
-    const scheduled=await applyStaffSalesSchedule(ownerId),blob=scheduled.blob||{};
-    return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,branchId:staff.branch_id,email:staff.email,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store',currency:(staff.profile||{}).currency||'NGN'}}];
+    const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0],blob=row?row.blob:{},state=parseStored(blob['ls:strap.v1'],{});
+    const visible=staffReadBlob(blob,staff);
+    if(staff.role==='Cashier'){const v=parseStored(visible['ls:strap.v1'],{});v.staffSalesOpen=currentStaffSalesOpen(state,staff);visible['ls:strap.v1']=JSON.stringify(v);}
+    return [200,{ok:true,blob:visible,staff:{id:staff.id,name:staff.name,role:staff.role,branchId:staff.branch_id,email:staff.email,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store',currency:(staff.profile||{}).currency||'NGN'}}];
   }
   await migrateLegacyStaffForOwner(ownerId);
   const r=await q('select blob from user_data where user_id=$1',[ownerId]);
