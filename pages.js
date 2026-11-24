@@ -84,28 +84,95 @@ window.StrapPages = (() => {
 
   function giftSlip(card, ctx) {
     const layer = document.createElement('div'); layer.className = 'gc-layer';
-    const amount = card.type === 'discount' ? card.value + '% OFF' : ctx.money(card.balance ?? card.value ?? 0);
-    layer.innerHTML = `<div class="gc-shade" data-gc-close></div><section class="gc-slip" role="dialog" aria-modal="true" aria-label="Gift card receipt">
-      <div class="gc-slip-top"><span>STRAP · GIFT RECEIPT</span><button type="button" data-gc-close aria-label="Close">×</button></div>
-      <div class="gc-slip-mark">GIFT <b>PASS</b></div><strong class="gc-amount">${esc(amount)}</strong>
-      <p class="gc-kind">${card.type === 'discount' ? 'Discount on your next purchase' : 'Available gift-card balance'}</p>
-      <div class="gc-qr" id="gc-slip-qr"></div><b class="gc-code">${esc(card.code)}</b>
-      <p class="gc-help">Show this receipt or let the cashier scan the QR code at checkout.</p>
-      <div class="gc-dash"></div><div class="gc-slip-foot"><span>STATUS</span><b>${esc(card.status || 'active').toUpperCase()}</b></div>
-      <div class="gc-slip-actions"><button type="button" data-gc-print>Print receipt</button><button type="button" data-gc-done>Done</button></div>
-    </section>`;
+    const discount = card.type === 'discount';
+    const amount = discount ? (Number(card.value) || 0) + '% OFF' : ctx.money(card.balance ?? card.value ?? 0);
+    const storeName = String(ctx.store && ctx.store.name || 'STRAP').trim().slice(0, 28) || 'STRAP';
+    layer.innerHTML = '<div class="gc-shade" data-gc-close></div><section class="gc-slip" role="dialog" aria-modal="true" aria-label="Gift card">' +
+      '<div class="gc-slip-top"><span>STRAP · GIFT CARD</span><button type="button" data-gc-close aria-label="Close">×</button></div>' +
+      '<div class="gc-stage"><div class="gc-card" id="gc-card-preview" role="button" tabindex="0" aria-label="Gift card. Tap to view the back">' +
+      '<div class="gc-face gc-front"><span class="gc-amount">' + esc(amount) + '</span><span class="gc-store">' + esc(storeName.toUpperCase()) + '</span>' +
+      '<h3 class="gc-title">' + (discount ? 'Discount<br>Pass' : 'Gift<br>Card') + '</h3><span class="gc-orb"></span><span class="gc-holiday">' +
+      (discount ? 'A little<br>something off' : 'A gift<br>for you') + '</span></div>' +
+      '<div class="gc-face gc-back"><div class="gc-back-stripe"></div><div class="gc-back-body"><div class="gc-qr" id="gc-slip-qr"></div>' +
+      '<div class="gc-back-info"><small>SCAN AT CHECKOUT</small><span class="gc-code">' + esc(card.code) + '</span>' +
+      '<small>' + (discount ? (Number(card.value) || 0) + '% discount · single use' : 'Remaining value · ' + esc(ctx.money(card.balance ?? card.value ?? 0))) + '</small>' +
+      '<small>' + esc(String(card.status || 'active').toUpperCase()) + '</small></div></div></div></div></div>' +
+      '<p class="gc-hint">Tap the card to flip it and view the QR code side.</p><div class="gc-terms"><h4>Card information</h4><ul>' +
+      '<li>Use only at the store that issued this card.</li><li>' + (discount ? 'This discount pass is single-use and applies to one purchase.' : 'Any unused balance remains available until it is spent.') + '</li>' +
+      '<li>Keep the code private. Anyone with the code may redeem it.</li></ul></div>' +
+      '<button type="button" class="gc-download" data-gc-download>Download A4 PDF</button><div class="gc-slip-actions"><button type="button" data-gc-done>Done</button></div></section>';
     document.body.appendChild(layer); document.body.classList.add('pm-open');
     const qr = $('#gc-slip-qr', layer);
-    if (window.QRCode) new QRCode(qr, { text: 'STRAPGC|' + card.code, width: 176, height: 176, correctLevel: QRCode.CorrectLevel.M });
+    if (window.QRCode) new QRCode(qr, { text: 'STRAPGC|' + card.code, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.H });
+    const cardEl = $('#gc-card-preview', layer);
+    cardEl.addEventListener('click', () => cardEl.classList.toggle('is-flipped'));
+    cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardEl.classList.toggle('is-flipped'); } });
     const close = () => { layer.remove(); document.body.classList.remove('pm-open'); };
-    layer.addEventListener('click', e => {
+    layer.addEventListener('click', async e => {
       if (e.target.closest('[data-gc-close],[data-gc-done]')) return close();
-      if (e.target.closest('[data-gc-print]')) {
-        const canvas = $('canvas', qr), img = $('img', qr), src = canvas ? canvas.toDataURL('image/png') : img ? img.src : '';
-        const w = window.open('', '_blank'); if (!w) return ctx.toast('Allow pop-ups to print this receipt');
-        w.document.write('<!doctype html><html><head><title>Gift receipt</title><style>body{font:14px Arial;display:grid;place-items:center;padding:24px}.slip{width:300px;text-align:center;border:1px dashed #777;padding:22px}.amount{font-size:32px;font-weight:bold;margin:20px}.qr{width:176px;height:176px;margin:20px auto}img{width:176px}</style></head><body><main class="slip"><b>STRAP · GIFT RECEIPT</b><div class="amount">'+amount+'</div><p>'+ (card.type === 'discount' ? 'Discount pass' : 'Gift-card balance') +'</p><div class="qr">'+(src ? '<img src="'+src+'">' : '')+'</div><b>'+card.code+'</b><p>Show this receipt at checkout.</p></main><script>window.onload=()=>window.print()<\/script></body></html>'); w.document.close();
-      }
+      const btn = e.target.closest('[data-gc-download]'); if (!btn) return;
+      if (!window.jspdf || !window.jspdf.jsPDF) return ctx.toast('PDF service did not load. Refresh Strap and try again.');
+      if (!qr.querySelector('canvas') && !qr.querySelector('img')) return ctx.toast('The gift-card QR code is not ready yet. Try again.');
+      btn.disabled = true; btn.textContent = 'Preparing PDF…';
+      try {
+        const pdf = await buildGiftCardPdf(card, ctx, qr, storeName, amount, discount);
+        pdf.save('strap-gift-card-' + String(card.code || 'card').replace(/[^a-z0-9-]/gi, '-') + '.pdf');
+        ctx.toast('A4 gift-card PDF downloaded');
+      } catch (err) {
+        console.error('Gift card PDF generation failed:', err);
+        ctx.toast('Could not create a secured PDF. Please try again.');
+      } finally { btn.disabled = false; btn.textContent = 'Download A4 PDF'; }
     });
+  }
+
+  async function buildGiftCardPdf(card, ctx, qr, storeName, amount, discount) {
+    const W = 1012, H = 638, lime = '#e6f53a', ink = '#0a0a0a';
+    const make = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+    const rr = (c,x,y,w,h,r) => { c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); };
+    const front = make(), fc = front.getContext('2d');
+    rr(fc,0,0,W,H,42); fc.clip(); fc.fillStyle='#efefe9'; fc.fillRect(0,0,W,H);
+    let seed=29; const rand=()=>((seed=(seed*9301+49297)%233280)/233280);
+    for(let i=0;i<4500;i++){fc.fillStyle='rgba(50,50,42,'+(rand()*.075).toFixed(3)+')';fc.fillRect(rand()*W,rand()*H,2,2);}
+    fc.fillStyle=lime;fc.beginPath();fc.arc(W*.91,H*.88,W*.23,0,Math.PI*2);fc.fill();
+    fc.strokeStyle=ink;fc.lineWidth=7;fc.beginPath();fc.arc(W*.91,H*.88,W*.275,0,Math.PI*2);fc.stroke();
+    fc.fillStyle=ink;fc.font='800 92px Sora,Arial,sans-serif';fc.textAlign='left';fc.fillText(amount,61,140,850);
+    fc.fillStyle=ink;rr(fc,W-250,62,190,54,12);fc.fill();
+    fc.fillStyle=lime;fc.font='700 34px Sora,Arial,sans-serif';fc.textAlign='center';fc.fillText(storeName.toUpperCase(),W-155,100,170);
+    fc.fillStyle=ink;fc.textAlign='left';fc.font='800 190px Sora,Arial,sans-serif';
+    fc.fillText(discount?'Discount':'Gift',61,H-155,760);fc.fillText(discount?'Pass':'Card',61,H-35,760);
+    fc.fillStyle=ink;fc.font='700 30px Sora,Arial,sans-serif';fc.textAlign='center';
+    fc.save();fc.translate(W*.86,H*.77);fc.rotate(-.2);fc.fillText(discount?'A little something off':'A gift for you',0,0,260);fc.restore();
+
+    const back=make(),bc=back.getContext('2d');
+    rr(bc,0,0,W,H,42);bc.clip();bc.fillStyle='#181817';bc.fillRect(0,0,W,H);
+    bc.fillStyle=lime;bc.fillRect(0,38,W,90);
+    let qImg=qr.querySelector('canvas');
+    if(!qImg){qImg=new Image();qImg.src=qr.querySelector('img').src;await new Promise((ok,no)=>{qImg.onload=ok;qImg.onerror=no;});}
+    bc.fillStyle='#fff';rr(bc,58,190,350,350,28);bc.fill();
+    bc.imageSmoothingEnabled=false;bc.drawImage(qImg,83,215,300,300);
+    bc.fillStyle='#aaa99f';bc.textAlign='left';bc.font='600 30px Sora,Arial,sans-serif';bc.fillText('SCAN AT CHECKOUT',470,245);
+    bc.fillStyle=lime;bc.font='700 39px "Space Mono",monospace';
+    const code=String(card.code||''),lines=code.length>17?[code.slice(0,17),code.slice(17)]:[code];
+    lines.forEach((line,i)=>bc.fillText(line,470,330+i*58,490));
+    bc.fillStyle='#aaa99f';bc.font='600 29px Sora,Arial,sans-serif';
+    bc.fillText(discount?(Number(card.value)||0)+'% DISCOUNT · SINGLE USE':'REMAINING · '+ctx.money(card.balance ?? card.value ?? 0),470,475,490);
+    bc.fillText('STATUS · '+String(card.status||'active').toUpperCase(),470,530,490);
+
+    const J=window.jspdf.jsPDF;
+    const ownerPassword=(window.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random())+'-Strap';
+    const doc=new J({orientation:'portrait',unit:'mm',format:'a4',compress:true,
+      encryption:{userPassword:'',ownerPassword,userPermissions:['print']},putOnlyUsedFonts:true});
+    doc.setProperties({title:'Strap gift card',subject:'Flattened gift card front and back',creator:'Strap'});
+    const cardW=85.6,cardH=54,gap=12,x=(210-(cardW*2+gap))/2,y=108;
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);
+    doc.text('STRAP GIFT CARD · PRINT AND CUT',105,82,{align:'center'});
+    doc.setFontSize(8);doc.setTextColor(110,110,110);
+    doc.text('FRONT',x+cardW/2,y-5,{align:'center'});doc.text('BACK',x+cardW+gap+cardW/2,y-5,{align:'center'});
+    doc.addImage(front.toDataURL('image/jpeg',.96),'JPEG',x,y,cardW,cardH,undefined,'FAST');
+    doc.addImage(back.toDataURL('image/jpeg',.96),'JPEG',x+cardW+gap,y,cardW,cardH,undefined,'FAST');
+    doc.setDrawColor(150,150,150);doc.setLineDashPattern([1,1],0);doc.rect(x,y,cardW,cardH);doc.rect(x+cardW+gap,y,cardW,cardH);
+    doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('Flattened artwork · print at 100% scale',105,176,{align:'center'});
+    return doc;
   }
 
   // Collections belong to the Products section: create them here, then choose them when adding a product
