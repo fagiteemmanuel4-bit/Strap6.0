@@ -1277,9 +1277,6 @@ html[data-theme=dark] .dd-sheet{filter:invert(.92) hue-rotate(180deg)}
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../api.js"></script>
-<script>/* Hydrate the authenticated staff workspace and enable real backend sync before the sales modules load. */
-if (window.StrapAPI && typeof StrapAPI.guard === "function") StrapAPI.guard();
-</script>
 <script>
 /* ===== connection stand-in (the real api.js talks to your server) =====
    Only here so this file runs on its own. When you connect your real api.js, delete this block.
