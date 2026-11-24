@@ -225,7 +225,7 @@
         <aside class="dr-panel" role="dialog" aria-label="Menu">
           <div class="dr-top"><div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div><button type="button" class="pm-x" id="dr-x" aria-label="Close menu">${uic('close', 20, 2.2)}</button></div>
           <button type="button" class="ds-open" data-go="new-sale"><span>Open sale</span><i>${uic('arrow', 22, 2.4)}</i></button>
-          ${!STAFF ? `<button type="button" class="ds-open ds-session" data-sales-session data-open="${salesOpen?'true':'false'}"><span>${salesOpen?'Pause cashier sales':'Open cashier sales'}</span><i>${uic('arrow', 22, 2.4)}</i></button>` : ''}
+
           <nav class="ds-nav">${menuHtml}</nav>
           ${STAFF ? `<div class="staff-drawer-foot"><button type="button" data-staff-messages>Messages <em>Coming soon</em></button><button type="button" data-staff-logout>${uic('out',20,2)}<span>Log out</span></button></div>` : ''}
         </aside>
@@ -268,17 +268,7 @@
     const staffMenu=$('#staff-menu',dash); if(staffMenu) staffMenu.addEventListener('click',openDrawer);
     const staffLogout=$('[data-staff-logout]',drawer); if(staffLogout) staffLogout.addEventListener('click',async()=>{await StrapAPI.signOut();location.replace('index.html');});
     const staffMessages=$('[data-staff-messages]',drawer); if(staffMessages) staffMessages.addEventListener('click',()=>toast('Staff messages are coming soon.'));
-    const salesSession=$('[data-sales-session]',drawer); if(salesSession) salesSession.addEventListener('click',async()=>{
-      salesSession.disabled=true;
-      const open=salesSession.dataset.open!=='true';
-      const result=await StrapAPI.call('POST','sales/session',{open});
-      salesSession.disabled=false;
-      if(!result.ok){toast(result.msg||'Could not update cashier sales.');return;}
-      salesSession.dataset.open=String(open);
-      salesSession.querySelector('span').textContent=open?'Pause cashier sales':'Open cashier sales';
-      try{const state=JSON.parse(localStorage.getItem('strap.v1')||'{}');state.staffSalesOpen=open;if(open)state.closed=null;localStorage.setItem('strap.v1',JSON.stringify(state));}catch(e){}
-      toast(open?'Cashier sales are now open.':'Cashier sales have been paused.');
-    });
+
     if(STAFF) { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
     function openDrawer() { drawer.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); document.body.classList.add('pm-open'); }
     function closeDrawer() { if (!drawer.classList.contains('on')) return; drawer.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pm-open'); }
