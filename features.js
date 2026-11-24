@@ -477,7 +477,6 @@ window.StrapFeatures = (() => {
     } catch(e) { S.plan='free'; S.sub=null; S.checkoutReady=false; }
     return was;
   }
-  const planBefore = 'free';
   Object.assign(api, {
     async getAccountStatus() { await sleep(900); return { status: S.account.status }; },
     async requestReview(r) { await sleep(1000); return { ok: true, ticket: 'RV-' + Math.floor(10000 + Math.random() * 89999) }; }
@@ -624,5 +623,5 @@ window.StrapFeatures = (() => {
   }
   document.addEventListener('click', e => { const f = e.target.closest('[data-fx]'); if (f && ctx) { e.stopPropagation(); open(f.dataset.fx); } }, true);
 
-  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&transaction_id) { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } else toast('Payment was not completed.'); history.replaceState({},'',location.pathname); } if(planBefore==='free'&&S.plan==='premium') notify('plan','Premium is active','Your Premium features are now unlocked.'); }); } };
+  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&transaction_id) { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } else toast('Payment was not completed.'); history.replaceState({},'',location.pathname); } }); } };
 })();
