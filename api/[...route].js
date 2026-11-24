@@ -687,7 +687,7 @@ async function applyStaffSalesSchedule(ownerId) {
   return {blob,state};
 }
 H['sales/session'] = async (req,res,user,staff) => {
-  if(user && req.method==='POST' && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales require Strap Premium.'}];
+  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales require Strap Premium.'}];
   if(!user||staff)return [403,{ok:false,msg:'Only the business owner can manage cashier sales.'}];
   const applied=await applyStaffSalesSchedule(user.id);let {blob,state}=applied;
   if(req.method==='POST'){
@@ -804,7 +804,17 @@ H['flutterwave/webhook'] = async (req,res) => {
   try {
     await ensurePremiumSchema();
     const tx=await flwVerify(id), txRef=String(tx.tx_ref||'');
-    const payment=(await q('select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 limit 1',[txRef]))[0];
+    let payment=(await q('select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 limit 1',[txRef]))[0];
+    if(!payment && tx.customer && tx.customer.email) {
+      const owner=(await q('select id,email from app_users where lower(email)=lower($1) and deleted_at is null limit 1',[String(tx.customer.email)]))[0];
+      if(owner) {
+        const sub=(await q("select amount,currency from strap_subscriptions where user_id=$1 and status='active' limit 1",[owner.id]))[0];
+        if(sub && Number(sub.amount)===Number(tx.amount) && String(tx.currency).toUpperCase()==='NGN') {
+          await q("insert into strap_payments(tx_ref,user_id,amount,currency,status) values($1,$2,$3,'NGN','pending') on conflict(tx_ref) do nothing",[txRef,owner.id,Number(tx.amount)]);
+          payment={tx_ref:txRef,user_id:owner.id,amount:sub.amount,currency:sub.currency,status:'pending'};
+        }
+      }
+    }
     if(payment && payment.status!=='successful') {
       const u=(await q('select email from app_users where id=$1 and deleted_at is null',[payment.user_id]))[0];
       await activatePremium({...payment,customer_email:u&&u.email||''},tx);
@@ -831,12 +841,14 @@ H['data'] = async (req, res, user, staff) => {
     const oldRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], oldBlob=oldRow&&oldRow.blob||{};
     const nextState=parseStored(b['ls:strap.v1'],{}), oldState=parseStored(oldBlob['ls:strap.v1'],{});
     const count=(x)=>Array.isArray(x)?x.length:0;
+    const hasNew=(nextRows,oldRows)=>{const key=x=>String(x&&(x.id||x.code||x.no||x.ref)||JSON.stringify(x));const seen=new Set((Array.isArray(oldRows)?oldRows:[]).map(key));return (Array.isArray(nextRows)?nextRows:[]).some(x=>{const k=key(x);if(seen.has(k))return false;seen.add(k);return true;});};
     if(!paid) {
-      if(count(nextState.sales)>count(oldState.sales)||count(nextState.payments)>count(oldState.payments)||
-         count(nextState.gift)>count(oldState.gift)||count(nextState.collections)>count(oldState.collections))
+      if(hasNew(nextState.sales,oldState.sales)||hasNew(nextState.payments,oldState.payments)||
+         hasNew(nextState.gift,oldState.gift)||hasNew(nextState.collections,oldState.collections))
         return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales, gift cards and collections require Strap Premium.'}];
       const nextF1=parseStored(b['ls:strap.f1'],{}), oldF1=parseStored(oldBlob['ls:strap.f1'],{});
-      if(count(nextF1.mcp)>count(oldF1.mcp)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP requires Strap Premium.'}];
+      if(hasNew(nextF1.mcp,oldF1.mcp)||hasNew(nextF1.branches,oldF1.branches)||hasNew(nextF1.staff,oldF1.staff))
+        return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP, branches and staff require Strap Premium.'}];
       const collectProducts=(blob)=>{const out=[];for(const [key,value] of Object.entries(blob||{}))if(key.startsWith('ls:strap.f1.items.'))out.push(...(Array.isArray(parseStored(value,[]))?parseStored(value,[]):[]));return out;};
       const oldProducts=collectProducts(oldBlob), nextProducts=collectProducts(b), oldIds=new Set(oldProducts.map(p=>String(p&&p.id||'')));
       const addedProducts=nextProducts.filter(p=>p&&!oldIds.has(String(p.id||'')));
