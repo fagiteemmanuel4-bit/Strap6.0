@@ -18,11 +18,6 @@
     resetPassword: (email, code, password) => auth && auth.resetPassword ? auth.resetPassword(email, code, password) : Promise.resolve(authUnavailable()),
     createAccount: data => auth && auth.createAccount ? auth.createAccount(data) : Promise.resolve(authUnavailable()),
     requestReview: (email,message) => auth && auth.requestReview ? auth.requestReview(email,message) : Promise.resolve(authUnavailable()),
-    async subscribe({ amount, card }) {
-      await sleep(1100);
-      if (card.number === '4000000000000002') return { ok: false, msg: 'Your card was declined. Try another card.' };
-      return { ok: true };
-    }
   };
 
   /* ===== helpers ===== */
@@ -34,7 +29,6 @@
     !emailRe.test(v.trim()) ? 'That email doesn’t look right. Use a format like name@example.com.' : '';
   /* ===== SIGN-UP / BUSINESS SETUP FLOW ===== */
   const flow = $('#flow'), land = $('#land');
-  const SUB = new URLSearchParams(location.search).get('subscribe') === '1';
   const D = {}; let hist = [], tmr, tmr2;
   const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
   const ARROW = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
@@ -53,15 +47,6 @@
     return y < 1900 || a < 0 ? 'Enter a valid date.' : a < 18 ? 'You must be 18 or older.' : '';
   };
   const urlErr = v => /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i.test(v.trim()) ? '' : 'Enter a valid website, like www.mybusiness.com.';
-
-  /* ---- subscription plan (edit prices and length here) ---- */
-  const PLAN = {
-    intro: 3000, introMonths: 3, regular: 4000,
-    features: ['Point of sale with barcode scanning', 'Product catalogue and stock tracking', 'Low-stock alerts', 'Sales and revenue reports', 'Multiple branches']
-  };
-  const ngn = n => '\u20A6' + n.toLocaleString('en-NG');
-  const planDate = () => { const d = new Date(); d.setMonth(d.getMonth() + PLAN.introMonths); return d; };
-  const fmtDate = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const STEPS = {
     /* ---- log in: same look and motion as creating an account ---- */
@@ -110,22 +95,7 @@
     hasSite: { k: 'choice', t: 'Does your business have a website?', key: 'hasSite', o: [['Yes', 'yes'], ['No', 'no']], next: v => v === 'yes' ? 'siteUrl' : 'siteLater' },
     siteUrl: { t: 'What’s your website?', f: [{ key: 'site', type: 'url', ph: 'www.mybusiness.com', v: urlErr }], btn: 'Continue', next: 'photo' },
     siteLater: { k: 'choice', t: 'Want Strap to get you one later?', s: 'We can help you set up an online storefront when you’re ready.', key: 'wantSite', o: [['Yes, set one up later', 'yes'], ['No, not now', 'no']], next: 'photo' },
-    photo: { k: 'image', t: 'Set business profile picture', next: 'plan' },
-    plan: { k: 'plan', t: `Start for ${ngn(PLAN.intro)}/month`,
-      s: () => `${ngn(PLAN.intro)}/mo for ${PLAN.introMonths} months. Continues at ${ngn(PLAN.regular)}/mo from ${fmtDate(planDate())}.`,
-      skipTop: 'done', onSkip: () => { D.plan = { status: 'skipped' }; }, next: 'done' },
-    subscribe: { k: 'plan', open: 1, t: `Go Premium for ${ngn(PLAN.intro)}/month`, s: () => `${ngn(PLAN.intro)}/mo for ${PLAN.introMonths} months. Continues at ${ngn(PLAN.regular)}/mo from ${fmtDate(planDate())}.`, next: 'sq' },
-    /* after paying for Premium: a few questions, then verify the account's contact details */
-    sq: { t: 'A few quick questions', s: 'This helps us set Premium up for your business.', noBack: 1, f: [
-      { key: 'sTeam', opts: ['Just me', '2 to 5 people', '6 to 20 people', 'More than 20'], ph: 'How many people work with you?', v: sel('Select an option.') },
-      { key: 'sUse', opts: ['Selling in my shop', 'Managing stock', 'Running several branches', 'Reports and tracking money', 'Something else'], ph: 'What will you use Premium for most?', v: sel('Select an option.') }], btn: 'Continue', pw: 1, next: 'sc' },
-    sc: { t: 'Confirm your contact details', s: 'We’ll send a code to each one to make sure they belong to you. We use them for receipts and billing notices.', f: [
-      { key: 'sEmail', type: 'email', ph: 'example@email.com', ac: 'email', def: () => D.email, v: emailError },
-      { key: 'sPhone', type: 'tel', ph: 'Phone number, e.g. 0803 000 0000', ac: 'tel', v: v => v.replace(/\D/g, '').length < 7 ? 'Enter a valid phone number.' : '' }], btn: 'Send codes', pw: 1,
-      act: () => api.sendCode(D.sEmail), next: 'sce' },
-    sce: { k: 'code', len: 6, wait: 30, mail: 'sEmail', verify: (m, c) => api.verifyCode(m, c), pw: 1, t: 'Check your email', s: () => `We sent a 6 digit code to ${D.sEmail}.`, next: 'scp' },
-    scp: { k: 'code', len: 6, wait: 30, mail: 'sPhone', verify: (m, c) => api.verifyCode(m, c), pw: 1, t: 'Check your phone', s: () => `We sent a 6 digit code by SMS to ${D.sPhone}.`, next: 'subdone' },
-    subdone: { k: 'success', noBack: 1, t: 'Premium is active', s: 'Thank you. Your branch, staff and product limits are now raised.', label: 'Back to dashboard', auto: 2800, before: () => { if (D.sEmail) D.plan = { ...D.plan, contact: { email: D.sEmail, phone: D.sPhone, verified: true } }; try { localStorage.setItem('strap.plan', JSON.stringify(D.plan)); } catch (e) {} }, go: () => { location.href = 'dashboard.html'; } },
+    photo: { k: 'image', t: 'Set business profile picture', next: 'done' },
     done: { k: 'final', noBack: 1, mid: 1, t: 'You’re all set' }
   };
 
@@ -167,8 +137,7 @@
     const body = el('div', 'body'), foot = el('div', 'foot');
     body.append(el('h2', 'st', st.t));
     if (st.s) body.append(el('p', 'ss', typeof st.s === 'function' ? st.s() : st.s));
-    ({ code: kCode, verified: kVerified, choice: kChoice, image: kImage, plan: kPlan, success: kSuccess, final: kFinal, suspended: kSuspended }[st.k] || kForm)(st, body, foot);
-    if (st.pw) foot.append(el('p', 'note', 'Powered by Flutterwave'));
+    ({ code: kCode, verified: kVerified, choice: kChoice, image: kImage, success: kSuccess, final: kFinal, suspended: kSuspended }[st.k] || kForm)(st, body, foot);
     box.append(body, el('div', 'sp'), foot);
     $$('.st,.ss,.fg,.acc,.paycard,.avatar,.tl,.okm,.foot > *,.skip-top', box).forEach((n, k) => { n.classList.add('rise'); n.style.setProperty('--i', Math.min(k, 8)); });
     flow.replaceChildren(box); window.scrollTo(0, 0);
@@ -303,78 +272,6 @@
     body.append(av, err); foot.append(btn, alt, file);
   }
 
-  /* ---- subscription step (modelled on a card-checkout screen) ---- */
-  const digits = s => s.replace(/\D/g, '');
-  const luhn = n => { let s = 0, a = false; for (let i = n.length - 1; i >= 0; i--) { let d = +n[i]; if (a) { d *= 2; if (d > 9) d -= 9; } s += d; a = !a; } return s % 10 === 0; };
-  const cardBrand = n => /^4/.test(n) ? 'visa' : /^(5[1-5]|2[2-7])/.test(n) ? 'mc' : /^(506[01]|507[89]|6500)/.test(n) ? 'verve' : '';
-  const numErr = v => { const n = digits(v); return !n ? 'Enter your card number.' : (n.length < 16 || n.length > 19 || !luhn(n)) ? 'That card number doesn’t look right.' : ''; };
-  const expErr = v => {
-    const d = digits(v); if (d.length < 4) return 'Enter the expiry date as MM / YY.';
-    const m = +d.slice(0, 2), y = 2000 + +d.slice(2, 4), n = new Date();
-    if (m < 1 || m > 12) return 'Enter a valid month.';
-    if (y < n.getFullYear() || (y === n.getFullYear() && m < n.getMonth() + 1)) return 'This card has expired.';
-    return y > n.getFullYear() + 20 ? 'Check the expiry year.' : '';
-  };
-  const cvvErr = v => /^\d{3}$/.test(v) ? '' : 'Enter the 3-digit CVV on the back of your card.';
-
-  function kPlan(st, body, foot) {
-    // what's included (collapsible)
-    const acc = el('div', 'acc'), head = el('button', 'acc-h'), sign = el('span', 'acc-i', '+'), bx = el('div', 'acc-b'), inner = el('div'), list = el('ul', 'acc-l');
-    head.type = 'button'; head.setAttribute('aria-expanded', 'false'); head.append(el('span', '', 'What’s included'), sign);
-    PLAN.features.forEach(f => list.append(el('li', '', f))); inner.append(list); bx.append(inner); bx.inert = true;
-    head.onclick = () => { const open = !acc.classList.contains('open'); acc.classList.toggle('open', open); head.setAttribute('aria-expanded', String(open)); bx.inert = !open; };
-    acc.append(head, bx);
-    if (st.open) { acc.classList.add('open'); head.setAttribute('aria-expanded', 'true'); bx.inert = false; sign.textContent = '+'; }
-
-    // card form
-    const card = el('div', 'paycard'), box = el('div', 'cbox'), gerr = el('p', 'ferr'), ferr = el('p', 'ferr');
-    gerr.setAttribute('role', 'alert'); ferr.setAttribute('role', 'alert');
-    const mk = (ph, ac, name, max) => { const i = el('input', 'ci'); i.type = 'text'; i.inputMode = 'numeric'; i.placeholder = ph; i.autocomplete = ac; i.name = name; i.maxLength = max; i.setAttribute('aria-label', ph); return i; };
-    const num = mk('Card number', 'cc-number', 'cardnumber', 23), exp = mk('MM / YY', 'cc-exp', 'cc-exp', 7), cvv = mk('CVV', 'cc-csc', 'cvc', 3);
-    const brands = el('div', 'brands'); brands.innerHTML = '<span class="bd visa">VISA</span><span class="bd mc"><i></i><i></i></span><span class="bd verve">verve</span>';
-    const r1 = el('div', 'crow'), r2 = el('div', 'crow two'), cw = el('div', 'cvvw'), info = el('button', 'info', 'i');
-    info.type = 'button'; info.setAttribute('aria-label', 'Where do I find the CVV?');
-    const hint = el('p', 'hint', 'The CVV is the 3 digits on the back of your card.'); hint.hidden = true;
-    info.onclick = () => { hint.hidden = !hint.hidden; };
-    r1.append(num); cw.append(cvv, info); r2.append(exp, cw); box.append(r1, r2);
-
-    const btn = pill('Subscribe for ' + ngn(PLAN.intro)); btn.type = 'submit'; btn.disabled = true;
-    const valid = () => !numErr(num.value) && !expErr(exp.value) && !cvvErr(cvv.value);
-    const upd = () => { btn.disabled = !valid(); ferr.textContent = ''; gerr.textContent = ''; };
-
-    num.addEventListener('input', () => {
-      const n = digits(num.value).slice(0, 19); num.value = n.replace(/(.{4})(?=.)/g, '$1 ');
-      const b = cardBrand(n); brands.dataset.b = b; $$('.bd', brands).forEach(x => x.classList.toggle('on', x.classList.contains(b))); upd();
-    });
-    exp.addEventListener('input', () => {
-      let d = digits(exp.value).slice(0, 4); if (d.length === 1 && +d > 1) d = '0' + d;
-      exp.value = d.length > 2 ? d.slice(0, 2) + ' / ' + d.slice(2) : d; upd();
-    });
-    cvv.addEventListener('input', () => { cvv.value = digits(cvv.value).slice(0, 3); upd(); });
-    [[num, numErr], [exp, expErr], [cvv, cvvErr]].forEach(([i, f]) => i.addEventListener('blur', () => { if (i.value.trim() && f(i.value)) ferr.textContent = f(i.value); }));
-
-    btn.onclick = async () => {
-      if (btn.disabled) return;
-      lock(btn, true, 'Processing…');
-      const r = await api.subscribe({ amount: PLAN.intro, card: { number: digits(num.value), exp: digits(exp.value), cvv: cvv.value } });
-      lock(btn, false);
-      if (!r.ok) { gerr.textContent = r.msg || 'Payment failed. Check your card and try again.'; return; }
-      D.plan = { status: 'active', currency: 'NGN', intro: PLAN.intro, introMonths: PLAN.introMonths, regular: PLAN.regular, renewsOn: planDate().toISOString().slice(0, 10) };
-      num.value = exp.value = cvv.value = ''; // card data is never kept in D
-      if (st === STEPS.subscribe) { // show the loader again, then roll out the verification pages
-        const loader = $('#loader'), msg = $('#loader-msg'), old = msg.textContent; msg.textContent = 'Confirming your payment';
-        document.body.classList.add('lock'); loader.hidden = false; void loader.offsetWidth; loader.classList.add('on');
-        await sleep(1900);
-        loader.classList.remove('on'); setTimeout(() => { loader.hidden = true; document.body.classList.remove('lock'); msg.textContent = old; }, 300);
-        return go(st.next);
-      }
-      go(st.next);
-    };
-    const hd = el('div', 'cardh'); hd.append(el('span', '', 'Card details'), brands);
-    card.append(hd, box, hint, ferr, gerr, btn, el('p', 'note', 'Plus applicable taxes. Cancel anytime.'), el('p', 'note', 'Payments powered by Flutterwave'));
-    body.append(acc, card);
-  }
-
   // animated success: ring and tick draw themselves, sparks burst, then we move on (button or automatically)
   function kSuccess(st, body, foot) {
     if (st.before) st.before();
@@ -433,10 +330,9 @@
 
   Object.assign(api, StrapAPI.auth); // real backend
 
-  /* ===== landing: create account or log in; ?subscribe=1 opens the card screen only ===== */
+  /* ===== landing: create account or log in ===== */
   $('#l-signup').addEventListener('click', () => startFlow('email'));
   $('#l-login').addEventListener('click', () => startFlow('lemail'));
-  if (SUB) { try { Object.assign(D, JSON.parse(sessionStorage.getItem('strap.session') || '{}')); } catch (e) {} land.hidden = true; flow.hidden = false; hist = []; go('subscribe'); }
 
   /* Legal and support pages */
   document.addEventListener('click', e => {
