@@ -193,6 +193,7 @@ window.StrapSales = (() => {
       // stock comes off as soon as the sale is recorded
       sale.lines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
       S.addSale(sale);
+      if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
       if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
       else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
       const synced = await StrapAPI.flush();
@@ -276,7 +277,7 @@ window.StrapSales = (() => {
         if (!e.target.closest('[data-ok]')) return;
         const v = +inp.value; if (!(v > 0)) { fx('err'); $('#sx-perr', sh.body).textContent = 'Enter the amount received.'; return; }
         if (v > bal) { fx('err'); $('#sx-perr', sh.body).textContent = `That’s more than the ${money(bal)} owed.`; return; }
-        S.payCredit(c.id, v); sh.close(); fx('ok'); ctx.toast(`${money(v)} received from ${c.customer.name.split(' ')[0]}`); after(); drawCounts();
+        S.payCredit(c.id, v); sh.close(); StrapAPI.flush().then(r => { if (!r || !r.ok) ctx.toast('Payment saved on this device; cloud sync will retry.'); }); fx('ok'); ctx.toast(`${money(v)} received from ${c.customer.name.split(' ')[0]}`); after(); drawCounts();
       });
     }
 
