@@ -350,7 +350,7 @@ async function ensurePremiumSchema() {
 }
 const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
 const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
-const flwReady=()=>flwMode()==='test' && flwSecret().startsWith('FLWSECK_TEST-');
+const flwReady=()=>flwMode()==='test' && flwSecret().startsWith('FLWSECK_TEST-') && !!String(E.FLW_WEBHOOK_SECRET_HASH||'').trim();
 const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
 async function premiumActive(userId) {
   await ensurePremiumSchema();
@@ -365,6 +365,26 @@ async function flwVerify(id) {
   if(!response.ok || !body || body.status!=='success' || !body.data) throw new Error('Flutterwave could not verify this transaction.');
   return body.data;
 }
+async function syncMcpPremium(email,status,expiresAt,txRef,amount) {
+  const secret=String(E.STRAP_MCP_PREMIUM_SYNC_SECRET||'').trim();
+  if(!secret||!email) return false;
+  try {
+    const response=await fetch('https://lhizunrljottkhemdfei.supabase.co/functions/v1/premium-sync',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-strap-premium-sync':secret},
+      body:JSON.stringify({email,status,expires_at:expiresAt||null,tx_ref:txRef||'',amount:Number(amount)||0,currency:'NGN'})
+    });
+    const body=await response.json().catch(()=>({}));
+    if(!response.ok||!body.ok) {
+      console.error('MCP Premium sync failed:',response.status,String(body.message||'').slice(0,160));
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error('MCP Premium sync failed:',e.message);
+    return false;
+  }
+}
 async function activatePremium(payment, tx) {
   const amount=Number(payment.amount), paid=Number(tx.amount);
   if(String(tx.tx_ref)!==String(payment.tx_ref) || String(tx.status).toLowerCase()!=='successful' ||
@@ -377,6 +397,8 @@ async function activatePremium(payment, tx) {
     currency='NGN',tx_ref=excluded.tx_ref,started_at=case when strap_subscriptions.status='active' and strap_subscriptions.expires_at>now() then strap_subscriptions.started_at else now() end,
     expires_at=now()+interval '30 days',updated_at=now()`,
     [payment.user_id,payment.customer_email||'',amount,payment.tx_ref]);
+  const subscription=(await q('select expires_at from strap_subscriptions where user_id=$1',[payment.user_id]))[0];
+  if(subscription&&payment.customer_email) await syncMcpPremium(payment.customer_email,'active',subscription.expires_at,payment.tx_ref,amount);
 }
 
 H['health'] = async (req) => {
@@ -756,8 +778,9 @@ H['gift/redeem'] = async (req, res, user, staff) => {
 H['premium/status'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
   await ensurePremiumSchema();
-  const row=(await q("select status,expires_at,amount,currency from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
+  const row=(await q("select status,expires_at,amount,currency,tx_ref from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
+  if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
   return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&premiumAmount()>0,amount:premiumAmount(),mode:'test'}];
 };
 H['premium/checkout'] = async (req,res,user) => {
