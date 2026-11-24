@@ -709,9 +709,42 @@ H['data'] = async (req, res, user, staff) => {
       }
       await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}];
     }
-    if(!b['ss:strap.session']) { const o=(await q('select blob from user_data where user_id=$1',[ownerId]))[0]; if(o&&o.blob&&o.blob['ss:strap.session']) b['ss:strap.session']=o.blob['ss:strap.session']; }
     const clean=await safeOwnerBlob(ownerId,b);
-    await q('insert into user_data(user_id,blob,updated_at) values($1,$2,now()) on conflict(user_id) do update set blob=$2,updated_at=now()',[ownerId,clean]);
+    const client=await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('insert into user_data(user_id,blob,updated_at) values($1,$2::jsonb,now()) on conflict(user_id) do nothing',[ownerId,'{}']);
+      const locked=await client.query('select blob from user_data where user_id=$1 for update',[ownerId]);
+      const currentBlob=locked.rows[0]&&locked.rows[0].blob||{};
+      if(!clean['ss:strap.session']&&currentBlob['ss:strap.session']) clean['ss:strap.session']=currentBlob['ss:strap.session'];
+      const incomingState=parseStored(clean['ls:strap.v1'],{}), currentState=parseStored(currentBlob['ls:strap.v1'],{});
+      if(Array.isArray(incomingState.gift)) {
+        const previous=Array.isArray(currentState.gift)?currentState.gift:[];
+        incomingState.gift=incomingState.gift.map(next=>{
+          const old=previous.find(card=>String(card.id||'')===String(next.id||'')||String(card.code||'').toUpperCase()===String(next.code||'').toUpperCase());
+          if(!old) return next;
+          const merged={...old,...next};
+          if((next.type||old.type||'value')==='value') {
+            const before=Number(old.balance??old.value), after=Number(next.balance??next.value);
+            if(Number.isFinite(before)&&Number.isFinite(after)) merged.balance=Math.min(before,after);
+          }
+          if(['redeemed','expired','revoked'].includes(String(old.status||'').toLowerCase())) merged.status=old.status;
+          const seen=new Set(), redemptions=[];
+          for(const entry of [...(Array.isArray(old.redemptions)?old.redemptions:[]),...(Array.isArray(next.redemptions)?next.redemptions:[])]) {
+            const id=String(entry&&entry.saleId||''); if(!id||seen.has(id)) continue; seen.add(id); redemptions.push(entry);
+          }
+          merged.redemptions=redemptions.slice(-200);
+          if(Number(old.lastRedeemedAt)>Number(next.lastRedeemedAt)) { merged.lastRedeemedAt=old.lastRedeemedAt; merged.lastSaleId=old.lastSaleId; }
+          return merged;
+        });
+        clean['ls:strap.v1']=JSON.stringify(incomingState);
+      }
+      await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[ownerId,JSON.stringify(clean)]);
+      await client.query('COMMIT');
+    } catch(error) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw error;
+    } finally { client.release(); }
     return [200,{ok:true}];
   }
   if(staff) {
