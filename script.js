@@ -8,8 +8,6 @@
   const auth = window.StrapAPI && window.StrapAPI.auth;
   const authUnavailable = () => ({ ok: false, msg: 'The authentication service is not available. Please refresh and try again.' });
   const api = {
-    lookupStaff: email => auth && auth.lookupStaff ? auth.lookupStaff(email) : Promise.resolve(authUnavailable()),
-    signInStaff: (email, pin) => auth && auth.signInStaff ? auth.signInStaff(email, pin) : Promise.resolve(authUnavailable()),
     signIn: (email, password) => auth && auth.signIn ? auth.signIn(email, password) : Promise.resolve(authUnavailable()),
     startSignup: (email, password) => auth && auth.startSignup ? auth.startSignup(email, password) : Promise.resolve(authUnavailable()),
     sendCode: email => auth && auth.sendCode ? auth.sendCode(email) : Promise.resolve(authUnavailable()),
