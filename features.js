@@ -18,8 +18,8 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    createStaff: s => StrapAPI.createStaff(s),
-    setStaffShift: (id, shift) => StrapAPI.setStaffShift(id, shift),
+    createStaff: s => StrapAPI.auth.createStaff(s),
+    setStaffShift: (id, shift) => StrapAPI.auth.setStaffShift(id, shift),
     async checkout() { await sleep(600); return { ok: false }; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
@@ -238,7 +238,7 @@ window.StrapFeatures = (() => {
       const loadStaff = async () => {
         o.step({ t: 'Staff', s: 'Loading your staff accounts…', body: '<div class="empt"><p>Please wait while Strap loads your team.</p></div>', foot: '' });
         try {
-          const res = await StrapAPI.listStaff();
+          const res = await StrapAPI.auth.listStaff();
           if (!res || !res.ok) throw new Error(res && res.msg || 'Could not load staff from your store.');
           S.staff = (Array.isArray(res.staff) ? res.staff : []).map(x => ({ ...x, shift: x.shift || { mode: 'closed', from: '', to: '' } }));
           save();
@@ -315,7 +315,7 @@ window.StrapFeatures = (() => {
         if (await K.confirm({ title: 'Close sales now?', body: `${x.name} won’t be able to sell until you open sales again. A sale in progress stays in their cart.`, ok: 'Close sales', cancel: 'Keep open', icon: 'lock', danger: true })) setShift(o, x, { mode: 'closed' }, `Sales is closed for ${first(x)}`);
       } else if (act === 'auto') autoStep(o, x);
       else if (act === 'message') { const subject=encodeURIComponent('Message from '+(ctx.store.bizname||'your store')); location.href='mailto:'+encodeURIComponent(x.email)+'?subject='+subject; }
-      else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.removeStaff(x.id); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
+      else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.auth.removeStaff(x.id); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
     });
   }
   function autoStep(o, x) {
@@ -349,7 +349,7 @@ window.StrapFeatures = (() => {
     $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
     const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
     $$('[data-more]', o.el).forEach(b => b.onclick = () => openMenu(o, b, S.staff.find(y => y.id === b.dataset.more)));
-    $$('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.removeStaff(d.dataset.del); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
+    $$('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.auth.removeStaff(d.dataset.del); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
     // keep the "Sales open / closed" pills right while this screen stays open and automatic hours roll over
     o.shT = setInterval(() => { if (!o.el.isConnected) return clearInterval(o.shT); S.staff.forEach(x => { const p = $(`[data-shp="${x.id}"]`, o.el); if (p) { p.classList.toggle('on', shiftNow(x).open); p.lastElementChild.textContent = shiftText(x); } }); }, 20000);
   }
