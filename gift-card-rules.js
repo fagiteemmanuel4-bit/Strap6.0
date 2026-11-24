@@ -31,7 +31,7 @@
     const id = String(saleId || '').trim();
     if (!id) return { ok: false, code: 'SALE_ID_REQUIRED', message: 'A sale reference is required to redeem this card.' };
     const previous = Array.isArray(card && card.redemptions) ? card.redemptions.find(x => String(x.saleId) === id) : null;
-    if (previous) return { ok: true, alreadyProcessed: true, discount: Number(previous.discount) || 0, total: round(Math.max(0, Number(subtotal) - (Number(previous.discount) || 0))), card };
+    if (previous) { if (round(previous.subtotal) !== round(subtotal)) return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'This sale reference was already used with different sale details.' }; return { ok: true, alreadyProcessed: true, discount: Number(previous.discount) || 0, total: round(Math.max(0, Number(subtotal) - (Number(previous.discount) || 0))), card }; }
     const result = quote(card, subtotal, today);
     if (!result.ok) return result;
     const next = { ...card };
