@@ -792,9 +792,9 @@ H['premium/status'] = async (req,res,user) => {
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
   if(!flwReady()) return [503,{ok:false,msg:'Flutterwave test credentials are not configured yet.'}];
+  await ensurePremiumSchema();
   const amount=await premiumCheckoutAmount(user.id);
   if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the introductory Premium amount when you are ready to charge.'}];
-  await ensurePremiumSchema();
   const active=await premiumActive(user.id);
   if(active) return [409,{ok:false,msg:'Your Premium subscription is already active.'}];
   const txRef='STRAP-TEST-'+crypto.randomBytes(12).toString('hex').toUpperCase();
@@ -820,6 +820,7 @@ H['premium/verify'] = async (req,res,user) => {
   await ensurePremiumSchema();
   const payment=(await q("select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 and user_id=$2 limit 1",[txRef,user.id]))[0];
   if(!payment) return [404,{ok:false,msg:'We could not find this payment.'}];
+  if(payment.status==='successful') return [200,{ok:true,active:await premiumActive(user.id),alreadyProcessed:true}];
   try {
     const tx=await flwVerify(id);
     await activatePremium({...payment,customer_email:user.email},tx);
