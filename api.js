@@ -30,7 +30,8 @@
     finally { pushing = false; pending = null; }
     if (!r || !r.ok) {
       console.error('Strap cloud sync failed:', r && r.msg);
-      if (active && !timer) timer = setTimeout(() => { timer = null; push(); }, 5000);
+      const planBlocked = r && (r.code === 'PREMIUM_REQUIRED' || r.code === 'PRODUCT_LIMIT');
+      if (active && !timer && !planBlocked) timer = setTimeout(() => { timer = null; push(); }, 5000);
     }
     return r || { ok: false, msg: 'Cloud sync failed.' };
   }
