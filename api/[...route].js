@@ -590,7 +590,9 @@ H['staff/login'] = async (req,res) => {
   await q('delete from staff_sessions where expires_at<=now()');
   await q('insert into staff_sessions(token_hash,staff_id,owner_id,expires_at) values($1,$2::uuid,$3,now()+interval \'12 hours\')',[tokenHash,row.id,row.owner_id]);
   clearMine(res); setStaffCookie(res,token);
-  return [200,{ok:true}];
+  const profile=row.profile||{};
+  const access=staffAccess(row.role);
+  return [200,{ok:true,staff:{name:row.name,role:row.role,email:row.email,branchId:row.branch_id,defaultRoute:access.defaultRoute,allowedRoutes:access.allowedRoutes,bizname:profile.bizname||'My Store',currency:profile.currency||'NGN'}}];
 };
 H['staff/signout'] = async (req,res) => {
   const token=staffToken(req); if(token) await q('delete from staff_sessions where token_hash=$1',[sha(token)]).catch(()=>[]);
