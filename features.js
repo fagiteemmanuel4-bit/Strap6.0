@@ -132,7 +132,7 @@ window.StrapFeatures = (() => {
         await cover('Deleting your account', async () => {
           await api.deleteAccount({ survey: [...A.reasons], note: A.note, store: { name: ctx.store.bizname, branches: S.branches, plan: S.plan } });
           Object.keys(localStorage).filter(k => k.startsWith('strap')).forEach(k => localStorage.removeItem(k)); sessionStorage.clear();
-        }); location.href = 'index.html';
+        }); location.replace('/');
       }
     });
     s.el.addEventListener('input', e => { if (e.target.id === 'dc') $('[data-go]', s.el).disabled = e.target.value.trim().toUpperCase() !== 'DELETE'; });
