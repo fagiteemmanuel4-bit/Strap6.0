@@ -18,9 +18,10 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    createStaff: s => StrapAPI.auth.createStaff(s),
-    listStaff: () => StrapAPI.auth.listStaff(),
-    removeStaff: id => StrapAPI.auth.removeStaff(id),
+    async createStaff(s) { await sleep(300); return { ok: true }; },
+    // [HOOK: staff sales hours] save one cashier's sales setting on your server. shift = { mode: 'open' | 'closed' | 'auto', from: 'HH:MM', to: 'HH:MM' }
+    // The cashier screen (strap-sales.html > getShift) must read this same object for the signed-in cashier.
+    async setStaffShift(id, shift) { await sleep(150); return { ok: true }; },
     async checkout() { await sleep(600); return { ok: false }; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
@@ -226,7 +227,7 @@ window.StrapFeatures = (() => {
   }
 
   /* --- Staff --- */
-  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers']];
+  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers'], ['Customer care', 'Customers and orders'], ['Manager', 'Everything except settings']];
   const slug = (n, max = 14) => {
     const skip = new Set(['and', 'the', 'ltd', 'limited', 'store', 'stores', 'shop', 'house', 'enterprises', 'global', 'ventures', 'company', 'co', 'inc', 'of']);
     let w = n.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean), k = w.filter(x => !skip.has(x)); if (!k.length) k = w;
@@ -234,34 +235,100 @@ window.StrapFeatures = (() => {
   };
   const mailFor = (name, dom) => { const p = name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean); let m; do m = `${p[0] || 'staff'}${p[1] ? '.' + p[1][0] : ''}${10 + Math.floor(Math.random() * 90)}@${dom}.com`; while (S.staff.some(x => x.email === m)); return m; };
   function staffFlow() { cover('Opening', () => { const o = ob(); ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
-  function staffHome(o) {
-    const draw = () => {
-      o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
-        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro staff-row"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx staff-more" data-staff-menu="${x.id}" aria-label="More options for ${esc(x.name)}" title="Staff options"><span aria-hidden="true">⋯</span></button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
-        foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
-      $('[data-staff-menu]', o.el).forEach(btn => btn.onclick = async () => {
-        const person=S.staff.find(x=>x.id===btn.dataset.staffMenu); if(!person)return;
-        const state=await StrapAPI.call('GET','sales/session'), isOpen=!!state.open;
-        screen(`<div class="staff-actions"><header class="pm-head"><h2 class="pm-title">${esc(person.name)}</h2><button class="pm-round" data-x aria-label="Close">${ic('close',20,2)}</button></header>
-          <button class="ds-i" data-sales-toggle type="button"><span>${isOpen?'Close sales':'Open sales'}</span></button>
-          <button class="ds-i" data-sales-auto type="button"><span>Automatic sales hours</span></button>
-          <button class="ds-i" data-message-staff type="button"><span>Send message</span></button>
-          <button class="ds-i" data-remove-staff type="button"><span>Delete staff</span></button></div>`, s => {
-          $('[data-sales-toggle]',s.root).onclick=async()=>{const r=await StrapAPI.call('POST','sales/session',{open:!isOpen});if(!r.ok)return toast(r.msg||'Could not update sales.');toast(!isOpen?'Sales opened.':'Sales closed.');s.close();};
-          $('[data-sales-auto]',s.root).onclick=async()=>{const q=await StrapAPI.call('GET','sales/session'),sc=q.schedule||{};s.set(`<div class="staff-actions"><header class="pm-head"><h2 class="pm-title">Automatic sales hours</h2><button class="pm-round" data-x aria-label="Close">${ic('close',20,2)}</button></header><p>Set the daily hours when cashier sales are available.</p><label class="pm-fl"><span><input id="sa-on" type="checkbox" ${sc.enabled?'checked':''}> Enable automatic opening and closing</span></label><label class="pm-fl"><span>Opening time</span><input id="sa-open" type="time" value="${esc(sc.open||'08:00')}"></label><label class="pm-fl"><span>Closing time</span><input id="sa-close" type="time" value="${esc(sc.close||'20:00')}"></label><button class="fx-btn" data-save-schedule>Save settings</button></div>`);$('[data-save-schedule]',s.root).onclick=async()=>{const enabled=$('#sa-on',s.root).checked,open=$('#sa-open',s.root).value,close=$('#sa-close',s.root).value;if(enabled&&(!open||!close||open===close))return toast('Choose different opening and closing times.');const r=await StrapAPI.call('POST','sales/session',{schedule:{enabled,open,close}});if(!r.ok)return toast(r.msg||'Could not save schedule.');toast('Automatic sales hours saved.');s.close();};};
-          $('[data-message-staff]',s.root).onclick=()=>{s.close();location.href='mailto:'+encodeURIComponent(person.email)+'?subject='+encodeURIComponent('Message from your store');};
-          $('[data-remove-staff]',s.root).onclick=async()=>{if(!(await K.confirm({title:'Remove this staff member?',body:'Their login stops working immediately.',ok:'Remove',cancel:'Keep',icon:'trash',danger:true})))return;const r=await api.removeStaff(person.id);if(!r.ok)return toast(r.msg||'Could not remove staff.');S.staff=S.staff.filter(x=>x.id!==person.id);save();s.close();staffHome(o);};
-        });
-      });
-      $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
-      const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
-      if(ctx && ctx.staff && ctx.staff.branchId) $('[data-staff-menu]',o.el).forEach(d => { const item=S.staff.find(x=>x.id===d.dataset.staffMenu); if(item && !item.branch) d.hidden=true; });
+  /* ===== STAFF MENU (new): open / close a cashier's sales, automatic hours, remove ===== */
+  // A cashier's `shift` is { mode: 'open' | 'closed' | 'auto', from: 'HH:MM', to: 'HH:MM' }. New cashiers start closed,
+  // so nobody sells until you open sales. `auto` opens at `from` and closes at `to` every day (overnight hours work too).
+  const shiftOf = x => Object.assign({ mode: 'closed', from: '', to: '' }, x.shift || {});
+  const toMin = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
+  const t12 = t => { const m = toMin(t); if (m == null) return ''; const h = Math.floor(m / 60); return `${((h + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+  function shiftNow(x) {
+    const s = shiftOf(x), a = toMin(s.from), b = toMin(s.to);
+    if (s.mode === 'open') return { open: true, s };
+    if (s.mode === 'auto' && a != null && b != null) { const d = new Date(), n = d.getHours() * 60 + d.getMinutes(); return { open: a <= b ? (n >= a && n < b) : (n >= a || n < b), s }; }
+    return { open: false, s };
+  }
+  const shiftText = x => { const { open, s } = shiftNow(x); return s.mode === 'auto' && toMin(s.from) != null && toMin(s.to) != null ? (open ? `Open · closes ${t12(s.to)}` : `Closed · opens ${t12(s.from)}`) : (open ? 'Sales open' : 'Sales closed'); };
+  const first = x => (x.name || 'them').trim().split(/\s+/)[0];
+
+  async function setShift(o, x, patch, msg) {
+    x.shift = Object.assign(shiftOf(x), patch); save();
+    try { await api.setStaffShift(x.id, x.shift); } catch (e) {}
+    notify('staff', 'Sales hours changed', msg); toast(msg); staffHome(o);
+  }
+  function closeMenu(o) {
+    const sm = o.sm; if (!sm) return; o.sm = null;
+    sm.btn.setAttribute('aria-expanded', 'false'); sm.m.classList.remove('on');
+    document.removeEventListener('pointerdown', sm.out, true); document.removeEventListener('keydown', sm.key, true); o.el.removeEventListener('scroll', sm.off); removeEventListener('resize', sm.off);
+    setTimeout(() => sm.m.remove(), 160);
+  }
+  function openMenu(o, btn, x) {
+    if (o.sm && o.sm.btn === btn) return closeMenu(o);
+    closeMenu(o);
+    const { open, s } = shiftNow(x), auto = s.mode === 'auto' && toMin(s.from) != null;
+    const m = document.createElement('div'); m.className = 'smenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', `Options for ${x.name}`);
+    m.innerHTML = `<div class="smh"><i class="${open ? 'on' : ''}"></i><div><b>${open ? 'Sales is open' : 'Sales is closed'}</b><small>${esc(x.name)}${auto ? ` · ${t12(s.from)} to ${t12(s.to)}` : ''}</small></div></div>
+      <button type="button" class="smi" role="menuitem" data-a="toggle"><span class="si">${ic(open ? 'lock' : 'flash', 20, 1.9)}</span><div><b>${open ? 'Close sales now' : 'Open sales now'}</b><small>${open ? `Stops ${esc(first(x))} from selling` : `Lets ${esc(first(x))} start selling`}${auto ? ' · replaces automatic hours' : ''}</small></div></button>
+      <button type="button" class="smi" role="menuitem" data-a="auto"><span class="si">${ic('clock', 20, 1.9)}</span><div><b>Automatic open &amp; close</b><small>${auto ? `${t12(s.from)} to ${t12(s.to)}, every day` : 'Set daily opening hours'}</small></div><em class="smt${auto ? ' on' : ''}">${auto ? 'On' : 'Off'}</em></button>
+      <div class="smd" role="separator"></div>
+      <button type="button" class="smi dg" role="menuitem" data-a="del"><span class="si">${ic('trash', 20, 1.9)}</span><div><b>Remove staff</b><small>Their login stops working</small></div></button>`;
+    o.el.appendChild(m);
+    const er = o.el.getBoundingClientRect(), br = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+    const left = Math.max(12, Math.min(br.right - er.left - w, er.width - w - 12));
+    const flip = br.bottom + 10 + h > er.bottom - 12 && br.top - er.top > h + 20;
+    m.style.left = left + 'px'; m.style.top = (flip ? br.top - er.top - h - 8 : br.bottom - er.top + 8) + o.el.scrollTop + 'px'; m.classList.toggle('up', flip);
+    m.style.setProperty('--ox', (br.right - er.left - left - 22) + 'px');
+    void m.offsetWidth; m.classList.add('on'); btn.setAttribute('aria-expanded', 'true');
+    const items = $$('.smi', m); setTimeout(() => items[0] && items[0].focus({ preventScroll: true }), 30);
+    const sm = o.sm = { m, btn, off: () => closeMenu(o),
+      out: e => { if (!m.contains(e.target) && !btn.contains(e.target)) closeMenu(o); },
+      key: e => { if (e.key === 'Escape') { e.stopPropagation(); closeMenu(o); btn.focus(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const k = items.indexOf(document.activeElement); items[(k + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); } } };
+    document.addEventListener('pointerdown', sm.out, true); document.addEventListener('keydown', sm.key, true); o.el.addEventListener('scroll', sm.off, { passive: true }); addEventListener('resize', sm.off);
+    m.addEventListener('click', async e => {
+      const it = e.target.closest('[data-a]'); if (!it) return; const act = it.dataset.a; closeMenu(o);
+      if (act === 'toggle') {
+        if (!open) return setShift(o, x, { mode: 'open' }, `Sales is open for ${first(x)}`);
+        if (await K.confirm({ title: 'Close sales now?', body: `${x.name} won’t be able to sell until you open sales again. A sale in progress stays in their cart.`, ok: 'Close sales', cancel: 'Keep open', icon: 'lock', danger: true })) setShift(o, x, { mode: 'closed' }, `Sales is closed for ${first(x)}`);
+      } else if (act === 'auto') autoStep(o, x);
+      else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
+    });
+  }
+  function autoStep(o, x) {
+    const s = shiftOf(x), on = s.mode === 'auto', home = () => staffHome(o);
+    o.step({ t: 'Automatic hours', s: `Sales opens and closes by itself for ${esc(x.name)}, every day. Outside these hours they can’t make a sale.`, back: home,
+      body: `<p class="ss lab">Opens at</p><div class="fg tm"><input class="fi" id="ta" type="time" value="${esc(s.from || '08:00')}" aria-label="Opening time"><p class="ferr" role="alert"></p></div>
+        <p class="ss lab">Closes at</p><div class="fg tm"><input class="fi" id="tb" type="time" value="${esc(s.to || '20:00')}" aria-label="Closing time"><p class="ferr" role="alert"></p></div><p class="ss" id="tn"></p>`,
+      foot: pill(on ? 'Save hours' : 'Turn on automatic hours', 'data-save') + (on ? pill('Turn off automatic hours', 'data-off', 'alt') : '') });
+    const ta = $('#ta', o.el), tb = $('#tb', o.el), note = () => { const a = toMin(ta.value), b = toMin(tb.value);
+      $('#tn', o.el).textContent = a == null || b == null ? '' : a === b ? 'Opening and closing can’t be the same time.' : a < b ? `Open for ${Math.floor((b - a) / 60)}h${(b - a) % 60 ? ' ' + ((b - a) % 60) + 'm' : ''} each day.` : `Overnight: opens ${t12(ta.value)} and closes ${t12(tb.value)} the next morning.`; };
+    ta.oninput = tb.oninput = note; note();
+    $('[data-save]', o.el).onclick = async () => {
+      const a = toMin(ta.value), b = toMin(tb.value);
+      if (a == null) return ferr(ta, 'Choose the opening time.'); if (b == null) return ferr(tb, 'Choose the closing time.'); if (a === b) return ferr(tb, 'Closing time must be different.');
+      x.shift = { mode: 'auto', from: ta.value, to: tb.value }; save(); try { await api.setStaffShift(x.id, x.shift); } catch (e) {}
+      notify('staff', 'Automatic hours on', `${x.name}’s sales opens at ${t12(ta.value)} and closes at ${t12(tb.value)}.`);
+      o.ok('Automatic hours on', `${esc(x.name)}’s sales opens at ${t12(ta.value)} and closes at ${t12(tb.value)}, every day.`, 'Back to staff', home, 1800);
     };
-    draw();
-    api.listStaff().then(r => { if(r.ok && Array.isArray(r.staff)) { S.staff=r.staff; save(); draw(); } }).catch(()=>{});
+    const off = $('[data-off]', o.el); if (off) off.onclick = () => { setShift(o, x, { mode: 'closed' }, `Automatic hours off. Sales is closed for ${first(x)} until you open it`); };
+  }
+
+  function staffHome(o) {
+    closeMenu(o); clearInterval(o.shT);
+    const card = x => { const cash = x.role === 'Cashier';
+      return `<div class="rw ro"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small>${cash ? `<span class="shp${shiftNow(x).open ? ' on' : ''}" data-shp="${x.id}"><i></i><span>${esc(shiftText(x))}</span></span>` : ''}</div>`
+        + (cash ? `<button type="button" class="rx rmore" data-more="${x.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Options for ${esc(x.name)}">${ic('dots', 22, 2)}</button>`
+                : `<button type="button" class="rx" data-del="${x.id}" aria-label="Remove ${esc(x.name)}">${ic('trash', 20, 1.8)}</button>`) + `</div>`; };
+    o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
+      body: S.staff.length ? `<div class="rws">${S.staff.map(card).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
+      foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
+    $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
+    const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
+    $$('[data-more]', o.el).forEach(b => b.onclick = () => openMenu(o, b, S.staff.find(y => y.id === b.dataset.more)));
+    $$('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
+    // keep the "Sales open / closed" pills right while this screen stays open and automatic hours roll over
+    o.shT = setInterval(() => { if (!o.el.isConnected) return clearInterval(o.shT); S.staff.forEach(x => { const p = $(`[data-shp="${x.id}"]`, o.el); if (p) { p.classList.toggle('on', shiftNow(x).open); p.lastElementChild.textContent = shiftText(x); } }); }, 20000);
   }
   function addStaff(o) {
-    const A = { name: '', role: '', branch: ctx && ctx.staff && ctx.staff.branchId ? ctx.staff.branchId : null, pin: '', dom: slug(ctx.store.bizname || 'store'), email: '' }, fn = () => esc(A.name.split(' ')[0]);
+    const A = { name: '', role: '', branch: null, pin: '', dom: slug(ctx.store.bizname || 'store'), email: '' }, fn = () => esc(A.name.split(' ')[0]);
     const home = () => staffHome(o);
     const privacy = () => { let agree = false;
       o.step({ t: 'Before you add staff', s: 'Staff can see parts of your business. Please confirm the privacy policy.', back: home,
@@ -299,11 +366,8 @@ window.StrapFeatures = (() => {
           if (!a || !d) return bad($('#e1', sh.body).parentNode); if (S.staff.some(x => x.email === `${a}@${d}.com`)) return toast('That email is taken'); A.dom = d; A.email = `${a}@${d}.com`; sh.close(); email(); });
       };
       $('[data-fin]', o.el).onclick = async () => {
-        const b=$('[data-fin]',o.el); b.disabled=true;
-        const r=await api.createStaff({ name:A.name, role:A.role, branch:A.branch, email:A.email, pin:A.pin });
-        b.disabled=false;
-        if(!r.ok) { toast(r.msg||'Could not create the staff account.'); return; }
-        const st=r.staff; S.staff.unshift(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
+        const salt = Math.random().toString(36).slice(2), st = { id: 's' + Date.now().toString(36), name: A.name, role: A.role, branch: A.branch, email: A.email, salt, pin: await sha(salt + ':' + A.pin), at: Date.now(), shift: A.role === 'Cashier' ? { mode: 'closed', from: '', to: '' } : undefined };
+        await api.createStaff({ ...st, pin: undefined }); S.staff.push(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
         o.ok('Staff added', `${esc(st.name)} can now sign in as ${esc(st.role)}.`, 'Back to staff', home);
       };
     };
