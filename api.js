@@ -1,7 +1,7 @@
 /* Strap client: talks to /api (Vercel functions + Neon). Load this FIRST on every page. */
 (() => {
   const own = k => String(k).startsWith('strap');
-  let active = false, timer = null, pushing = false;
+  let active = false, timer = null, pushing = false, pending = null;
   const call = async (method, path, body) => {
     try {
       const response = await fetch('/api/' + path, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
