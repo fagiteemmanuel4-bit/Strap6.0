@@ -127,3 +127,9 @@ html[data-theme=dark] .ob{filter:invert(.92) hue-rotate(180deg)}
 .pr-ul i{width:24px;height:24px;border-radius:50%;background:#e6f53a;border:1.5px solid #0a0a0a;display:grid;place-items:center;flex:none}
 .pr-note{margin:18px 0 0;font-size:13px}.pr-cancel{color:#c62828;border-color:#c62828;margin-bottom:24px}
 @media (prefers-reduced-motion:reduce){.pr-hero .il,.pr-st i,.pr-ul li{animation:none}.pr-mb i{transition:none}}
+
+/* Visible staff-card overflow menu */
+.ob .rw.staff-row{min-width:0;}
+.ob .rw.staff-row .staff-more{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center;flex:0 0 42px;width:42px;height:42px;min-width:42px;padding:0!important;border:1.5px solid #0a0a0a!important;border-radius:14px;background:#e6f53a!important;color:#0a0a0a!important;cursor:pointer;position:relative;z-index:2;}
+.ob .rw.staff-row .staff-more span{display:block;font:700 29px/1 "Sora",sans-serif;letter-spacing:1px;transform:translateY(-5px);color:#0a0a0a;}
+.ob .rw.staff-row .staff-more:focus-visible{outline:3px solid #0a0a0a;outline-offset:3px;}
