@@ -269,6 +269,7 @@ window.StrapFeatures = (() => {
       <button type="button" class="smi" role="menuitem" data-a="toggle"><span class="si">${ic(open ? 'lock' : 'flash', 20, 1.9)}</span><div><b>${open ? 'Close sales now' : 'Open sales now'}</b><small>${open ? `Stops ${esc(first(x))} from selling` : `Lets ${esc(first(x))} start selling`}${auto ? ' · replaces automatic hours' : ''}</small></div></button>
       <button type="button" class="smi" role="menuitem" data-a="auto"><span class="si">${ic('clock', 20, 1.9)}</span><div><b>Automatic open &amp; close</b><small>${auto ? `${t12(s.from)} to ${t12(s.to)}, every day` : 'Set daily opening hours'}</small></div><em class="smt${auto ? ' on' : ''}">${auto ? 'On' : 'Off'}</em></button>
       <div class="smd" role="separator"></div>
+      <button type="button" class="smi" role="menuitem" data-a="message"><span class="si">${ic('mail', 20, 1.9)}</span><div><b>Send message</b><small>Write to this staff member by email</small></div></button>
       <button type="button" class="smi dg" role="menuitem" data-a="del"><span class="si">${ic('trash', 20, 1.9)}</span><div><b>Remove staff</b><small>Their login stops working</small></div></button>`;
     o.el.appendChild(m);
     const er = o.el.getBoundingClientRect(), br = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
@@ -288,6 +289,7 @@ window.StrapFeatures = (() => {
         if (!open) return setShift(o, x, { mode: 'open' }, `Sales is open for ${first(x)}`);
         if (await K.confirm({ title: 'Close sales now?', body: `${x.name} won’t be able to sell until you open sales again. A sale in progress stays in their cart.`, ok: 'Close sales', cancel: 'Keep open', icon: 'lock', danger: true })) setShift(o, x, { mode: 'closed' }, `Sales is closed for ${first(x)}`);
       } else if (act === 'auto') autoStep(o, x);
+      else if (act === 'message') { const subject=encodeURIComponent('Message from '+(ctx.store.bizname||'your store')); location.href='mailto:'+encodeURIComponent(x.email)+'?subject='+subject; }
       else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.removeStaff(x.id); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
     });
   }
