@@ -34,3 +34,9 @@ test('invalid discount percentage is rejected', () => {
   const r=Gift.quote({id:'g7',type:'discount',value:150,status:'active'},100,'2026-11-24');
   assert.equal(r.ok,false); assert.equal(r.code,'INVALID_CARD');
 });
+
+test('same sale reference cannot be replayed with a changed subtotal', () => {
+  const first=Gift.redeem({id:'g8',type:'value',value:1000,balance:1000,status:'active'},300,'sale-8','2026-11-24',1);
+  const replay=Gift.redeem(first.card,450,'sale-8','2026-11-24',2);
+  assert.equal(replay.ok,false); assert.equal(replay.code,'IDEMPOTENCY_CONFLICT');
+});
