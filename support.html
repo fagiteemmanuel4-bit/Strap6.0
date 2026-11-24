@@ -252,7 +252,12 @@ html[data-theme=dark] .pn{filter:invert(.92) hue-rotate(180deg)}
   const S = { tab: 'help', cat: null, q: '' };
   const sheet = $('#sheet');
   $('#sp-back').innerHTML = ic('back', 22, 2.2);
-  $('#sp-back').onclick = () => document.referrer ? history.back() : (location.href = SUPPORT.home);
+  $('#sp-back').onclick = () => {
+    let safeReferrer = false;
+    try { safeReferrer = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) {}
+    if (safeReferrer && history.length > 1) history.back();
+    else location.replace('/dashboard.html');
+  };
 
   /* ---------- shell ---------- */
   sheet.innerHTML = `
