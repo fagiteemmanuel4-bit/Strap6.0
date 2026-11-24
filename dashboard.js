@@ -259,6 +259,12 @@
     function show(id, options = {}) {
       if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
+      if (!['home','products','settings','premium'].includes(id)) {
+        closeDrawer();
+        toast('This feature requires Strap Premium.');
+        StrapFeatures.open('premium');
+        return;
+      }
       if (id === 'ai') { ensure('products'); closeDrawer(); return mods.products.openAI(); }
       if (StrapFeatures.has(id)) { closeDrawer(); return StrapFeatures.open(id); }
       if (id === 'inventory' || id === 'new-sale' || id === 'collections') ensure('products');
