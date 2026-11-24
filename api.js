@@ -69,7 +69,7 @@
       async verifySignupCode(email, code) { const e = String(email).trim().toLowerCase(); if (e !== sMail) return { ok: false, msg: 'This signup session expired. Start again with your email.' }; const r = await call('POST', 'auth/verify-email', { email: e, otp: code, password: sPw }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
       async verifyCode(email, code) { const e = String(email).trim().toLowerCase(); if (e === rMail) { const r = await call('POST', 'auth/check-code', { email: e, code }); return { ok: !!r.ok, msg: r.msg }; } return { ok: false, msg: 'This verification session expired. Please request a new code.' }; },
       async lookupStaff(email) { return call('POST', 'staff/lookup', { email: String(email).trim().toLowerCase() }); },
-      async signInStaff(email, pin) { const r = await call('POST', 'staff/login', { email: String(email).trim().toLowerCase(), pin: String(pin) }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg }; },
+      async signInStaff(email, pin) { const r = await call('POST', 'staff/login', { email: String(email).trim().toLowerCase(), pin: String(pin) }); if (r.ok) fresh(); return { ok: !!r.ok, msg: r.msg, staff: r.staff || null }; },
       async listStaff() { return call('GET', 'staff/list'); },
       async createStaff(data) { return call('POST', 'staff/create', data); },
       async removeStaff(id) { return call('POST', 'staff/remove', { id }); },
