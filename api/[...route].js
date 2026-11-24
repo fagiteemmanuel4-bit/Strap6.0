@@ -637,7 +637,7 @@ H['data'] = async (req, res, user, staff) => {
   }
   if(staff) {
     const row=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], blob=row?row.blob:{};
-    return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,branchId:staff.branch_id,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store'}}];
+    return [200,{ok:true,blob:staffReadBlob(blob,staff),staff:{name:staff.name,role:staff.role,branchId:staff.branch_id,email:staff.email,defaultRoute:staff.access.defaultRoute,allowedRoutes:staff.access.allowedRoutes,bizname:(staff.profile||{}).bizname||'My Store',currency:(staff.profile||{}).currency||'NGN'}}];
   }
   await migrateLegacyStaffForOwner(ownerId);
   const r=await q('select blob from user_data where user_id=$1',[ownerId]);
