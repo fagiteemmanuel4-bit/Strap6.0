@@ -449,8 +449,8 @@ window.StrapFeatures = (() => {
           <p>${prem ? 'Your Premium access is active. Thank you for supporting Strap.' : 'Premium unlocks the tools you need to run your business. Your existing data stays safe if access expires.'}</p></section>
         <h2 class="pm-h">${prem ? 'Your Premium features' : 'Included with Premium'}</h2>
         <div class="fx-card"><ul class="pr-ul">${perks.map((x, i) => `<li style="--i:${i}"><i>${ic('check', 14, 3)}</i><span>${x}</span></li>`).join('')}</ul></div>
-        <div class="fx-card"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('tag',22,1.8)}</span><div><b>Free access</b><small>Up to 30 products. Dashboard, account access and basic settings remain available.</small></div></div></div>
-        ${prem ? '<p class="fx-p pr-note">Subscription renewal and cancellation controls will appear here once billing management is enabled.</p>' :
+        <div class="fx-card"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('tag',22,1.8)}</span><div><b>One simple Premium plan</b><small>₦4,500/month for your first 3 successful monthly payments, then ₦6,000/month. Free accounts can keep up to 30 products.</small></div></div></div>
+        ${prem ? '<p class="fx-p pr-note">Premium is active. Renewal is currently manual; your business data stays safe if access expires.</p>' :
           (S.checkoutReady ? `<button type="button" class="fx-btn" data-up>${ic('flash',20,2)} Continue to secure test checkout</button>` :
           '<p class="fx-p pr-note">Premium pricing is currently paused. Checkout will open when the Premium amount and Flutterwave test credentials are configured.</p>')}`);
     };
