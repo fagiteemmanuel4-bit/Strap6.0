@@ -786,7 +786,8 @@ H['premium/status'] = async (req,res,user) => {
   const row=(await q("select status,expires_at,amount,currency,tx_ref from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
   if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
-  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&premiumAmount()>0,amount:premiumAmount(),mode:'test'}];
+  const nextAmount=await premiumCheckoutAmount(user.id);
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:'test'}];
 };
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
