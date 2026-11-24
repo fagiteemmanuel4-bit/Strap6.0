@@ -138,7 +138,7 @@ window.StrapSales = (() => {
         <ul class="sx-lines">${cart.map(l => `<li class="sx-line" data-id="${esc(l.id)}"><div><b>${esc(l.title)}</b><small>${money(l.price)} each</small></div>
           <div class="pm-step"><button type="button" data-q="-1" aria-label="Less">−</button><span class="pg-q">${l.qty}</span><button type="button" data-q="1" aria-label="More">+</button></div>
           <em>${money(l.price * l.qty)}</em><button type="button" class="pg-x" data-rm aria-label="Remove ${esc(l.title)}">${ic('trash', 19, 1.8)}</button></li>`).join('')}</ul>
-        <div class="sx-gift-apply"><label><span>Gift card / discount QR code</span><input id="sx-gift-code" autocomplete="off" placeholder="Scan or enter gift code"></label><button type="button" data-gift-apply>Apply</button></div>
+        <div class="sx-gift-apply"><label><span>Gift card / discount QR code</span><input id="sx-gift-code" autocomplete="off" placeholder="Scan or enter gift code"></label><button type="button" data-gift-scan>Scan QR</button><button type="button" data-gift-apply>Apply</button></div>
         ${appliedGift ? `<div class="sx-gift-active"><span>${ic('gift',18,2)} ${appliedGift.type === 'discount' ? `${appliedGift.value}% discount` : `Gift card · ${esc(appliedGift.code)}`}</span><b>−${money(giftDiscount())}</b><button type="button" data-gift-remove>Remove</button></div>` : ''}
         <div class="sx-total"><span>Subtotal</span><b>${money(cartSubtotal())}</b></div>
         ${giftDiscount() ? `<div class="sx-total sx-gift-saving"><span>Gift card savings</span><b>−${money(giftDiscount())}</b></div>` : ''}
@@ -162,6 +162,7 @@ window.StrapSales = (() => {
       const m = e.target.closest('[data-m]'); if (m) { draft.method = m.dataset.m; fx('tap'); return drawCart(); }
       const dq = e.target.closest('[data-due]'); if (dq) { draft.due = plus(+dq.dataset.due); return drawCart(); }
       if (e.target.closest('[data-hold]')) return holdSale();
+      if (e.target.closest('[data-gift-scan]')) { cartSheet.close(); setTimeout(openScanner, 350); return; }
       if (e.target.closest('[data-gift-apply]')) { const input = $('#sx-gift-code', cartSheet.body), result = applyGiftCode(input && input.value); if (!result.ok) { fx('err'); ctx.toast(result.message); } else { fx('ok'); ctx.toast(result.message); } return; }
       if (e.target.closest('[data-gift-remove]')) { appliedGift = null; drawCart(); return; }
       if (e.target.closest('[data-done]')) return complete();
