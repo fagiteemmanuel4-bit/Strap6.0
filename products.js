@@ -535,7 +535,24 @@ window.StrapProducts = (() => {
     const form = $('.pm-form', page);
     let files = [], editing = null;
 
-    function openPage(p) { resetForm(); editing = p || null; if (p) fillForm(p); $('#pm-ptitle', page).textContent = p ? 'Edit product' : 'Add product'; $('[data-save]', page).textContent = p ? 'Save changes' : 'Save product'; const dl = $('[data-del]', page); dl.hidden = !p; dl.classList.remove('arm'); page.hidden = false; document.body.classList.add('pm-open'); page.scrollTop = 0; void page.offsetWidth; page.classList.add('on'); }
+    function openPage(p) {
+      resetForm(); editing = p || null; if (p) fillForm(p);
+      $('#pm-ptitle', page).textContent = p ? 'Edit product' : 'Add product';
+      $('[data-save]', page).textContent = p ? 'Save changes' : 'Save product';
+      const dl = $('[data-del]', page); dl.hidden = !p; dl.classList.remove('arm');
+      const inventoryLocked = !!p && (!window.StrapFeatures || window.StrapFeatures.state.plan !== 'premium');
+      const trackedSwitch = $('[data-sw="tracked"]', page), quantity = $('input[name="qty"]', page);
+      if (trackedSwitch) trackedSwitch.disabled = inventoryLocked;
+      if (quantity) quantity.readOnly = inventoryLocked;
+      $('[data-step], [data-toggle="oos"]', page).forEach(x => { x.disabled = inventoryLocked; });
+      let lockNote = $('[data-inventory-lock]', page);
+      if (!lockNote) {
+        const invBox = $('[data-f="invbox"]', page);
+        if (invBox) { invBox.insertAdjacentHTML('afterend', '<p class="pm-tl" data-inventory-lock hidden>Inventory changes require Premium. Your current stock is preserved.</p>'); lockNote = $('[data-inventory-lock]', page); }
+      }
+      if (lockNote) lockNote.hidden = !inventoryLocked;
+      page.hidden = false; document.body.classList.add('pm-open'); page.scrollTop = 0; void page.offsetWidth; page.classList.add('on');
+    }
     function closePage() { page.classList.remove('on'); document.body.classList.remove('pm-open'); setTimeout(() => { if (!page.classList.contains('on')) page.hidden = true; }, 360); }
     function resetForm() {
       form.reset(); $('.pm-ed', page).innerHTML = ''; files = []; renderThumbs();
