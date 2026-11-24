@@ -18,9 +18,13 @@ window.StrapSales = (() => {
     const money = n => ctx.money(n);
     const P = () => ctx.products();
     const items = () => ((P() && P().items()) || []).filter(p => !p.status || p.status === 'active');
-    let q = '', cart = [], draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' }, cartSheet = null, scn = null;
+    let q = '', cart = [], appliedGift = null, draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' }, cartSheet = null, scn = null;
 
-    const cartTotal = () => cart.reduce((a, l) => a + l.price * l.qty, 0);
+    const cartSubtotal = () => cart.reduce((a, l) => a + l.price * l.qty, 0);
+    const giftDiscount = () => { if (!appliedGift) return 0; const subtotal = cartSubtotal(); return appliedGift.type === 'discount' ? Math.min(subtotal, subtotal * Math.min(100, +appliedGift.value || 0) / 100) : Math.min(subtotal, Math.max(0, +(appliedGift.balance ?? appliedGift.value) || 0)); };
+    const cartTotal = () => Math.max(0, Math.round((cartSubtotal() - giftDiscount()) * 100) / 100);
+    function findGiftCard(code) { const raw = String(code || '').trim().replace(/^STRAPGC\|/i, '').replace(/^STRAPGC:/i, '').trim().toUpperCase(); return S.records('gift').find(g => String(g.code || '').toUpperCase() === raw) || null; }
+    function applyGiftCode(code) { const card = findGiftCard(code); if (!card) return { ok: false, message: 'No gift card matches that QR or code.' }; if (['redeemed','revoked','expired'].includes(String(card.status || '').toLowerCase())) return { ok: false, message: 'This gift card has already been used or is no longer active.' }; const type = card.type || 'value'; const balance = type === 'discount' ? 0 : +(card.balance ?? card.value ?? 0); if (type === 'value' && balance <= 0) return { ok: false, message: 'This gift card has no remaining balance.' }; appliedGift = { id: card.id, code: card.code, type, value: +card.value || 0, balance }; if (cartSheet) drawCart(); else drawBar(); return { ok: true, message: type === 'discount' ? `${card.value}% discount applied` : `Gift balance of ${money(balance)} applied` }; }
     const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
     const lineOf = id => cart.find(l => l.id === id);
     const prod = id => items().find(p => p.id === id);
@@ -134,7 +138,11 @@ window.StrapSales = (() => {
         <ul class="sx-lines">${cart.map(l => `<li class="sx-line" data-id="${esc(l.id)}"><div><b>${esc(l.title)}</b><small>${money(l.price)} each</small></div>
           <div class="pm-step"><button type="button" data-q="-1" aria-label="Less">−</button><span class="pg-q">${l.qty}</span><button type="button" data-q="1" aria-label="More">+</button></div>
           <em>${money(l.price * l.qty)}</em><button type="button" class="pg-x" data-rm aria-label="Remove ${esc(l.title)}">${ic('trash', 19, 1.8)}</button></li>`).join('')}</ul>
-        <div class="sx-total"><span>Total</span><b>${money(total)}</b></div>
+        <div class="sx-gift-apply"><label><span>Gift card / discount QR code</span><input id="sx-gift-code" autocomplete="off" placeholder="Scan or enter gift code"></label><button type="button" data-gift-apply>Apply</button></div>
+        ${appliedGift ? `<div class="sx-gift-active"><span>${ic('gift',18,2)} ${appliedGift.type === 'discount' ? `${appliedGift.value}% discount` : `Gift card · ${esc(appliedGift.code)}`}</span><b>−${money(giftDiscount())}</b><button type="button" data-gift-remove>Remove</button></div>` : ''}
+        <div class="sx-total"><span>Subtotal</span><b>${money(cartSubtotal())}</b></div>
+        ${giftDiscount() ? `<div class="sx-total sx-gift-saving"><span>Gift card savings</span><b>−${money(giftDiscount())}</b></div>` : ''}
+        <div class="sx-total sx-total-due"><span>Due now</span><b>${money(total)}</b></div>
         <p class="sx-lbl">How is the customer paying?</p>
         <div class="sx-pay" role="radiogroup">${PAY.map(([k, l, i]) => `<button type="button" role="radio" aria-checked="${draft.method === k}" class="sx-pm${draft.method === k ? ' on' : ''}" data-m="${k}">${ic(i, 22, 1.8)}<span>${l}</span></button>`).join('')}</div>
         ${credit ? `<div class="sx-credit"><p class="sx-note">${ic('info', 18, 2)}<span>We’ll remind you when this is due so you can contact the customer, and we’ll track what they still owe.</span></p>
@@ -154,6 +162,8 @@ window.StrapSales = (() => {
       const m = e.target.closest('[data-m]'); if (m) { draft.method = m.dataset.m; fx('tap'); return drawCart(); }
       const dq = e.target.closest('[data-due]'); if (dq) { draft.due = plus(+dq.dataset.due); return drawCart(); }
       if (e.target.closest('[data-hold]')) return holdSale();
+      if (e.target.closest('[data-gift-apply]')) { const input = $('#sx-gift-code', cartSheet.body), result = applyGiftCode(input && input.value); if (!result.ok) { fx('err'); ctx.toast(result.message); } else { fx('ok'); ctx.toast(result.message); } return; }
+      if (e.target.closest('[data-gift-remove]')) { appliedGift = null; drawCart(); return; }
       if (e.target.closest('[data-done]')) return complete();
     }
     function onCartInput(e) {
@@ -166,13 +176,13 @@ window.StrapSales = (() => {
     function holdSale() {
       if (!cart.length) return;
       S.addHeld({ lines: cart.map(l => ({ ...l })), total: cartTotal(), label: 'Held at ' + tm(Date.now()) });
-      cart = []; fx('tap'); if (cartSheet) cartSheet.close(); redrawAll(); ctx.toast('Sale held. Resume it from Held');
+      cart = []; appliedGift = null; fx('tap'); if (cartSheet) cartSheet.close(); redrawAll(); ctx.toast('Sale held. Resume it from Held');
     }
     function redrawAll() { drawList(); drawBar(); drawCounts(); updateScn(); }
 
     async function complete() {
       if (!cart.length) return;
-      const total = cartTotal(), credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
+      const subtotal = cartSubtotal(), discount = giftDiscount(), total = cartTotal(), giftCard = appliedGift ? { ...appliedGift } : null, credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
       let deposit = 0;
       if (credit) {
         const bad = m => { fx('err'); if (er) er.textContent = m; };
@@ -186,19 +196,21 @@ window.StrapSales = (() => {
       }
       const btn = $('[data-done]', cartSheet.body); btn.disabled = true;
       const sale = {
-        id: 'sale' + Date.now(), no: S.nextNo(), ts: Date.now(), lines: cart.map(l => ({ ...l })), total, method: draft.method,
+        id: 'sale' + Date.now(), no: S.nextNo(), ts: Date.now(), lines: cart.map(l => ({ ...l })), subtotal, discount, total, giftCard: giftCard ? { id: giftCard.id, code: giftCard.code, type: giftCard.type, applied: discount } : null, method: draft.method,
         cashier: ctx.store.name || '', customer: credit ? { name: draft.name.trim(), phone: draft.phone.trim(), email: draft.email.trim() } : null,
         paidNow: credit ? deposit : total, due: credit ? draft.due : ''
       };
       // stock comes off as soon as the sale is recorded
       sale.lines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
       S.addSale(sale);
+      if (giftCard) { const stored = S.records('gift').find(g => g.id === giftCard.id); if (stored) { if (giftCard.type === 'discount') stored.status = 'redeemed'; else { stored.balance = Math.max(0, +(stored.balance ?? stored.value ?? 0) - discount); stored.status = stored.balance > 0 ? 'active' : 'redeemed'; } stored.lastRedeemedAt = Date.now(); stored.lastSaleId = sale.id; S.save(); } }
       if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
+      if (sale.discount > 0) { /* Gift value/discount is recorded on the sale; only the remaining amount is collected from the selected payment method. */ }
       if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
       else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
       const synced = await StrapAPI.flush();
       if (!synced || !synced.ok) ctx.toast('Sale recorded on this device. Cloud sync will retry when your connection is available.');
-      cart = []; draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' };
+      cart = []; appliedGift = null; draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' };
       cartSheet.close(); redrawAll(); fx('ok'); showDone(sale);
     }
 
@@ -298,8 +310,10 @@ window.StrapSales = (() => {
       const say = (t, cls) => { msg.textContent = t; msg.className = 'sx-scn-msg' + (cls ? ' ' + cls : ''); clearTimeout(mt); if (cls) mt = setTimeout(() => { msg.className = 'sx-scn-msg'; msg.textContent = 'Keep scanning, or tap Review to finish'; }, 1800); };
       function handle(code) {
         const now = Date.now(); if (code === last && now - lastT < 1800) return; last = code; lastT = now;
+        const gift = applyGiftCode(code);
+        if (gift.ok) { fx('ok'); return say(gift.message, 'ok'); }
         const p = findByCode(code);
-        if (!p) { fx('err'); return say(`No product matches “${String(code).slice(0, 24)}”`, 'bad'); }
+        if (!p) { fx('err'); return say(gift.message || `No product matches “${String(code).slice(0, 24)}”`, 'bad'); }
         if (add(p)) { added++; cnt.textContent = added; L.classList.remove('flash'); void L.offsetWidth; L.classList.add('flash'); say(`Added ${p.title}`, 'ok'); }
         else say(p.qty > 0 ? `Only ${p.qty} of ${p.title} in stock` : `${p.title} is out of stock`, 'bad');
       }
