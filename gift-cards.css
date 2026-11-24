@@ -10,8 +10,9 @@
 .gc-card.is-flipped{--flip:180deg}
 .gc-face{position:absolute;inset:0;border-radius:6cqw;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 20px 40px rgba(0,0,0,.55)}
 .gc-front{background:#efefe9;color:#0a0a0a}
-.gc-front::before{content:"";position:absolute;inset:0;opacity:.15;pointer-events:none;background-image:radial-gradient(#777 0.5px,transparent .5px);background-size:4px 4px}
-.gc-front>*{position:absolute}
+.gc-front::before{content:"";position:absolute;inset:0;z-index:0;opacity:.15;pointer-events:none;background-image:radial-gradient(#777 0.5px,transparent .5px);background-size:4px 4px}
+.gc-front::after{content:"STRAP";position:absolute;z-index:1;left:50%;top:47%;transform:translate(-50%,-50%);font:900 20cqw/.9 Sora,Arial,sans-serif;letter-spacing:-.055em;white-space:nowrap;color:transparent;background-image:radial-gradient(rgba(230,245,58,.78) 1px,transparent 1.35px);background-size:5px 5px;background-position:center;-webkit-background-clip:text;background-clip:text;opacity:.58;pointer-events:none}
+.gc-front>*{position:absolute;z-index:2}
 .gc-amount{left:6cqw;top:5.5cqw;font:800 9cqw/1.1 Sora,Arial,sans-serif;letter-spacing:-.04em;color:#0a0a0a;max-width:78%;overflow:hidden}
 .gc-store{right:6cqw;top:6cqw;padding:1.4cqw 2.6cqw;border-radius:1.2cqw;background:#0a0a0a;color:#e6f53a;font:700 3.4cqw/1 Sora,Arial,sans-serif;letter-spacing:.12em;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gc-title{left:6cqw;bottom:6cqw;margin:0;font:800 18cqw/.88 Sora,Arial,sans-serif;letter-spacing:-.05em;color:#0a0a0a}
