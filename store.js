@@ -4,7 +4,7 @@ window.StrapStore = (() => {
   const KEY = 'strap.v1';
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const blank = () => ({
-    sales: [], payments: [], held: [], collections: [], credits: [], seq: 0, closed: null, staffSalesOpen: false, pin: null, lock: { n: 0, until: 0 }, receipt: null, online: null, orders: [], oseq: 1000,
+    sales: [], payments: [], held: [], collections: [], credits: [], customers: [], purchase: [], transfers: [], gift: [], seq: 0, closed: null, staffSalesOpen: false, pin: null, lock: { n: 0, until: 0 }, receipt: null, online: null, orders: [], oseq: 1000,
     prefs: { sound: true, vibrate: true, creditReminders: true, orderAlerts: true, lowStock: true }
   });
   let S = blank();
@@ -63,6 +63,31 @@ window.StrapStore = (() => {
     api, dayKey, credits, collections, lineCount, prefs: S.prefs,
     get state() { return S; },
     save,
+    records(key) {
+      if (!['customers', 'purchase', 'transfers', 'gift'].includes(key)) return [];
+      if (!Array.isArray(S[key])) S[key] = [];
+      return S[key];
+    },
+    addRecord(key, value) {
+      const rows = this.records(key);
+      const row = { id: uid(key.slice(0, 2)), createdAt: Date.now(), ...value };
+      rows.unshift(row); save(); return row;
+    },
+    removeRecord(key, id) {
+      const rows = this.records(key);
+      const index = rows.findIndex((row, i) => String(row.id || i) === String(id));
+      if (index < 0) return false;
+      rows.splice(index, 1); save(); return true;
+    },
+    upsertCustomer(customer) {
+      const rows = this.records('customers');
+      const phone = String(customer.phone || '').replace(/\\D/g, '');
+      const email = String(customer.email || '').trim().toLowerCase();
+      let row = rows.find(x => (phone && String(x.phone || '').replace(/\\D/g, '') === phone) || (email && String(x.email || '').trim().toLowerCase() === email));
+      if (row) { row.name = customer.name || row.name; row.phone = customer.phone || row.phone; row.email = customer.email || row.email; row.lastSeenAt = Date.now(); }
+      else { row = { id: uid('cus'), ...customer, createdAt: Date.now(), lastSeenAt: Date.now() }; rows.unshift(row); }
+      save(); return row;
+    },
     nextNo() { S.seq++; save(); return 'S-' + pad(S.seq, 4); },
 
     // ----- sales & money -----
