@@ -184,7 +184,7 @@ window.StrapSales = (() => {
     let completing = false, pendingSaleId = null;
     async function complete() {
       if (!cart.length || completing) return;
-      const subtotal = cartSubtotal(), giftCard = appliedGift ? { ...appliedGift } : null, credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
+      const saleLines = cart.map(l => ({ ...l })), subtotal = saleLines.reduce((sum, line) => sum + line.price * line.qty, 0), giftCard = appliedGift ? { ...appliedGift } : null, credit = draft.method === 'credit', er = $('#sx-err', cartSheet.body);
       let discount = giftDiscount(), total = cartTotal(), deposit = 0;
       const bad = m => { fx('err'); if (er) er.textContent = m; };
       if (credit) {
@@ -196,12 +196,12 @@ window.StrapSales = (() => {
         deposit = Math.max(0, +draft.paid || 0);
         if (deposit >= total) return bad('If they’ve paid in full, choose Cash, Card or Transfer instead.');
       }
-      const btn = $('[data-done]', cartSheet.body);
-      completing = true; if (btn) btn.disabled = true;
+      const btn = $('[data-done]', cartSheet.body), controls = Array.from(cartSheet.body.querySelectorAll('button,input'));
+      completing = true; controls.forEach(control => { control.disabled = true; });
       if (!pendingSaleId) pendingSaleId = 'sale' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
       try {
         if (giftCard) {
-          const redemption = await StrapAPI.call('POST', 'gift/redeem', { cardId: giftCard.id, code: giftCard.code, saleId: pendingSaleId, subtotal });
+          const redemption = await StrapAPI.call('POST', 'gift/redeem', { cardId: giftCard.id, code: giftCard.code, saleId: pendingSaleId, subtotal, method: draft.method, paidNow: deposit });
           if (!redemption || !redemption.ok) {
             bad(redemption && redemption.msg || 'Gift card could not be redeemed. Nothing was charged.');
             if (redemption && ['NOT_FOUND','EXPIRED','INACTIVE','EMPTY','INVALID_CARD'].includes(redemption.code)) pendingSaleId = null;
@@ -214,12 +214,12 @@ window.StrapSales = (() => {
           S.save();
         }
         const sale = {
-          id: pendingSaleId, no: S.nextNo(), ts: Date.now(), lines: cart.map(l => ({ ...l })), subtotal, discount, total,
+          id: pendingSaleId, no: S.nextNo(), ts: Date.now(), lines: saleLines, subtotal, discount, total,
           giftCard: giftCard ? { id: giftCard.id, code: giftCard.code, type: giftCard.type, applied: discount } : null, method: draft.method,
           cashier: ctx.store.name || '', customer: credit ? { name: draft.name.trim(), phone: draft.phone.trim(), email: draft.email.trim() } : null,
           paidNow: credit ? deposit : total, due: credit ? draft.due : ''
         };
-        sale.lines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
+        saleLines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
         S.addSale(sale);
         if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
         if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
@@ -233,7 +233,7 @@ window.StrapSales = (() => {
         bad('Sale could not be completed. Retry safely; the same gift-card redemption will not be deducted twice.');
       } finally {
         completing = false;
-        if (btn && btn.isConnected) btn.disabled = false;
+        controls.forEach(control => { if (control.isConnected) control.disabled = false; });
       }
     }
 
