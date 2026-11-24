@@ -31,13 +31,53 @@ window.StrapProducts = (() => {
 
   // ===== Backend hooks. Products start EMPTY; replace these with real calls. =====
   const DEMO_SITE = [['Canvas Pencil Case', 2500], ['Foam Exercise Mat', 14000], ['Resistance Loop Bands', 6500], ['Conditioning Hair Mask', 5200], ['Ankara Tote Bag', 9800], ['Linen Throw Pillow', 7600]];
+  const productBranch = () => {
+    try {
+      const f1 = JSON.parse(localStorage.getItem('strap.f1') || '{}');
+      return String(f1.active || (f1.branches && f1.branches[0] && f1.branches[0].id) || 'b0');
+    } catch (e) { return 'b0'; }
+  };
+  const productKey = () => 'strap.f1.items.' + productBranch();
+  const readProducts = () => {
+    try { const rows = JSON.parse(localStorage.getItem(productKey()) || '[]'); return Array.isArray(rows) ? rows : []; }
+    catch (e) { return []; }
+  };
+  const writeProducts = async rows => {
+    localStorage.setItem(productKey(), JSON.stringify(Array.isArray(rows) ? rows : []));
+    const result = await StrapAPI.flush();
+    if (!result || !result.ok) throw new Error(result && result.msg || 'Products could not be saved to your Strap database.');
+    return rows;
+  };
   const api = {
-    async getProducts() { await sleep(350); return []; },
-    async saveProduct(p) { let image = p.image; const f = (p.media || []).find(x => x && /^image/.test(x.type || '')); if (f) { const u = await StrapAPI.upload(f); if (u) image = u; } const { media, ...rest } = p; return { ...rest, image, id: p.id || 'p' + Date.now() }; },
-    async deleteProduct(id) { await sleep(250); return { ok: true }; },
-    async importCsv(list) { await sleep(250); return list.map((p, i) => ({ ...p, id: 'p' + Date.now() + i })); },
-    async importFromSite(siteId, address) { await sleep(300); return DEMO_SITE.map(([title, price], i) => ({ id: 'p' + Date.now() + i, title, price, status: 'active', tracked: true, qty: 10 + i * 3 })); },
-    async exportProducts(format, list) { await sleep(200); return { ok: true }; }
+    async getProducts() { return readProducts(); },
+    async persistProducts(rows) { return writeProducts(rows); },
+    async saveProduct(p) {
+      let image = p.image || '';
+      const f = (p.media || []).find(x => x && /^image\//.test(x.type || ''));
+      if (f) {
+        const u = await StrapAPI.upload(f);
+        if (!u) throw new Error('The product image could not be uploaded. Please try again.');
+        image = u;
+      }
+      const { media, ...rest } = p;
+      const saved = { ...rest, image, id: p.id || ('p' + Date.now() + Math.random().toString(36).slice(2, 7)) };
+      const rows = readProducts(), index = rows.findIndex(x => String(x.id) === String(saved.id));
+      if (index >= 0) rows[index] = saved; else rows.unshift(saved);
+      await writeProducts(rows);
+      return saved;
+    },
+    async deleteProduct(id) {
+      await writeProducts(readProducts().filter(x => String(x.id) !== String(id)));
+      return { ok: true };
+    },
+    async importCsv(list) {
+      const existing = readProducts();
+      const added = (Array.isArray(list) ? list : []).map((item, i) => ({ ...item, id: item.id || ('p' + Date.now() + i + Math.random().toString(36).slice(2, 5)) }));
+      await writeProducts([...added, ...existing]);
+      return added;
+    },
+    async importFromSite() { throw new Error('Direct website imports are not connected yet. Use CSV import for now.'); },
+    async exportProducts() { return { ok: true }; }
   };
 
   // ===== helpers: CSV in/out, PDF, downloads =====
@@ -632,8 +672,9 @@ window.StrapProducts = (() => {
       };
       const btn = $('[data-save]', page), idle = editing ? 'Save changes' : 'Save product'; btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        const saved = await api.saveProduct({ ...product, media: files.map(f => f.file).filter(Boolean) });
-        const rec = { ...product, id: saved.id, image: (files.find(f => f.type.startsWith('image')) || {}).url || '', files: files.map(({ name, type, url }) => ({ name, type, url })) };
+        const saved = await api.saveProduct({ ...product, files: files.map(({ name, type, url }) => ({ name, type, url })), media: files.map(f => f.file).filter(Boolean) });
+        const rec = { ...saved, ...product, id: saved.id, image: saved.image || product.image || '', files: files.map(({ name, type, url }) => ({ name, type, url })) };
+        await api.persistProducts(editing ? items.map(x => String(x.id) === String(editing.id) ? rec : x) : [rec, ...items]);
         if (editing) { const i = items.findIndex(x => x.id === editing.id); if (i > -1) items[i] = rec; } else items.unshift(rec);
         renderAll(); closePage(); toast(editing ? 'Changes saved' : 'Product added');
       } catch (err) { toast('Could not save. Try again.'); }
@@ -650,10 +691,11 @@ window.StrapProducts = (() => {
       setCollection(name, ids) {
         const want = new Set(ids);
         items.forEach(p => { const has = (p.collections || []).includes(name), on = want.has(p.id); if (on && !has) p.collections = [...(p.collections || []), name]; if (!on && has) p.collections = p.collections.filter(x => x !== name); });
+        api.persistProducts(items).catch(e => { console.error(e); toast('Collection changes could not sync. Please retry.'); });
         renderAll();
       },
-      dropCollection(name) { items.forEach(p => { if ((p.collections || []).includes(name)) p.collections = p.collections.filter(x => x !== name); }); renderAll(); },
-      setQty(id, qty) { const p = items.find(x => x.id === id); if (p) { p.qty = Math.max(0, qty); renderBody(); } return p; },
+      dropCollection(name) { items.forEach(p => { if ((p.collections || []).includes(name)) p.collections = p.collections.filter(x => x !== name); }); api.persistProducts(items).catch(e => { console.error(e); toast('Collection changes could not sync. Please retry.'); }); renderAll(); },
+      setQty(id, qty) { const p = items.find(x => x.id === id); if (p) { p.qty = Math.max(0, qty); api.persistProducts(items).catch(e => { console.error(e); toast('Stock change could not sync. Please retry.'); }); renderBody(); } return p; },
       onChange(fn) { subs.push(fn); }
     };
   }
