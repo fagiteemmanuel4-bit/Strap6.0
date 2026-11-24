@@ -811,6 +811,7 @@ html[data-theme=dark] .dd-sheet{filter:invert(.92) hue-rotate(180deg)}
   <section class="dsheet" id="sheet"></section>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="../api.js"></script>
 <script>
 /* ===== connection stand-in (the real api.js talks to your server) =====
    Only here so this file runs on its own. When you connect your real api.js, delete this block.
@@ -1359,7 +1360,7 @@ window.StrapStore = (() => {
 /* ===== kit.js ===== */
 /* Strap – shared UI kit: bottom sheets, custom dropdown picker (no native <select>), confirm dialog,
    colour field, beep + vibration. Used by the sales page, security flow and settings. */
-window.StrapKit = (() => {
+window.StrapKit = (async () => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const U = StrapUI, ic = U.ic, esc = U.esc;
@@ -2287,7 +2288,11 @@ window.StrapPages = (() => {
   const LOGIN_URL = 'index.html';
 
   // [HOOK 2] the logged-in stock manager and the business. The email shows above Log out in the sidebar.
-  const store = { name: 'Ife Bello', email: 'ife@amakafashion.com', bizname: 'Amaka Fashion House', currency: 'NGN' };
+  let store = { name: 'Staff', email: '', bizname: 'My Store', currency: 'NGN' };
+  const identity = await StrapAPI.call('GET', 'data');
+  if (!identity || !identity.ok || !identity.staff) { location.replace(LOGIN_URL); return; }
+  store.name = identity.staff.name || 'Staff'; store.email = identity.staff.email || '';
+  store.bizname = identity.staff.bizname || 'My Store'; store.currency = identity.staff.currency || 'NGN';
 
   const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.id); toast.id = setTimeout(() => t.classList.remove('on'), 2600); };
   const money = n => { try { return new Intl.NumberFormat('en', { style: 'currency', currency: store.currency, maximumFractionDigits: 0, currencyDisplay: 'narrowSymbol' }).format(n); } catch (e) { return Math.round(n).toLocaleString('en'); } };
@@ -2312,7 +2317,7 @@ window.StrapPages = (() => {
   let current = 'products';
   const ctx = {
     toast, esc, money, cur: store.currency, store, go: id => show(id), products: () => mods.products,
-    signOut: async () => { try { await StrapAPI.signOut(); } catch (e) {} location.href = LOGIN_URL; }
+    signOut: async () => { try { await StrapAPI.call('POST', 'staff/signout'); } finally { try { localStorage.removeItem('staff.session'); sessionStorage.removeItem('staff.session'); } catch(e) {} location.replace(LOGIN_URL); } }
   };
   function ensure(id) {
     if (panes[id]) return panes[id];
