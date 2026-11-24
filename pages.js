@@ -49,18 +49,35 @@ window.StrapPages = (() => {
   }
 
   function list(id, root, ctx) {
-    const c = CFG[id], rows = store[id] || (store[id] = []);
-    const add = () => formSheet({ title: c.cta, fields: c.fields, cta: c.cta }, v => { rows.unshift(v); draw(); ctx.toast('Added'); });
+    const c = CFG[id], key = ({ purchase: 'purchase', transfers: 'transfers', gift: 'gift', customers: 'customers' })[id];
+    const rows = StrapStore.records(key);
+    const add = () => formSheet({ title: c.cta, fields: c.fields, cta: c.cta }, v => {
+      if (id === 'customers') {
+        const name = v[0].trim(), email = v[1].trim(), phone = v[2].trim();
+        if (!name) return ctx.toast('Enter the customer name');
+        const duplicate = rows.find(x => (phone && String(x.phone || '').replace(/\\D/g, '') === phone.replace(/\\D/g, '')) || (email && String(x.email || '').toLowerCase() === email.toLowerCase()));
+        if (duplicate) return ctx.toast('A customer with that phone or email already exists');
+        StrapStore.addRecord(key, { name, email, phone });
+      } else if (id === 'purchase') StrapStore.addRecord(key, { supplier: v[0], expectedDate: v[1], notes: v[2] });
+      else if (id === 'transfers') StrapStore.addRecord(key, { from: v[0], to: v[1], notes: v[2], status: 'draft' });
+      else if (id === 'gift') StrapStore.addRecord(key, { value: Math.max(0, +v[0] || 0), email: v[1], code: genCode(), status: 'created' });
+      draw(); ctx.toast('Saved to your store');
+    });
     function draw() {
       const cta = c.cta ? `<button type="button" class="pm-add" data-add>${ic('plus', 20, 2.2)} ${c.cta}</button>` : '';
       root.innerHTML = head(c.i, c.t, rows.length && c.cta ? `<button type="button" class="pm-add sm" data-add>Add</button>` : '') +
-        (rows.length ? `<ul class="pg-list">${rows.map((v, i) => { const f = c.fmt ? c.fmt(v) : { t: v[0], s: v.slice(1).filter(Boolean).join(' · ') };
-          return `<li class="pg-row"><span class="pg-ico">${ic(c.i, 22, 1.8)}</span><div><b>${esc(f.t)}</b>${f.s ? `<small>${esc(f.s)}</small>` : ''}</div><button type="button" class="pg-x" data-del="${i}" aria-label="Remove">${ic('trash', 20, 1.8)}</button></li>`; }).join('')}</ul>`
+        (rows.length ? `<ul class="pg-list">${rows.map((v, i) => {
+          const f = id === 'customers' ? { t: v.name, s: [v.phone, v.email].filter(Boolean).join(' · ') }
+            : id === 'purchase' ? { t: v.supplier, s: [v.expectedDate, v.notes, v.status].filter(Boolean).join(' · ') }
+            : id === 'transfers' ? { t: `${v.from} → ${v.to}`, s: [v.status, v.notes].filter(Boolean).join(' · ') }
+            : { t: `${ctxRef.money(v.value || 0)} gift card`, s: [v.code, v.email, v.status].filter(Boolean).join(' · ') };
+          return `<li class="pg-row"><span class="pg-ico">${ic(c.i, 22, 1.8)}</span><div><b>${esc(f.t || '')}</b>${f.s ? `<small>${esc(f.s)}</small>` : ''}</div><button type="button" class="pg-x" data-del="${esc(v.id || i)}" aria-label="Remove">${ic('trash', 20, 1.8)}</button></li>`;
+        }).join('')}</ul>`
           : empty(c.ill, c.h, c.p, cta));
     }
     root.addEventListener('click', e => {
       if (e.target.closest('[data-add]')) add();
-      const d = e.target.closest('[data-del]'); if (d) { rows.splice(+d.dataset.del, 1); draw(); }
+      const d = e.target.closest('[data-del]'); if (d) { StrapStore.removeRecord(key, d.dataset.del); draw(); ctx.toast('Removed'); }
     });
     draw();
   }
