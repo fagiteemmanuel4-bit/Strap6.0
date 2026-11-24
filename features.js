@@ -237,17 +237,25 @@ window.StrapFeatures = (() => {
   function staffHome(o) {
     const draw = () => {
       o.step({ t: 'Staff', s: `${S.staff.length} of ${lim().staff} staff accounts used${S.plan === 'free' ? ' on the free plan' : ''}.`, back: null,
-        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx" data-del="${x.id}" aria-label="Remove ${esc(x.name)}">${ic('trash', 20, 1.8)}</button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
+        body: S.staff.length ? `<div class="rws">${S.staff.map(x => `<div class="rw ro staff-row"><i class="ri">${ic('users', 22, 1.8)}</i><div><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.branch ? branch(x.branch).name : 'All branches')}<br>${esc(x.email)}</small></div><button type="button" class="rx" data-staff-menu="${x.id}" aria-label="More options for ${esc(x.name)}">${ic('more', 20, 2)}</button></div>`).join('')}</div>` : `<div class="empt">${U.illus('customers')}<p>No staff yet. Add the people who help you run the business and give each one their own login.</p></div>`,
         foot: pill('Add staff', 'data-add') + (S.plan === 'free' ? pill('Upgrade for branch staff', 'data-up', 'alt') : '') });
+      $('[data-staff-menu]', o.el).forEach(btn => btn.onclick = async () => {
+        const person=S.staff.find(x=>x.id===btn.dataset.staffMenu); if(!person)return;
+        const state=await StrapAPI.call('GET','sales/session'), isOpen=!!state.open;
+        screen(`<div class="staff-actions"><header class="pm-head"><h2 class="pm-title">${esc(person.name)}</h2><button class="pm-round" data-x aria-label="Close">${ic('close',20,2)}</button></header>
+          <button class="ds-i" data-sales-toggle type="button"><span>${isOpen?'Close sales':'Open sales'}</span></button>
+          <button class="ds-i" data-sales-auto type="button"><span>Automatic sales hours</span></button>
+          <button class="ds-i" data-message-staff type="button"><span>Send message</span></button>
+          <button class="ds-i" data-remove-staff type="button"><span>Delete staff</span></button></div>`, s => {
+          $('[data-sales-toggle]',s.root).onclick=async()=>{const r=await StrapAPI.call('POST','sales/session',{open:!isOpen});if(!r.ok)return toast(r.msg||'Could not update sales.');toast(!isOpen?'Sales opened.':'Sales closed.');s.close();};
+          $('[data-sales-auto]',s.root).onclick=async()=>{const q=await StrapAPI.call('GET','sales/session'),sc=q.schedule||{};s.set(`<div class="staff-actions"><header class="pm-head"><h2 class="pm-title">Automatic sales hours</h2><button class="pm-round" data-x aria-label="Close">${ic('close',20,2)}</button></header><p>Set the daily hours when cashier sales are available.</p><label class="pm-fl"><span><input id="sa-on" type="checkbox" ${sc.enabled?'checked':''}> Enable automatic opening and closing</span></label><label class="pm-fl"><span>Opening time</span><input id="sa-open" type="time" value="${esc(sc.open||'08:00')}"></label><label class="pm-fl"><span>Closing time</span><input id="sa-close" type="time" value="${esc(sc.close||'20:00')}"></label><button class="fx-btn" data-save-schedule>Save settings</button></div>`);$('[data-save-schedule]',s.root).onclick=async()=>{const enabled=$('#sa-on',s.root).checked,open=$('#sa-open',s.root).value,close=$('#sa-close',s.root).value;if(enabled&&(!open||!close||open===close))return toast('Choose different opening and closing times.');const r=await StrapAPI.call('POST','sales/session',{schedule:{enabled,open,close}});if(!r.ok)return toast(r.msg||'Could not save schedule.');toast('Automatic sales hours saved.');s.close();};};
+          $('[data-message-staff]',s.root).onclick=()=>{s.close();location.href='mailto:'+encodeURIComponent(person.email)+'?subject='+encodeURIComponent('Message from your store');};
+          $('[data-remove-staff]',s.root).onclick=async()=>{if(!(await K.confirm({title:'Remove this staff member?',body:'Their login stops working immediately.',ok:'Remove',cancel:'Keep',icon:'trash',danger:true})))return;const r=await api.removeStaff(person.id);if(!r.ok)return toast(r.msg||'Could not remove staff.');S.staff=S.staff.filter(x=>x.id!==person.id);save();s.close();staffHome(o);};
+        });
+      });
       $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
       const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
-      if(ctx && ctx.staff && ctx.staff.branchId) $('[data-del]',o.el).forEach(d => { const item=S.staff.find(x=>x.id===d.dataset.del); if(item && !item.branch) d.hidden=true; });
-      $('[data-del]', o.el).forEach(d => d.onclick = async () => {
-        if (!(await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true }))) return;
-        const r=await api.removeStaff(d.dataset.del);
-        if(!r.ok) return toast(r.msg||'Could not remove this staff member. Try again.');
-        S.staff=S.staff.filter(x=>x.id!==d.dataset.del); save(); staffHome(o);
-      });
+      if(ctx && ctx.staff && ctx.staff.branchId) $('[data-staff-menu]',o.el).forEach(d => { const item=S.staff.find(x=>x.id===d.dataset.staffMenu); if(item && !item.branch) d.hidden=true; });
     };
     draw();
     api.listStaff().then(r => { if(r.ok && Array.isArray(r.staff)) { S.staff=r.staff; save(); draw(); } }).catch(()=>{});
