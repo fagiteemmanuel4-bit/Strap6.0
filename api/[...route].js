@@ -327,6 +327,58 @@ async function formSubmitSupport(fields) {
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
 
 const H = {};
+/* ---- Premium access + Flutterwave (test mode first) ---- */
+let premiumSchemaReady;
+async function ensurePremiumSchema() {
+  if (!premiumSchemaReady) premiumSchemaReady=(async()=>{
+    await q(`create table if not exists strap_subscriptions (
+      user_id text primary key, status text not null default 'inactive',
+      customer_email text not null, amount numeric(14,2) not null,
+      currency text not null default 'NGN', tx_ref text,
+      started_at timestamptz, expires_at timestamptz,
+      updated_at timestamptz not null default now()
+    )`);
+    await q(`create table if not exists strap_payments (
+      tx_ref text primary key, user_id text not null, amount numeric(14,2) not null,
+      currency text not null default 'NGN', status text not null default 'pending',
+      transaction_id text unique, created_at timestamptz not null default now(),
+      verified_at timestamptz
+    )`);
+    await q('create index if not exists strap_payments_user_idx on strap_payments(user_id,created_at desc)');
+  })().catch(e=>{premiumSchemaReady=null;throw e;});
+  return premiumSchemaReady;
+}
+const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
+const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
+const flwReady=()=>flwMode()==='test' && flwSecret().startsWith('FLWSECK_TEST-');
+const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
+async function premiumActive(userId) {
+  await ensurePremiumSchema();
+  const row=(await q("select 1 from strap_subscriptions where user_id=$1 and status='active' and expires_at>now() limit 1",[String(userId)]))[0];
+  return !!row;
+}
+async function flwVerify(id) {
+  const key=flwSecret();
+  if(!flwReady()) throw new Error('Flutterwave test credentials are not configured.');
+  const response=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(String(id))+'/verify',{headers:{Authorization:'Bearer '+key,Accept:'application/json'}});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok || !body || body.status!=='success' || !body.data) throw new Error('Flutterwave could not verify this transaction.');
+  return body.data;
+}
+async function activatePremium(payment, tx) {
+  const amount=Number(payment.amount), paid=Number(tx.amount);
+  if(String(tx.tx_ref)!==String(payment.tx_ref) || String(tx.status).toLowerCase()!=='successful' ||
+     String(tx.currency).toUpperCase()!=='NGN' || String(payment.currency).toUpperCase()!=='NGN' ||
+     !Number.isFinite(paid) || paid<amount) throw new Error('Payment details did not match the expected transaction.');
+  await q("update strap_payments set status='successful',transaction_id=$2,verified_at=now() where tx_ref=$1",[payment.tx_ref,String(tx.id)]);
+  await q(`insert into strap_subscriptions(user_id,status,customer_email,amount,currency,tx_ref,started_at,expires_at,updated_at)
+    values($1,'active',$2,$3,'NGN',$4,now(),now()+interval '30 days',now())
+    on conflict(user_id) do update set status='active',customer_email=excluded.customer_email,amount=excluded.amount,
+    currency='NGN',tx_ref=excluded.tx_ref,started_at=case when strap_subscriptions.status='active' and strap_subscriptions.expires_at>now() then strap_subscriptions.started_at else now() end,
+    expires_at=now()+interval '30 days',updated_at=now()`,
+    [payment.user_id,payment.customer_email||'',amount,payment.tx_ref]);
+}
+
 H['health'] = async (req) => {
   const out = { db: false, auth: false };
   try { await q('select 1'); out.db = true; } catch (e) { out.dbError = e.message; }
@@ -635,6 +687,7 @@ async function applyStaffSalesSchedule(ownerId) {
   return {blob,state};
 }
 H['sales/session'] = async (req,res,user,staff) => {
+  if(user && req.method==='POST' && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales require Strap Premium.'}];
   if(!user||staff)return [403,{ok:false,msg:'Only the business owner can manage cashier sales.'}];
   const applied=await applyStaffSalesSchedule(user.id);let {blob,state}=applied;
   if(req.method==='POST'){
@@ -648,6 +701,7 @@ H['sales/session'] = async (req,res,user,staff) => {
 
 /* Gift card redemption: lock the owner's blob row so simultaneous checkouts cannot spend the same balance. */
 H['gift/redeem'] = async (req, res, user, staff) => {
+  if(user && !await premiumActive(user.id)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Gift cards require Strap Premium.'}];
   if (!user && !(staff && staff.role === 'Cashier')) return [403, { ok:false, msg:'Only the store owner or a cashier can redeem gift cards.' }];
   const ownerId = staff ? staff.owner_id : user.id;
   if (staff) {
@@ -697,6 +751,68 @@ H['gift/redeem'] = async (req, res, user, staff) => {
 };
 
 /* ---- app data: the whole dashboard state as one JSON per user ---- */
+
+H['premium/status'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
+  await ensurePremiumSchema();
+  const row=(await q("select status,expires_at,amount,currency from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
+  const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&premiumAmount()>0,amount:premiumAmount(),mode:'test'}];
+};
+H['premium/checkout'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
+  if(!flwReady()) return [503,{ok:false,msg:'Flutterwave test credentials are not configured yet.'}];
+  const amount=premiumAmount();
+  if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the Premium amount when you are ready to charge.'}];
+  await ensurePremiumSchema();
+  const active=await premiumActive(user.id);
+  if(active) return [409,{ok:false,msg:'Your Premium subscription is already active.'}];
+  const txRef='STRAP-TEST-'+crypto.randomBytes(12).toString('hex').toUpperCase();
+  await q("insert into strap_payments(tx_ref,user_id,amount,currency,status) values($1,$2,$3,'NGN','pending')",[txRef,user.id,amount]);
+  const payload={tx_ref:txRef,amount,currency:'NGN',redirect_url:origin(req)+'/dashboard.html?payment=flutterwave',
+    customer:{email:user.email,name:user.name||'Strap customer'},
+    customizations:{title:'Strap Premium',description:'Premium access for your Strap business'},
+    configuration:{session_duration:30,max_retry_attempt:3}};
+  if(/^\d+$/.test(String(E.FLW_PAYMENT_PLAN_ID||''))) payload.payment_plan=Number(E.FLW_PAYMENT_PLAN_ID);
+  const response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok||body.status!=='success'||!body.data||!body.data.link) {
+    await q("update strap_payments set status='failed' where tx_ref=$1",[txRef]);
+    console.error('Flutterwave checkout creation failed:',response.status,JSON.stringify(body).slice(0,500));
+    return [502,{ok:false,msg:'Flutterwave could not start checkout. Please try again.'}];
+  }
+  return [200,{ok:true,link:body.data.link,tx_ref:txRef,amount,currency:'NGN',mode:'test'}];
+};
+H['premium/verify'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
+  const txRef=String(req.body.tx_ref||'').trim(), id=String(req.body.transaction_id||'').trim();
+  if(!txRef||!/^\d+$/.test(id)) return [400,{ok:false,msg:'The payment reference is incomplete.'}];
+  await ensurePremiumSchema();
+  const payment=(await q("select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 and user_id=$2 limit 1",[txRef,user.id]))[0];
+  if(!payment) return [404,{ok:false,msg:'We could not find this payment.'}];
+  try {
+    const tx=await flwVerify(id);
+    await activatePremium({...payment,customer_email:user.email},tx);
+    return [200,{ok:true,active:true}];
+  } catch(e) { console.error('Premium verification failed:',e.message); return [402,{ok:false,msg:'Payment is not confirmed yet. If you were charged, wait a moment and refresh this page.'}]; }
+};
+H['flutterwave/webhook'] = async (req,res) => {
+  const expected=String(E.FLW_WEBHOOK_SECRET_HASH||''), received=String(req.headers['verif-hash']||'');
+  if(!expected||!received||Buffer.byteLength(expected)!==Buffer.byteLength(received)||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(received))) return [401,{ok:false}];
+  const event=req.body&&req.body.event, id=req.body&&req.body.data&&req.body.data.id;
+  if(event!=='charge.completed'||!id) return [200,{ok:true,ignored:true}];
+  try {
+    await ensurePremiumSchema();
+    const tx=await flwVerify(id), txRef=String(tx.tx_ref||'');
+    const payment=(await q('select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 limit 1',[txRef]))[0];
+    if(payment && payment.status!=='successful') {
+      const u=(await q('select email from app_users where id=$1 and deleted_at is null',[payment.user_id]))[0];
+      await activatePremium({...payment,customer_email:u&&u.email||''},tx);
+    }
+    return [200,{ok:true}];
+  } catch(e) { console.error('Flutterwave webhook processing failed:',e.message); return [500,{ok:false}]; }
+};
+
 H['data'] = async (req, res, user, staff) => {
   if (!user && !staff) return [401, { ok: false }];
   const ownerId=staff?staff.owner_id:user.id;
@@ -708,6 +824,22 @@ H['data'] = async (req, res, user, staff) => {
         if(!currentStaffSalesOpen(state,staff))return [423,{ok:false,code:'SALES_SESSION_CLOSED',msg:'Your sales session is closed or outside your scheduled hours.'}];
       }
       await staffWriteBlob(ownerId,staff,b); return [200,{ok:true}];
+    }
+
+    await ensurePremiumSchema();
+    const paid=await premiumActive(ownerId);
+    const oldRow=(await q('select blob from user_data where user_id=$1',[ownerId]))[0], oldBlob=oldRow&&oldRow.blob||{};
+    const nextState=parseStored(b['ls:strap.v1'],{}), oldState=parseStored(oldBlob['ls:strap.v1'],{});
+    const count=(x)=>Array.isArray(x)?x.length:0;
+    if(!paid) {
+      if(count(nextState.sales)>count(oldState.sales)||count(nextState.payments)>count(oldState.payments)||
+         count(nextState.gift)>count(oldState.gift)||count(nextState.collections)>count(oldState.collections))
+        return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Sales, gift cards and collections require Strap Premium.'}];
+      const nextF1=parseStored(b['ls:strap.f1'],{}), oldF1=parseStored(oldBlob['ls:strap.f1'],{});
+      if(count(nextF1.mcp)>count(oldF1.mcp)) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'MCP requires Strap Premium.'}];
+      let products=0;
+      for(const [key,value] of Object.entries(b)) if(key.startsWith('ls:strap.f1.items.')) products+=count(parseStored(value,[]));
+      if(products>30) return [403,{ok:false,code:'PRODUCT_LIMIT',msg:'The free plan allows up to 30 products. Upgrade to Premium for unlimited products.'}];
     }
     const clean=await safeOwnerBlob(ownerId,b);
     const client=await pool.connect();
