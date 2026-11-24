@@ -195,6 +195,8 @@ window.StrapSales = (() => {
       S.addSale(sale);
       if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
       else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
+      const synced = await StrapAPI.flush();
+      if (!synced || !synced.ok) ctx.toast('Sale recorded on this device. Cloud sync will retry when your connection is available.');
       cart = []; draft = { method: 'cash', name: '', phone: '', email: '', due: '', paid: '' };
       cartSheet.close(); redrawAll(); fx('ok'); showDone(sale);
     }
