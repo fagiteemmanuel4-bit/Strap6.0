@@ -18,10 +18,8 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    async createStaff(s) { await sleep(300); return { ok: true }; },
-    // [HOOK: staff sales hours] save one cashier's sales setting on your server. shift = { mode: 'open' | 'closed' | 'auto', from: 'HH:MM', to: 'HH:MM' }
-    // The cashier screen (strap-sales.html > getShift) must read this same object for the signed-in cashier.
-    async setStaffShift(id, shift) { await sleep(150); return { ok: true }; },
+    createStaff: s => StrapAPI.createStaff(s),
+    setStaffShift: (id, shift) => StrapAPI.setStaffShift(id, shift),
     async checkout() { await sleep(600); return { ok: false }; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
@@ -227,14 +225,14 @@ window.StrapFeatures = (() => {
   }
 
   /* --- Staff --- */
-  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers'], ['Customer care', 'Customers and orders'], ['Manager', 'Everything except settings']];
+  const ROLES = [['Cashier', 'Sales desk and sales history'], ['Stock keeper', 'Products, inventory and transfers']];
   const slug = (n, max = 14) => {
     const skip = new Set(['and', 'the', 'ltd', 'limited', 'store', 'stores', 'shop', 'house', 'enterprises', 'global', 'ventures', 'company', 'co', 'inc', 'of']);
     let w = n.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean), k = w.filter(x => !skip.has(x)); if (!k.length) k = w;
     let s = k.join(''); if (s.length > max) s = k[0].slice(0, max - (k.length - 1)) + k.slice(1).map(x => x[0]).join(''); return (s || 'mystore').slice(0, max);
   };
   const mailFor = (name, dom) => { const p = name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean); let m; do m = `${p[0] || 'staff'}${p[1] ? '.' + p[1][0] : ''}${10 + Math.floor(Math.random() * 90)}@${dom}.com`; while (S.staff.some(x => x.email === m)); return m; };
-  function staffFlow() { cover('Opening', () => { const o = ob(); ensureSecure(o, 'manage staff', () => staffHome(o)); }); }
+  function staffFlow() { cover('Opening', async () => { const o = ob(); ensureSecure(o, 'manage staff', async () => { const res = await StrapAPI.listStaff(); if (!res || !res.ok) { toast(res && res.msg || 'Could not load staff from your store.'); return; } S.staff = (res.staff || []).map(x => ({...x, shift:x.shift || {mode:'closed',from:'',to:''}})); save(); staffHome(o); }); }); }
   /* ===== STAFF MENU (new): open / close a cashier's sales, automatic hours, remove ===== */
   // A cashier's `shift` is { mode: 'open' | 'closed' | 'auto', from: 'HH:MM', to: 'HH:MM' }. New cashiers start closed,
   // so nobody sells until you open sales. `auto` opens at `from` and closes at `to` every day (overnight hours work too).
@@ -251,9 +249,10 @@ window.StrapFeatures = (() => {
   const first = x => (x.name || 'them').trim().split(/\s+/)[0];
 
   async function setShift(o, x, patch, msg) {
-    x.shift = Object.assign(shiftOf(x), patch); save();
-    try { await api.setStaffShift(x.id, x.shift); } catch (e) {}
-    notify('staff', 'Sales hours changed', msg); toast(msg); staffHome(o);
+    const next = Object.assign(shiftOf(x), patch);
+    const result = await api.setStaffShift(x.id, next);
+    if (!result || !result.ok) { toast(result && result.msg || 'Could not update this cashier.'); return; }
+    x.shift = next; save(); notify('staff', 'Sales hours changed', msg); toast(msg); staffHome(o);
   }
   function closeMenu(o) {
     const sm = o.sm; if (!sm) return; o.sm = null;
@@ -289,7 +288,7 @@ window.StrapFeatures = (() => {
         if (!open) return setShift(o, x, { mode: 'open' }, `Sales is open for ${first(x)}`);
         if (await K.confirm({ title: 'Close sales now?', body: `${x.name} won’t be able to sell until you open sales again. A sale in progress stays in their cart.`, ok: 'Close sales', cancel: 'Keep open', icon: 'lock', danger: true })) setShift(o, x, { mode: 'closed' }, `Sales is closed for ${first(x)}`);
       } else if (act === 'auto') autoStep(o, x);
-      else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
+      else if (act === 'del' && await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.removeStaff(x.id); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(y => y.id !== x.id); save(); staffHome(o); }
     });
   }
   function autoStep(o, x) {
@@ -304,7 +303,7 @@ window.StrapFeatures = (() => {
     $('[data-save]', o.el).onclick = async () => {
       const a = toMin(ta.value), b = toMin(tb.value);
       if (a == null) return ferr(ta, 'Choose the opening time.'); if (b == null) return ferr(tb, 'Choose the closing time.'); if (a === b) return ferr(tb, 'Closing time must be different.');
-      x.shift = { mode: 'auto', from: ta.value, to: tb.value }; save(); try { await api.setStaffShift(x.id, x.shift); } catch (e) {}
+      const next = { mode: 'auto', from: ta.value, to: tb.value }; const result = await api.setStaffShift(x.id, next); if (!result || !result.ok) return toast(result && result.msg || 'Could not save automatic hours.'); x.shift = next; save();
       notify('staff', 'Automatic hours on', `${x.name}’s sales opens at ${t12(ta.value)} and closes at ${t12(tb.value)}.`);
       o.ok('Automatic hours on', `${esc(x.name)}’s sales opens at ${t12(ta.value)} and closes at ${t12(tb.value)}, every day.`, 'Back to staff', home, 1800);
     };
@@ -323,7 +322,7 @@ window.StrapFeatures = (() => {
     $('[data-add]', o.el).onclick = () => { if (S.staff.length >= lim().staff) return gate(`The free plan includes ${LIM.free.staff} staff accounts. Upgrade to Premium for more.`); addStaff(o); };
     const up = $('[data-up]', o.el); if (up) up.onclick = () => open('premium');
     $$('[data-more]', o.el).forEach(b => b.onclick = () => openMenu(o, b, S.staff.find(y => y.id === b.dataset.more)));
-    $$('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
+    $('[data-del]', o.el).forEach(d => d.onclick = async () => { if (await K.confirm({ title: 'Remove this staff member?', body: 'Their login stops working immediately.', ok: 'Remove', cancel: 'Keep', icon: 'trash', danger: true })) { const res=await StrapAPI.removeStaff(d.dataset.del); if(!res||!res.ok)return toast(res&&res.msg||'Could not remove staff.'); S.staff = S.staff.filter(x => x.id !== d.dataset.del); save(); staffHome(o); } });
     // keep the "Sales open / closed" pills right while this screen stays open and automatic hours roll over
     o.shT = setInterval(() => { if (!o.el.isConnected) return clearInterval(o.shT); S.staff.forEach(x => { const p = $(`[data-shp="${x.id}"]`, o.el); if (p) { p.classList.toggle('on', shiftNow(x).open); p.lastElementChild.textContent = shiftText(x); } }); }, 20000);
   }
@@ -366,8 +365,9 @@ window.StrapFeatures = (() => {
           if (!a || !d) return bad($('#e1', sh.body).parentNode); if (S.staff.some(x => x.email === `${a}@${d}.com`)) return toast('That email is taken'); A.dom = d; A.email = `${a}@${d}.com`; sh.close(); email(); });
       };
       $('[data-fin]', o.el).onclick = async () => {
-        const salt = Math.random().toString(36).slice(2), st = { id: 's' + Date.now().toString(36), name: A.name, role: A.role, branch: A.branch, email: A.email, salt, pin: await sha(salt + ':' + A.pin), at: Date.now(), shift: A.role === 'Cashier' ? { mode: 'closed', from: '', to: '' } : undefined };
-        await api.createStaff({ ...st, pin: undefined }); S.staff.push(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
+        const result = await api.createStaff({ name:A.name, role:A.role, branch:A.branch, email:A.email, pin:A.pin });
+        if(!result || !result.ok || !result.staff) { toast(result && result.msg || 'Could not create this staff account.'); return email(); }
+        const st = {...result.staff, shift:{mode:'closed',from:'',to:''}}; S.staff.unshift(st); save(); notify('staff', 'Staff added', `${st.name} can now sign in as ${st.role}.`);
         o.ok('Staff added', `${esc(st.name)} can now sign in as ${esc(st.role)}.`, 'Back to staff', home);
       };
     };
