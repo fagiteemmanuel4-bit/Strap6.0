@@ -669,6 +669,10 @@ H['gift/redeem'] = async (req, res, user, staff) => {
     const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
     const today=parts.find(x=>x.type==='year').value+'-'+parts.find(x=>x.type==='month').value+'-'+parts.find(x=>x.type==='day').value;
     const result=GiftRules.redeem(card,subtotal,saleId,today,Date.now());
+    if (result.ok && body.method==='credit' && (Number(body.paidNow)||0)>=result.total) {
+      await client.query('ROLLBACK');
+      return [400,{ok:false,code:'CREDIT_PAID_IN_FULL',msg:'If they have paid in full, choose Cash, Card or Transfer instead.'}];
+    }
     if (!result.ok) {
       if (result.code==='EXPIRED') {
         card.status='expired'; state.gift=gifts;
