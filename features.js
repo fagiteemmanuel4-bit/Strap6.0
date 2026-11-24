@@ -6,19 +6,19 @@ window.StrapFeatures = (() => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const KEY = 'strap.f1';
-  const LIM = { free: { branches: 2, staff: 3, products: 200, imports: 8 }, premium: { branches: 10, staff: 50, products: 1e6, imports: 1e6 } };
+  const LIM = { free: { branches: 1, staff: 0, products: 30, imports: 30 }, premium: { branches: 1e6, staff: 1e6, products: 1e6, imports: 1e6 } };
   const mkey = () => new Date().toISOString().slice(0, 7);
   let S = { plan: 'free', branches: [{ id: 'b0', name: 'Main branch' }], active: 'b0', staff: [], imports: { m: mkey(), n: 0 }, theme: 'light', twofa: { on: false, secret: '' },
     backup: { email: '', phone: '' }, mcp: [], transfers: [], dismissed: [] };
   try { S = Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
-  const lim = () => LIM[S.plan];
+  S.plan = 'free'; // The server is the only authority for Premium access.\n  const lim = () => LIM[S.plan === 'premium' ? 'premium' : 'free'];
   let ctx = null;
 
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    async checkout() { await sleep(600); return { ok: false }; },
+    async checkout() { const r = await StrapAPI.call('POST', 'premium/checkout', {}); if (r.ok && r.link) { location.assign(r.link); return r; } toast(r.msg || 'Could not start checkout.'); return r; },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
 
@@ -430,65 +430,61 @@ window.StrapFeatures = (() => {
     });
   };
 
-  /* --- Premium: free accounts open the secure card checkout straight away; subscribers manage their plan --- */
+  /* --- Premium subscription --- */
   PAGES.premium = (s) => {
-    const dstr = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-    const meter = (label, used, max) => { const un = max >= 1e6, pct = un ? 100 : Math.min(100, Math.round(used / max * 100)); return `<div class="pr-m"><div class="pr-mt"><span>${label}</span><b>${un ? used + ' · Unlimited' : used + ' of ' + max}</b></div><div class="pr-mb${!un && pct >= 90 ? ' hot' : ''}"><i data-w="${pct}"></i></div></div>`; };
-    const perks = () => [`Up to ${LIM.premium.branches} branches and ${LIM.premium.staff} staff`, 'Unlimited products and imports', 'Dedicated branch staff', ...PLAN.features];
+    const perks = [
+      'Unlimited product uploads and imports',
+      'Point of sale, sales history and revenue reports',
+      'Gift cards and collections',
+      'Inventory, expenses and purchase tools',
+      'Online store and customer orders',
+      'MCP connections and AI agent access',
+      'Branches and advanced business tools'
+    ];
     const draw = () => {
-      const prem = S.plan === 'premium', L = lim(), rn = prem && S.sub && S.sub.renewsOn ? new Date(S.sub.renewsOn) : null;
-      let bar = '', left = '';
-      if (rn) { const start = new Date(rn); start.setMonth(start.getMonth() - PLAN.introMonths); const pct = Math.min(100, Math.max(4, Math.round((Date.now() - start) / (rn - start) * 100))); const d = Math.max(0, Math.ceil((rn - Date.now()) / 864e5));
-        bar = `<div class="pr-mb"><i data-w="${pct}"></i></div><div class="pr-mt pr-sm"><span>${d} day${d === 1 ? '' : 's'} until the price changes to ${ngn(PLAN.regular)}/month</span></div>`; left = 'Renews ' + dstr(rn); }
+      const prem = S.plan === 'premium';
       s.set(head('Premium') + `
         <section class="pr-hero ${prem ? 'on' : ''}">${U.illus('premium')}<span class="fx-tag pr-st">${prem ? '<i></i>Active' : 'Free plan'}</span>
-          <h2>${prem ? 'You’re on Premium' : 'You’re on the free plan'}</h2>
-          <p>${prem ? 'Thank you for backing Strap. All your higher limits are switched on.' : 'Upgrade any time to unlock more branches, staff and unlimited products.'}</p></section>
-        ${prem ? `<div class="fx-card pr-plan"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('flash', 22, 1.8)}</span><div><b>Strap Premium</b><small>${left ? left + ' · ' : ''}${ngn(rn ? PLAN.regular : PLAN.intro)}/month</small></div></div>${bar}</div>` : ''}
-        <h2 class="pm-h">Your usage</h2>
-        <div class="fx-card">${meter('Branches', S.branches.length, L.branches)}${meter('Staff accounts', S.staff.length, L.staff)}${meter('Products', items().length, L.products)}${meter('Imports this month', S.imports.n, L.imports)}</div>
-        <h2 class="pm-h">${prem ? 'What’s included' : 'What you’ll get'}</h2>
-        <div class="fx-card"><ul class="pr-ul">${perks().map((x, i) => `<li style="--i:${i}"><i>${ic('check', 14, 3)}</i><span>${x}</span></li>`).join('')}</ul></div>
-        ${prem ? `<p class="fx-p pr-note">Cancelling returns you to the free plan (${LIM.free.branches} branches, ${LIM.free.staff} staff, ${LIM.free.products} products, ${LIM.free.imports} imports a month). Your data stays. You’ll confirm with your activity PIN.</p><button type="button" class="fx-btn o pr-cancel" data-cancel>Cancel subscription</button>`
-          : `<button type="button" class="fx-btn" data-up>${ic('flash', 20, 2)} Upgrade to Premium</button>`}`);
-      requestAnimationFrame(() => requestAnimationFrame(() => $$('[data-w]', s.el).forEach(i => { i.style.width = i.dataset.w + '%'; })));
+          <h2>${prem ? 'You’re on Premium' : 'Unlock the full Strap experience'}</h2>
+          <p>${prem ? 'Your Premium access is active. Thank you for supporting Strap.' : 'Premium unlocks the tools you need to run your business. Your existing data stays safe if access expires.'}</p></section>
+        <h2 class="pm-h">${prem ? 'Your Premium features' : 'Included with Premium'}</h2>
+        <div class="fx-card"><ul class="pr-ul">${perks.map((x, i) => `<li style="--i:${i}"><i>${ic('check', 14, 3)}</i><span>${x}</span></li>`).join('')}</ul></div>
+        <div class="fx-card"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('tag',22,1.8)}</span><div><b>Free access</b><small>Up to 30 products. Dashboard, account access and basic settings remain available.</small></div></div></div>
+        ${prem ? '<p class="fx-p pr-note">Subscription renewal and cancellation controls will appear here once billing management is enabled.</p>' :
+          (S.checkoutReady ? '<button type="button" class="fx-btn" data-up>${ic("flash",20,2)} Continue to secure test checkout</button>' :
+          '<p class="fx-p pr-note">Premium pricing is currently paused. Checkout will open when the Premium amount and Flutterwave test credentials are configured.</p>')}`);
     };
     draw();
-    async function cancelFlow() {
-      if (!StrapStore.hasPin()) {
-        const ok = await K.confirm({ title: 'Set your activity PIN first', body: 'Cancelling Premium needs your 4-digit activity PIN, so only you can do it.', ok: 'Set PIN', cancel: 'Not now', icon: 'lock' });
-        if (!ok) return; const done = await StrapSec.setupFlow({ email: ctx.store.email, mode: 'set' }); if (!done) return;
-      }
-      for (;;) {
-        const r = await StrapSec.pinPad({ title: 'Confirm cancellation', sub: 'Enter your 4-digit activity PIN to cancel Premium.' });
-        if (r === 'forgot') { const d = await StrapSec.setupFlow({ email: ctx.store.email, mode: 'reset' }); if (!d) return; continue; }
-        if (r !== true) return; break;
-      }
-      await cover('Returning you to the free plan', () => { try { localStorage.removeItem('strap.plan'); } catch (er) {} S.ignoreSession = true; syncPlan(); notify('plan', 'Subscription cancelled', 'You’re back on the free plan.'); });
-      draw(); toast('You’re on the free plan');
-    }
-    s.el.addEventListener('click', e => { if (e.target.closest('[data-cancel]')) cancelFlow(); if (e.target.closest('[data-up]')) open('premium'); });
+    s.el.addEventListener('click', async e => {
+      if (!e.target.closest('[data-up]')) return;
+      const b=e.target.closest('[data-up]'); b.disabled=true; b.textContent='Opening Flutterwave…';
+      const result=await api.checkout();
+      if(!result.ok){b.disabled=false;b.textContent='Try again';}
+    });
   };
 
-
-  /* ===== plan (synced with the card screen on index.html?subscribe=1 and the sign-up payment) ===== */
-  const PLAN = { intro: 3000, introMonths: 3, regular: 4000, features: ['Point of sale with barcode scanning', 'Product catalogue and stock tracking', 'Low-stock alerts', 'Sales and revenue reports', 'Multiple branches'] };
-  const ngn = n => '\u20A6' + n.toLocaleString('en-NG');
-  function syncPlan() {
-    let lp = null, ss = null; try { lp = JSON.parse(localStorage.getItem('strap.plan') || 'null'); } catch (e) {} try { ss = JSON.parse(sessionStorage.getItem('strap.session') || '{}').plan; } catch (e) {}
-    const was = S.plan, act = lp && lp.status === 'active' ? lp : (!S.ignoreSession && ss && ss.status === 'active' ? ss : null);
-    if (lp && lp.status === 'active') S.ignoreSession = false;
-    S.plan = act ? 'premium' : 'free'; S.sub = act; save(); return was;
+  /* ===== Server-authoritative plan state ===== */
+  async function refreshPlan() {
+    const was=S.plan;
+    try {
+      const r=await StrapAPI.call('GET','premium/status');
+      if(r.ok) {
+        S.plan=r.active?'premium':'free';
+        S.sub=r.active?{expiresAt:r.expiresAt}:null;
+        S.checkoutReady=!!r.checkoutReady;
+        save();
+      }
+    } catch(e) { S.plan='free'; S.sub=null; S.checkoutReady=false; }
+    return was;
   }
+  const planBefore = 'free';
   Object.assign(api, {
-    async getAccountStatus() { await sleep(900); return { status: S.account.status }; },   // ask your server; return 'active' | 'review' | 'suspended'
+    async getAccountStatus() { await sleep(900); return { status: S.account.status }; },
     async requestReview(r) { await sleep(1000); return { ok: true, ticket: 'RV-' + Math.floor(10000 + Math.random() * 89999) }; }
   });
   S.notifs = S.notifs || []; S.account = S.account || { status: 'active' }; S.reports = S.reports || []; S.lowSeen = S.lowSeen || [];
-  const planBefore = syncPlan();
   try { const q = new URLSearchParams(location.search).get('account'); if (['active', 'review', 'suspended'].includes(q)) { S.account = { status: q, ticket: q === 'review' ? 'RV-48213' : '', at: Date.now() }; save(); } } catch (e) {}
-
-  /* ===== notifications ===== */
+    /* ===== notifications ===== */
   const NT = { sale: ['receipt', 'Sales'], stock: ['inbox', 'Stock'], security: ['shield', 'Security'], staff: ['users', 'Team'], plan: ['flash', 'Plan'], account: ['info', 'Account'], help: ['chat', 'Support'] };
   let bellEl = null;
   const unread = () => S.notifs.filter(n => !n.read).length;
@@ -579,7 +575,7 @@ window.StrapFeatures = (() => {
         if (t.closest('[data-read]')) { const v = $('#tx', s.el).value.trim(); v ? run({ text: v }) : bad($('#tx', s.el)); }
         if (t.closest('[data-again]')) intro();
         const rm = t.closest('[data-rm]'); if (rm) { list.splice(+rm.dataset.rm, 1); review(); }
-        if (t.closest('[data-imp]')) { const room = lim().products - items().length; if (list.length > room) return gate(`The free plan holds ${LIM.free.products} products. You can add ${Math.max(0, room)} more.`); if (!useImport()) return;
+        if (t.closest('[data-imp]')) { const room = lim().products - items().length; if (list.length > room) return gate(`The free plan allows up to 30 products. You can add ${Math.max(0, room)} more.`); if (!useImport()) return;
           const out = list.map((p, i) => ({ id: 'p' + Date.now().toString(36) + i, title: p.title, price: p.price, qty: p.qty, status: 'active', tracked: true })); K.fx('ok'); s.close('Adding products').then(() => { onAdd(out); toast(`${out.length} product${out.length === 1 ? '' : 's'} added`); }); }
       });
       s.el.addEventListener('change', async e => { const f = e.target.files && e.target.files[0]; if (!f) return; const txt = /text|csv|plain/.test(f.type) || /\.(csv|txt)$/i.test(f.name) ? await f.text() : ''; run({ file: f, text: txt }); });
@@ -588,7 +584,7 @@ window.StrapFeatures = (() => {
 
   /* ===== product limits + per-branch persistence ===== */
   function wrapProducts() {
-    const P = StrapProducts.api, cap = n => { if (items().length + n > lim().products) { gate(`The free plan holds ${LIM.free.products} products. Upgrade for more.`); throw new Error('limit'); } };
+    const P = StrapProducts.api, cap = n => { if (items().length + n > lim().products) { gate(`The free plan allows up to 30 products. Upgrade to Premium for unlimited products.`); throw new Error('limit'); } };
     P.getProducts = async () => { await sleep(350); return items(); };
     const sv = P.saveProduct, dl = P.deleteProduct, ic1 = P.importCsv, is1 = P.importFromSite;
     P.saveProduct = async p => { const l = items(); const isNew = !p.id || !l.some(x => x.id === p.id); if (isNew) cap(1); const r = await sv(p); const i = l.findIndex(x => x.id === r.id); i < 0 ? l.unshift(r) : (l[i] = r); setItems(l); return r; };
@@ -620,12 +616,12 @@ window.StrapFeatures = (() => {
   // Staff management is paused while the feature is rebuilt.
   const FLOWS = { branchsw: branchFlow, branches: branchFlow };
   function open(key) {
-    if (key === 'premium' && S.plan !== 'premium') { cover('Opening secure checkout', async () => { location.href = 'index.html?subscribe=1'; await sleep(4000); }); return true; }
+    if (key === 'premium') { cover('Opening Premium', () => screen('', PAGES.premium)); return true; }\n    if (['branches','branchsw','transfers'].includes(key) && S.plan !== 'premium') { gate('This business feature is included with Strap Premium.'); return true; }
     if (FLOWS[key]) { FLOWS[key](); return true; }
     if (!PAGES[key]) return false;
     cover(key === 'delete' ? 'One moment' : 'Opening', () => screen('', PAGES[key])); return true;
   }
   document.addEventListener('click', e => { const f = e.target.closest('[data-fx]'); if (f && ctx) { e.stopPropagation(); open(f.dataset.fx); } }, true);
 
-  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; } };
+  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&transaction_id) { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } else toast('Payment was not completed.'); history.replaceState({},'',location.pathname); } if(planBefore==='free'&&S.plan==='premium') notify('plan','Premium is active','Your Premium features are now unlocked.'); }); } };
 })();
