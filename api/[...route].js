@@ -880,7 +880,11 @@ H['data'] = async (req, res, user, staff) => {
       const addedProducts=nextProducts.filter(p=>p&&!oldIds.has(String(p.id||'')));
       if((oldProducts.length<=30&&nextProducts.length>30)||(oldProducts.length>30&&addedProducts.length>0))
         return [403,{ok:false,code:'PRODUCT_LIMIT',msg:'The free plan allows up to 30 products. Existing products are preserved; upgrade to Premium to add more.'}];
-      const stockChanged=nextProducts.some(p=>p&&p.id&&oldById.has(String(p.id))&&Number(oldById.get(String(p.id)).qty||0)!==Number(p.qty||0));
+      const stockChanged=nextProducts.some(p=>{
+        if(!p||!p.id||!oldById.has(String(p.id))) return false;
+        const old=oldById.get(String(p.id));
+        return Number(old.qty||0)!==Number(p.qty||0)||!!old.tracked!==!!p.tracked;
+      });
       if(stockChanged) return [403,{ok:false,code:'PREMIUM_REQUIRED',msg:'Inventory and stock adjustments require Strap Premium.'}];
     }
     const clean=await safeOwnerBlob(ownerId,b);
