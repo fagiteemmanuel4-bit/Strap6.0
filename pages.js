@@ -15,14 +15,13 @@ window.StrapPages = (() => {
       fields: [['Supplier', 'text', 'e.g. Lagos Textiles'], ['Expected date', 'date', ''], ['Notes', 'text', 'Optional']] },
     transfers: { t: 'Transfers', i: 'transfer', ill: 'transfers', h: 'Move stock between places', p: 'Transfer inventory between your shop, warehouse and other locations.', cta: 'Create transfer',
       fields: [['From', 'text', 'e.g. Warehouse'], ['To', 'text', 'e.g. Shop location'], ['Notes', 'text', 'Optional']] },
-    gift: { t: 'Gift cards', i: 'gift', ill: 'gift', h: 'Sell gift cards', p: 'Create gift cards customers can buy or receive, and redeem them at checkout.', cta: 'Create gift card',
-      fields: [['Value', 'number', '5000'], ['Customer email', 'email', 'Optional']],
-      fmt: v => ({ t: `${ctxRef.money(+v[0] || 0)} gift card`, s: [genCode(), v[1]].filter(Boolean).join(' · ') }) },
+    gift: { t: 'Gift cards', i: 'gift', ill: 'gift', h: 'Give customers a QR gift card or discount pass', p: 'Create a receipt-style slip customers can show at checkout. Scan its QR code to apply the saved value or discount.', cta: 'Create gift card',
+      fields: [['Card type (value or discount)', 'text', 'value or discount'], ['Value or discount (%)', 'number', '5000'], ['Customer email', 'email', 'Optional']] },
     customers: { t: 'Customers', i: 'users', ill: 'customers', h: 'No customers yet', p: 'Add customers to keep track of who buys from you.', cta: 'Add customer',
       fields: [['Full name', 'text', 'e.g. Ada Okafor'], ['Email', 'email', 'Optional'], ['Phone', 'tel', 'Optional']] }
   };
   let ctxRef = null, codeN = 0;
-  const genCode = () => 'GC-' + (1000 + (++codeN * 37) % 9000);
+  const genCode = () => 'GC-' + (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).toUpperCase());
 
   const head = (i, t, right = '', back) => `<header class="pm-head">${back ? `<button type="button" class="pm-round" data-go="${back}" aria-label="Back">${ic('back', 22, 2.2)}</button>` : ''}<h1 class="pm-title">${back ? '' : `<span class="pm-tico">${ic(i, 24, 1.8)}</span>`}${t}</h1>${right}</header>`;
   const empty = (kind, h, p, cta) => `<div class="pg-empty">${U.illus(kind)}<h2>${h}</h2><p>${p}</p>${cta || ''}</div>`;
@@ -60,7 +59,7 @@ window.StrapPages = (() => {
         StrapStore.addRecord(key, { name, email, phone });
       } else if (id === 'purchase') StrapStore.addRecord(key, { supplier: v[0], expectedDate: v[1], notes: v[2] });
       else if (id === 'transfers') StrapStore.addRecord(key, { from: v[0], to: v[1], notes: v[2], status: 'draft' });
-      else if (id === 'gift') StrapStore.addRecord(key, { value: Math.max(0, +v[0] || 0), email: v[1], code: genCode(), status: 'created' });
+      else if (id === 'gift') { const type = String(v[0] || '').trim().toLowerCase(); const amount = +v[1]; if (!['value', 'discount'].includes(type)) return ctx.toast('Choose value or discount as the card type'); if (!(amount > 0) || (type === 'discount' && amount > 100)) return ctx.toast(type === 'discount' ? 'Discount must be between 1 and 100 percent' : 'Enter a gift-card value above zero'); StrapStore.addRecord(key, { type, value: amount, balance: type === 'value' ? amount : 0, email: v[2], code: genCode(), status: 'active' }); }
       draw(); ctx.toast('Saved to your store');
     });
     function draw() {
@@ -70,16 +69,43 @@ window.StrapPages = (() => {
           const f = id === 'customers' ? { t: v.name, s: [v.phone, v.email].filter(Boolean).join(' · ') }
             : id === 'purchase' ? { t: v.supplier, s: [v.expectedDate, v.notes, v.status].filter(Boolean).join(' · ') }
             : id === 'transfers' ? { t: `${v.from} → ${v.to}`, s: [v.status, v.notes].filter(Boolean).join(' · ') }
-            : { t: `${ctxRef.money(v.value || 0)} gift card`, s: [v.code, v.email, v.status].filter(Boolean).join(' · ') };
-          return `<li class="pg-row"><span class="pg-ico">${ic(c.i, 22, 1.8)}</span><div><b>${esc(f.t || '')}</b>${f.s ? `<small>${esc(f.s)}</small>` : ''}</div><button type="button" class="pg-x" data-del="${esc(v.id || i)}" aria-label="Remove">${ic('trash', 20, 1.8)}</button></li>`;
+            : { t: v.type === 'discount' ? `${v.value}% discount pass` : `${ctxRef.money(v.balance ?? v.value ?? 0)} gift card`, s: [v.code, v.email, v.status, v.type === 'value' ? `Issued ${ctxRef.money(v.value || 0)}` : 'QR receipt'].filter(Boolean).join(' · ') };
+          return `<li class="pg-row"><span class="pg-ico">${ic(c.i, 22, 1.8)}</span><div><b>${esc(f.t || '')}</b>${f.s ? `<small>${esc(f.s)}</small>` : ''}</div>${id === 'gift' ? `<button type="button" class="gc-view" data-view="${esc(v.id)}">View slip</button>` : ''}<button type="button" class="pg-x" data-del="${esc(v.id || i)}" aria-label="Remove">${ic('trash', 20, 1.8)}</button></li>`;
         }).join('')}</ul>`
           : empty(c.ill, c.h, c.p, cta));
     }
     root.addEventListener('click', e => {
       if (e.target.closest('[data-add]')) add();
+      const view = e.target.closest('[data-view]'); if (view) { const card = rows.find(x => x.id === view.dataset.view); if (card) giftSlip(card, ctxRef); }
       const d = e.target.closest('[data-del]'); if (d) { StrapStore.removeRecord(key, d.dataset.del); draw(); ctx.toast('Removed'); }
     });
     draw();
+  }
+
+  function giftSlip(card, ctx) {
+    const layer = document.createElement('div'); layer.className = 'gc-layer';
+    const amount = card.type === 'discount' ? card.value + '% OFF' : ctx.money(card.balance ?? card.value ?? 0);
+    layer.innerHTML = `<div class="gc-shade" data-gc-close></div><section class="gc-slip" role="dialog" aria-modal="true" aria-label="Gift card receipt">
+      <div class="gc-slip-top"><span>STRAP · GIFT RECEIPT</span><button type="button" data-gc-close aria-label="Close">×</button></div>
+      <div class="gc-slip-mark">GIFT <b>PASS</b></div><strong class="gc-amount">${esc(amount)}</strong>
+      <p class="gc-kind">${card.type === 'discount' ? 'Discount on your next purchase' : 'Available gift-card balance'}</p>
+      <div class="gc-qr" id="gc-slip-qr"></div><b class="gc-code">${esc(card.code)}</b>
+      <p class="gc-help">Show this receipt or let the cashier scan the QR code at checkout.</p>
+      <div class="gc-dash"></div><div class="gc-slip-foot"><span>STATUS</span><b>${esc(card.status || 'active').toUpperCase()}</b></div>
+      <div class="gc-slip-actions"><button type="button" data-gc-print>Print receipt</button><button type="button" data-gc-done>Done</button></div>
+    </section>`;
+    document.body.appendChild(layer); document.body.classList.add('pm-open');
+    const qr = $('#gc-slip-qr', layer);
+    if (window.QRCode) new QRCode(qr, { text: 'STRAPGC|' + card.code, width: 176, height: 176, correctLevel: QRCode.CorrectLevel.M });
+    const close = () => { layer.remove(); document.body.classList.remove('pm-open'); };
+    layer.addEventListener('click', e => {
+      if (e.target.closest('[data-gc-close],[data-gc-done]')) return close();
+      if (e.target.closest('[data-gc-print]')) {
+        const canvas = $('canvas', qr), img = $('img', qr), src = canvas ? canvas.toDataURL('image/png') : img ? img.src : '';
+        const w = window.open('', '_blank'); if (!w) return ctx.toast('Allow pop-ups to print this receipt');
+        w.document.write('<!doctype html><html><head><title>Gift receipt</title><style>body{font:14px Arial;display:grid;place-items:center;padding:24px}.slip{width:300px;text-align:center;border:1px dashed #777;padding:22px}.amount{font-size:32px;font-weight:bold;margin:20px}.qr{width:176px;height:176px;margin:20px auto}img{width:176px}</style></head><body><main class="slip"><b>STRAP · GIFT RECEIPT</b><div class="amount">'+amount+'</div><p>'+ (card.type === 'discount' ? 'Discount pass' : 'Gift-card balance') +'</p><div class="qr">'+(src ? '<img src="'+src+'">' : '')+'</div><b>'+card.code+'</b><p>Show this receipt at checkout.</p></main><script>window.onload=()=>window.print()<\/script></body></html>'); w.document.close();
+      }
+    });
   }
 
   // Collections belong to the Products section: create them here, then choose them when adding a product
