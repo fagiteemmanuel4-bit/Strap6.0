@@ -251,8 +251,17 @@
     function ensure(id) {
       if (panes[id]) return panes[id];
       const p = document.createElement('div'); p.className = 'pane'; p.dataset.id = id; p.hidden = true; sheet.appendChild(p); panes[id] = p;
-      if (id === 'products') mods.products = StrapProducts.mount(p, ctx);
-      else mods[id] = StrapPages.build(id, p, ctx);
+      if (id === 'products') {
+        try {
+          mods.products = StrapProducts.mount(p, ctx);
+        } catch (err) {
+          console.error('[Strap dashboard] Products module failed to initialize:', err);
+          p.innerHTML = '<section class="empty"><h2>Products could not load</h2><p>Please refresh and try again.</p></section>';
+          mods.products = null;
+        }
+      } else {
+        mods[id] = StrapPages.build(id, p, ctx);
+      }
       return p;
     }
     // inventory needs the products module to exist first
@@ -314,7 +323,16 @@
     // the products group starts expanded
     const pg = $('[data-grp=products]', drawer); pg.setAttribute('aria-expanded', 'true'); pg.parentNode.classList.add('open');
 
-    ensure('products'); StrapFeatures.bind(mods.products); StrapFeatures.mountHome(ctx, panes.home);
+    // Optional dashboard modules must never prevent the signed-in workspace from opening.
+    try { ensure('products'); } catch (err) {
+      console.error('[Strap dashboard] Products startup failed:', err);
+    }
+    try { StrapFeatures.bind(mods.products); } catch (err) {
+      console.error('[Strap dashboard] Product feature binding failed:', err);
+    }
+    try { StrapFeatures.mountHome(ctx, panes.home); } catch (err) {
+      console.error('[Strap dashboard] Home widgets failed to initialize:', err);
+    }
     const routeIds = new Set(['home','orders','products','customers','purchase','transfers','gift','sales-today','sales-history','new-sale','inventory','collections','growth','online','mcp','settings']);
     const initialRoute = decodeURIComponent(location.hash.slice(1));
     const firstRoute = routeIds.has(initialRoute) ? initialRoute : 'home';
