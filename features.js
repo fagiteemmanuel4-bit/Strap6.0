@@ -94,39 +94,46 @@ window.StrapFeatures = (() => {
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
 
-  function showPremiumActivationSuccess(receipt={}) {
+  function showPremiumActivationSuccess() {
     const existing=document.getElementById('strap-premium-success');
     if(existing) existing.remove();
     const overlay=document.createElement('div');
     overlay.id='strap-premium-success';
     overlay.setAttribute('role','dialog');
     overlay.setAttribute('aria-modal','true');
-    const fallback='<div class="strap-premium-success-card"><div class="strap-premium-success-mark">✦</div><div class="strap-premium-success-eyebrow">PAYMENT CONFIRMED</div><div class="strap-premium-success-title">You are on<br><span>Strap Premium.</span></div><p>Your payment was verified. Premium features are now unlocked for your business.</p><div class="strap-premium-success-pill">✦ &nbsp; All Premium features unlocked</div><div class="strap-premium-success-progress"><i></i></div><small>Taking you back to your dashboard…</small></div>';
-    overlay.innerHTML='<div class="strap-premium-success-frame">'+fallback+'</div>';
+    Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'99999',background:'#e6f53a'});
+    const frame=document.createElement('iframe');
+    frame.title='Strap Premium thank-you animation';
+    frame.src='/premium-thank-you.html';
+    frame.setAttribute('sandbox','allow-scripts allow-same-origin');
+    frame.setAttribute('referrerpolicy','no-referrer');
+    Object.assign(frame.style,{display:'block',width:'100%',height:'100%',border:'0'});
+    overlay.appendChild(frame);
     document.body.appendChild(overlay);
-    const safe=v=>String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const date=receipt.next_billing_date?new Date(receipt.next_billing_date).toLocaleDateString('en-NG',{dateStyle:'medium'}):'See your Billing overview';
-    const values={
-      user_name:safe(receipt.user_name||'Thank you'),store_name:safe(receipt.store_name||'your business'),
-      plan_name:'Strap Premium',amount:'₦'+Number(receipt.amount||0).toLocaleString('en-NG'),
-      paid_on:safe(receipt.paid_on?new Date(receipt.paid_on).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}):new Date().toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})),
-      receipt_no:safe(receipt.receipt_no||'STRAP-PREMIUM'),next_billing_date:safe(date),
-      receipt_filename:safe((receipt.receipt_no||'STRAP-PREMIUM')+'.pdf'),
-      dashboard_url:'https://strap60.vercel.app/dashboard.html',support_email:'support@strap60.vercel.app',
-      to_email:safe(receipt.to_email||'your account email')
+    let closed=false;
+    const close=()=>{
+      if(closed)return;closed=true;
+      clearTimeout(timer);
+      overlay.remove();
+      window.removeEventListener('message',onMessage);
     };
-    fetch('/emails/premium-payment-success.html',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('Receipt template unavailable');return r.text();}).then(source=>{
-      const rendered=source.replace(/{{\s*([a-z_]+)\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]:'');
-      const frame=document.createElement('iframe');
-      frame.title='Strap Premium payment confirmation';
-      frame.setAttribute('sandbox','allow-popups allow-popups-to-escape-sandbox');
-      frame.setAttribute('referrerpolicy','no-referrer');
-      frame.srcdoc=rendered;
-      const holder=overlay.querySelector('.strap-premium-success-frame');
-      holder.replaceChildren(frame);
-    }).catch(()=>{});
-    requestAnimationFrame(()=>overlay.classList.add('is-visible'));
-    window.setTimeout(()=>{overlay.classList.remove('is-visible');window.setTimeout(()=>{overlay.remove();location.reload();},380);},7000);
+    const onMessage=e=>{
+      if(e.source===frame.contentWindow&&e.data&&e.data.type==='premium:close')close();
+    };
+    window.addEventListener('message',onMessage);
+    const timer=window.setTimeout(()=>{
+      try{frame.contentWindow.document.getElementById('x').click();}
+      catch(e){close();}
+      window.setTimeout(close,500);
+    },6000);
+    StrapAPI.call('POST','premium/welcome-seen',{}).catch(()=>{});
+  }
+
+  async function showPendingPremiumWelcome() {
+    try {
+      const r=await StrapAPI.call('GET','premium/status');
+      if(r.ok&&r.active&&r.welcomePending) showPremiumActivationSuccess();
+    } catch(e) { console.warn('[Strap Premium] Welcome animation check failed:',e); }
   }
 
   /* ===== theme ===== */
@@ -832,5 +839,5 @@ window.StrapFeatures = (() => {
   }
   document.addEventListener('click', e => { const f = e.target.closest('[data-fx]'); if (f && ctx) { e.stopPropagation(); open(f.dataset.fx); } }, true);
 
-  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&/^\\d+$/.test(transaction_id)) { try { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Payment verified. Strap Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } catch(err) { console.error('[Strap Premium] Return verification failed:',err); toast('Payment verification is still pending. Check Billing before trying again.'); } } else toast('Flutterwave returned without a transaction ID. If you were charged, contact support before retrying.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
+  return { api, state: S, notify, showPendingPremiumWelcome, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&/^\\d+$/.test(transaction_id)) { try { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') { toast('Payment verified. Strap Premium is now active.'); showPremiumActivationSuccess(); } else toast(v.msg||'Payment is not confirmed yet.'); } catch(err) { console.error('[Strap Premium] Return verification failed:',err); toast('Payment verification is still pending. Check Billing before trying again.'); } } else toast('Flutterwave returned without a transaction ID. If you were charged, contact support before retrying.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
 })();
