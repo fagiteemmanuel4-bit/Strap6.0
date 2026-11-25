@@ -94,3 +94,43 @@ test('CORS preflight is answered without authentication',async()=>{
   assert.equal(r.status,204);
   assert.equal(r.headers['Access-Control-Allow-Methods'],'POST, OPTIONS');
 });
+
+
+test('Neon OAuth tokens require the exact issuer and MCP audience',async()=>{
+  const {publicKey,privateKey}=crypto.generateKeyPairSync('ed25519');
+  const jwk={...publicKey.export({format:'jwk'}),kid:'mcp-test-key',alg:'EdDSA',use:'sig'};
+  const oldFetch=global.fetch,oldIssuer=process.env.NEON_AUTH_BASE_URL;
+  process.env.NEON_AUTH_BASE_URL='https://auth.example.test';
+  global.fetch=async()=>({ok:true,json:async()=>({keys:[jwk]})});
+  const blob={'ls:strap.f1':JSON.stringify({branches:[{id:'b0',name:'Main'},{id:'b1',name:'Second'}],active:'b1'}),'ls:strap.v1':'{}'};
+  const pool={async query(sql,params=[]){
+    if(sql.includes('from strap_mcp_tokens t join app_users'))return{rows:[]};
+    if(sql.includes('from app_users where id=$1'))return{rows:[{id:'user-1'}]};
+    if(sql.includes('from app_users a left join user_data'))return{rows:[{id:'user-1',email:'owner@example.com',profile:{bizname:'OAuth Store'},blob}]};
+    if(sql.includes('select client_id,client_name,scopes,branch_ids,revoked_at'))return{rows:[{client_id:'https://claude.ai',client_name:'OAuth AI client',scopes:['store:read'],branch_ids:['b1'],revoked_at:null}]};
+    return{rows:[]};
+  }};
+  const server=createMcp({pool,premiumActive:async()=>true});
+  const makeToken=(aud,iss='https://auth.example.test')=>{
+    const head=Buffer.from(JSON.stringify({alg:'EdDSA',kid:'mcp-test-key'})).toString('base64url');
+    const payload=Buffer.from(JSON.stringify({iss,aud,sub:'user-1',client_id:'https://claude.ai',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600})).toString('base64url');
+    const input=head+'.'+payload;
+    return input+'.'+crypto.sign(null,Buffer.from(input),privateKey).toString('base64url');
+  };
+  async function call(jwt){
+    const res={headers:{},setHeader(k,v){this.headers[k]=v;},end(v){this.body=v;}};
+    await server.handle({method:'POST',headers:{authorization:'Bearer '+jwt},body:{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-03-26'}}},res);
+    return {status:res.statusCode,headers:res.headers,body:res.body?JSON.parse(res.body):null};
+  }
+  try{
+    const valid=await call(makeToken('https://strap60.vercel.app/api/mcp'));
+    assert.equal(valid.status,200);
+    const wrongAudience=await call(makeToken('https://another-resource.example'));
+    assert.equal(wrongAudience.status,401);
+    const wrongIssuer=await call(makeToken('https://strap60.vercel.app/api/mcp','https://other-auth.example'));
+    assert.equal(wrongIssuer.status,401);
+  }finally{
+    global.fetch=oldFetch;
+    if(oldIssuer===undefined)delete process.env.NEON_AUTH_BASE_URL;else process.env.NEON_AUTH_BASE_URL=oldIssuer;
+  }
+});
