@@ -557,19 +557,35 @@ window.StrapProducts = (() => {
       }
         if (lockNote) lockNote.hidden = !inventoryLocked;
       } catch (err) {
-        console.error('[Strap products] Product panel initialisation failed:', err);
-        toast('The product panel opened, but some fields failed to load. Please try again.');
+        console.error('[Strap products] Product panel initialisation failed:', err && err.stack || err);
+        toast('The product form could not load one of its optional fields. Please try again.');
       }
     }
     function closePage() { page.classList.remove('on'); document.body.classList.remove('pm-open'); setTimeout(() => { if (!page.classList.contains('on')) page.hidden = true; }, 360); }
     function resetForm() {
-      form.reset(); $('.pm-ed', page).innerHTML = ''; files = []; renderThumbs();
-      $$('.rv', page).forEach(x => x.hidden = true); $$('.pm-chip.on', page).forEach(c => c.classList.remove('on'));
-      $$('[data-toggle]', page).forEach(c => { const e = $('em', c); const init = c.dataset.toggle === 'tax'; c.dataset.state = init ? '1' : '0'; e.textContent = init ? c.dataset.on : c.dataset.off; e.classList.toggle('on', init); });
-      $$('.pm-sw', page).forEach(s => { s.classList.add('on'); s.setAttribute('aria-checked', 'true'); });
-      $('[data-f=invbox]', page).hidden = false; $('[data-f=shipbox]', page).hidden = false; $('[data-f=seo]', page).hidden = true;
-      $('#pm-opts', page).innerHTML = ''; $('#pm-addopt', page).hidden = false;
-      $$('.pm-tl2', page).forEach(x => x.innerHTML = ''); updSeo(); setTimeout(() => StrapPicker.sync(page), 0);
+      if (form && typeof form.reset === 'function') form.reset();
+      const editor = $('.pm-ed', page); if (editor) editor.innerHTML = '';
+      files = []; renderThumbs();
+      $('.rv', page).forEach(x => { x.hidden = true; });
+      $('.pm-chip.on', page).forEach(c => c.classList.remove('on'));
+      $('[data-toggle]', page).forEach(c => {
+        const badge = $('em', c), init = c.dataset.toggle === 'tax';
+        c.dataset.state = init ? '1' : '0';
+        if (badge) { badge.textContent = init ? c.dataset.on : c.dataset.off; badge.classList.toggle('on', init); }
+      });
+      $('.pm-sw', page).forEach(sw => { sw.classList.add('on'); sw.setAttribute('aria-checked', 'true'); });
+      const inventory = $('[data-f=invbox]', page), shipping = $('[data-f=shipbox]', page), seo = $('[data-f=seo]', page);
+      if (inventory) inventory.hidden = false;
+      if (shipping) shipping.hidden = false;
+      if (seo) seo.hidden = true;
+      const options = $('#pm-opts', page), addOption = $('#pm-addopt', page);
+      if (options) options.innerHTML = '';
+      if (addOption) addOption.hidden = false;
+      $('.pm-tl2', page).forEach(x => { x.innerHTML = ''; });
+      updSeo();
+      if (window.StrapPicker && typeof window.StrapPicker.sync === 'function') {
+        window.setTimeout(() => { try { window.StrapPicker.sync(page); } catch (err) { console.warn('[Strap products] Picker refresh failed:', err); } }, 0);
+      }
     }
     // rich text
     $$('[data-cmd]', page).forEach(b => { b.addEventListener('mousedown', e => e.preventDefault()); b.addEventListener('click', () => { $('.pm-ed', page).focus(); document.execCommand(b.dataset.cmd); }); });
@@ -646,9 +662,14 @@ window.StrapProducts = (() => {
     });
     // SEO preview
     function updSeo() {
-      const t = form.seoTitle.value.trim() || form.title.value.trim(), d = form.seoDesc.value.trim(), p = $('[data-seoprev]', page);
-      if (!t && !d) { p.className = 'pm-muted'; p.textContent = 'Add a title and description to see how this product might appear in a search engine listing'; return; }
-      p.className = 'pm-seoprev'; p.innerHTML = `<b>${esc(t || 'Untitled product')}</b><small>${esc(d || 'No description yet.')}</small>`;
+      const field = name => form && form.elements ? form.elements.namedItem(name) : null;
+      const title = field('seoTitle'), productTitle = field('title'), description = field('seoDesc');
+      const t = String(title && title.value || '').trim() || String(productTitle && productTitle.value || '').trim();
+      const d = String(description && description.value || '').trim(), preview = $('[data-seoprev]', page);
+      if (!preview) return;
+      if (!t && !d) { preview.className = 'pm-muted'; preview.textContent = 'Add a title and description to see how this product might appear in a search engine listing'; return; }
+      preview.className = 'pm-seoprev';
+      preview.innerHTML = `<b>${esc(t || 'Untitled product')}</b><small>${esc(d || 'No description yet.')}</small>`;
     }
     form.addEventListener('input', e => { if (['title', 'seoTitle', 'seoDesc'].includes(e.target.name)) updSeo(); });
 
