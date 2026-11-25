@@ -15,7 +15,7 @@ Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadat
 
 ## Current rollout state
 
-The Neon OAuth provider settings and production grant tables are prepared, but OAuth is intentionally **disabled** until Vercel deploys the latest MCP auth proxy, consent page, protected-resource metadata rewrite, and JWT verification code. Do not enable OAuth or call the OAuth flow production-ready before those files are live and the end-to-end checks below pass. Existing bearer-token MCP access remains separate.
+The production Neon Auth OAuth 2.1 provider is enabled for the Strap MCP resource. The app exposes a protected-resource metadata endpoint at the URL above and verifies Neon Auth JWT signatures against the production JWKS, including exact issuer, audience, expiry, and account checks. Keep this rollout marked as pending until the production deployment is live and a real Claude or MCP Inspector OAuth connection has passed the checklist below.
 
 ## Permissions
 
@@ -73,7 +73,7 @@ Never commit tokens to source control or paste them into public chats. Revoke a 
 
 ## Production verification checklist
 
-- [ ] Vercel production deployment includes the MCP route, auth proxy, OAuth pages, metadata rewrite, and settings UI.
+- [ ] Vercel production deployment includes the MCP route, auth proxy, OAuth pages, protected-resource metadata handler, and settings UI.
 - [ ] Protected-resource metadata returns the exact production MCP URL and Neon Auth issuer.
 - [ ] OAuth discovery works and the issuer matches the production Neon Auth base URL.
 - [ ] Complete a real OAuth login and consent flow with Claude or MCP Inspector.
