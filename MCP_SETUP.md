@@ -41,6 +41,7 @@ Write (only when `store:write` is explicitly granted):
 - `strap_create_product`
 - `strap_update_product`
 - `strap_set_branch_stock`
+- `strap_upload_product_image` (JPG, PNG, WEBP or GIF; maximum 3 MB)
 
 Write access is intentionally limited to product and stock operations. The MCP server does not expose payment, refund, staff, customer deletion, or account deletion actions.
 
@@ -48,6 +49,7 @@ Write access is intentionally limited to product and stock operations. The MCP s
 
 - App data is read from and written to the owner's Neon `user_data.blob` records.
 - Product reads/writes use the selected branch's `ls:strap.f1.items.<branchId>` key.
+- Product images are stored in the existing Neon `media` table (`bytea`) and the product image URL is updated in the same transaction; raw image bytes are never written to the audit log.
 - Sales and customers are filtered to the branches granted to the connection.
 - Every tool call is recorded in `strap_mcp_audit_log`; access tokens store only a hash, never the raw token.
 - OAuth grants are recorded in `strap_mcp_oauth_grants` and can be revoked in Strap settings.
