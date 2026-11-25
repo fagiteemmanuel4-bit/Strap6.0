@@ -247,9 +247,9 @@ window.StrapProducts = (() => {
         renderChrome(); renderBody(); toast(viewMode === 'grid' ? 'Column view' : 'List view'); return;
       }
       const it = t.closest('.pm-row[data-id], .pm-gc[data-id]');
-      if (it && !t.closest('.pm-ck')) { const p = items.find(x => x.id === it.dataset.id); if (p) openPage(p); }
+      if (it && !t.closest('.pm-ck')) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); else toast('This product could not be opened. Refresh the page and try again.'); }
     });
-    root.addEventListener('keydown', e => { if (e.key === 'Enter') { const it = e.target.closest('.pm-row[data-id], .pm-gc[data-id]'); if (it) { const p = items.find(x => x.id === it.dataset.id); if (p) openPage(p); } } });
+    root.addEventListener('keydown', e => { if (e.key === 'Enter') { const it = e.target.closest('.pm-row[data-id], .pm-gc[data-id]'); if (it) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); } } });
     body.addEventListener('change', e => { const c = e.target.closest('input[type=checkbox]'); if (!c) return; c.checked ? picked.add(c.dataset.id) : picked.delete(c.dataset.id); renderSel(); });
     $('#pm-q', root).addEventListener('input', e => { query = e.target.value.trim(); renderBody(); });
     $('#pm-sort', root).addEventListener('change', e => { sort = e.target.value; renderBody(); });
