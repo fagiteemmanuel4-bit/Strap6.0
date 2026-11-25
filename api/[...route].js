@@ -621,7 +621,7 @@ H['auth/signup'] = async (req, res, user) => {
   await q('update app_users set profile=$2, deleted_at=null where id=$1', [user.id, profile]);
   await q('insert into user_data(user_id,blob) values($1,$2) on conflict(user_id) do nothing', [user.id, { 'ss:strap.session': JSON.stringify(profile) }]);
   if (profile.name) na(req, 'POST', '/update-user', { name: String(profile.name).slice(0, 80) }, upCookie(req));
-  if (!first || !first.done) await mail(user.email, `Welcome to ${APP}`, wrap(`Welcome, ${esc(String(profile.name || '').split(' ')[0] || 'there')}!`, `<p>Your ${esc(APP)} account for <b>${esc(profile.bizname || 'your business')}</b> is ready.</p><p>Need help? Reply to this email.</p>`));
+  if (!first || !first.done) await sendWelcomeEmail(user.email,profile).catch(e=>console.error('Welcome email failed:',e.message));
   return [200, { ok: true }];
 };
 
@@ -883,6 +883,15 @@ async function billingPrefs(userId) {
   if(rows[0]) return rows[0];
   return (await q(`insert into strap_billing_preferences(user_id) values($1)
     on conflict(user_id) do update set user_id=excluded.user_id returning *`,[userId]))[0];
+}
+async function sendWelcomeEmail(to,profile={}) {
+  const templateId=String(E.EMAILJS_WELCOME_TEMPLATE_ID||'').trim();
+  if(!templateId) return mail(to,`Welcome to ${APP}`,wrap(`Welcome, ${esc(String(profile.name||'').split(' ')[0]||'there')}!`,`<p>Your ${esc(APP)} account for <b>${esc(profile.bizname||'your business')}</b> is ready.</p><p>Need help? Reply to this email.</p>`));
+  const name=String(profile.name||'Strap customer');
+  const response=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service_id:String(E.EMAILJS_SERVICE_ID||'').trim(),template_id:templateId,user_id:String(E.EMAILJS_PUBLIC_KEY||'').trim(),template_params:{to_email:to,to_name:name,user_name:name,store_name:String(profile.bizname||'your business'),business_name:String(profile.bizname||'your business'),dashboard_url:'https://strap60.vercel.app/dashboard.html',subject:'Welcome to Strap'}})});
+  const body=await response.text();
+  if(!response.ok) throw new Error('EmailJS welcome email failed ('+response.status+'): '+body.slice(0,300));
+  return true;
 }
 function emailJsReady() {
   return !!(String(E.EMAILJS_SERVICE_ID||'').trim() && String(E.EMAILJS_TEMPLATE_ID||'').trim() && String(E.EMAILJS_PUBLIC_KEY||'').trim());
