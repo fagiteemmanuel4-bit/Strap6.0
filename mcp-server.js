@@ -28,13 +28,14 @@ const writeTools = [
 module.exports = function createMcp(options) {
  const pool = options.pool, premiumActive = options.premiumActive;
  const q = async (sql, params) => (await pool.query(sql, params)).rows;
- let schemaReady;
+ let schemaReady, jwksCache=null;
  async function ensureSchema() {
   if (!schemaReady) schemaReady = (async () => {
    await q("create table if not exists strap_mcp_tokens (id uuid primary key default gen_random_uuid(), user_id text not null references app_users(id) on delete cascade, token_hash text not null unique, token_prefix text not null, name text not null default 'AI connection', scopes text[] not null default array['store:read']::text[], branch_ids text[] not null default array['*']::text[], created_at timestamptz not null default now(), last_used_at timestamptz, revoked_at timestamptz)");
    await q('create index if not exists strap_mcp_tokens_user_idx on strap_mcp_tokens(user_id, created_at desc)');
    await q("create table if not exists strap_mcp_audit_log (id bigserial primary key, user_id text not null references app_users(id) on delete cascade, token_id uuid references strap_mcp_tokens(id) on delete set null, action text not null, branch_id text, resource_id text, details jsonb not null default '{}'::jsonb, created_at timestamptz not null default now())");
    await q('create index if not exists strap_mcp_audit_user_idx on strap_mcp_audit_log(user_id, created_at desc)');
+   await q("create table if not exists strap_mcp_oauth_grants (user_id text not null references app_users(id) on delete cascade, client_id text not null, client_name text not null default 'OAuth AI client', scopes text[] not null default array['store:read']::text[], branch_ids text[] not null default array['b0']::text[], created_at timestamptz not null default now(), updated_at timestamptz not null default now(), revoked_at timestamptz, primary key(user_id,client_id))");
   })().catch(error => { schemaReady = null; throw error; });
   return schemaReady;
  }
@@ -130,14 +131,53 @@ module.exports = function createMcp(options) {
   }
   throw new Error('Unknown Strap tool: '+name);
  }
+ async function verifyOAuthJwt(raw) {
+  const issuer=String(process.env.NEON_AUTH_BASE_URL||'').replace(/\/$/,'');
+  if(!issuer) return null;
+  const parts=String(raw||'').split('.');
+  if(parts.length!==3) return null;
+  let header,payload;
+  try { header=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));payload=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8')); } catch(_) { return null; }
+  if(header.alg!=='EdDSA'||!header.kid||payload.iss!==issuer||!payload.sub) return null;
+  const now=Math.floor(Date.now()/1000);
+  if(!Number.isFinite(Number(payload.exp))||Number(payload.exp)<=now||(payload.nbf&&Number(payload.nbf)>now+30)) return null;
+  const aud=Array.isArray(payload.aud)?payload.aud:[payload.aud];
+  if(!aud.includes(APP_URL+'/api/mcp')) return null;
+  try {
+   if(!jwksCache||jwksCache.expires<Date.now()) {
+    const response=await fetch(issuer+'/.well-known/jwks.json',{headers:{Accept:'application/json'}});
+    if(!response.ok) return null;
+    const body=await response.json();jwksCache={keys:Array.isArray(body.keys)?body.keys:[],expires:Date.now()+300000};
+   }
+   const jwk=jwksCache.keys.find(k=>k.kid===header.kid&&k.kty==='OKP'&&k.crv==='Ed25519');
+   if(!jwk) return null;
+   const key=crypto.createPublicKey({key:jwk,format:'jwk'});
+   const valid=crypto.verify(null,Buffer.from(parts[0]+'.'+parts[1]),key,Buffer.from(parts[2],'base64url'));
+   return valid?payload:null;
+  } catch(error) { console.error('MCP OAuth token verification failed:',error.message);return null; }
+ }
  async function authenticate(req) {
   await ensureSchema();
   const match=/^Bearer\s+(.+)$/i.exec(String(req.headers.authorization||''));
   if(!match||match[1].length<24) return null;
-  const rows=await q('select t.id,t.user_id,t.scopes,t.branch_ids,t.name from strap_mcp_tokens t join app_users a on a.id=t.user_id where t.token_hash=$1 and t.revoked_at is null and a.deleted_at is null limit 1',[sha(match[1])]);
-  if(!rows[0] || !await premiumActive(rows[0].user_id)) return null;
-  await q('update strap_mcp_tokens set last_used_at=now() where id=$1',[rows[0].id]);
-  return rows[0];
+  const raw=match[1];
+  const rows=await q('select t.id,t.user_id,t.scopes,t.branch_ids,t.name from strap_mcp_tokens t join app_users a on a.id=t.user_id where t.token_hash=$1 and t.revoked_at is null and a.deleted_at is null limit 1',[sha(raw)]);
+  if(rows[0]) {
+   if(!await premiumActive(rows[0].user_id)) return null;
+   await q('update strap_mcp_tokens set last_used_at=now() where id=$1',[rows[0].id]);
+   return rows[0];
+  }
+  const claims=await verifyOAuthJwt(raw);
+  if(!claims) return null;
+  const userId=String(claims.sub), account=await q('select id from app_users where id=$1 and deleted_at is null limit 1',[userId]);
+  if(!account[0]||!await premiumActive(userId)) return null;
+  const clientId=safeText(claims.client_id||claims.azp||claims.clientId,256);
+  if(!clientId) return null;
+  const ctx=await ownerContext(userId), defaultBranch=String(ctx.settings.active||'b0');
+  await q("insert into strap_mcp_oauth_grants(user_id,client_id,client_name,scopes,branch_ids) values($1,$2,$3,array['store:read']::text[],$4::text[]) on conflict(user_id,client_id) do nothing",[userId,clientId,safeText(claims.client_name||'OAuth AI client',100),[defaultBranch]]);
+  const grants=await q('select client_id,client_name,scopes,branch_ids,revoked_at from strap_mcp_oauth_grants where user_id=$1 and client_id=$2 limit 1',[userId,clientId]);
+  if(!grants[0]||grants[0].revoked_at||!grants[0].scopes.includes('store:read')) return null;
+  return {id:null,user_id:userId,client_id:clientId,scopes:grants[0].scopes,branch_ids:grants[0].branch_ids,name:grants[0].client_name,oauth:true};
  }
  async function handle(req,res) {
   const protocolHeader=req.headers['mcp-protocol-version'];
@@ -150,7 +190,7 @@ module.exports = function createMcp(options) {
   await ensureSchema();
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return json(res,405,{error:'Use POST for the Strap MCP Streamable HTTP endpoint.'}); }
   const token=await authenticate(req);
-  if(!token) return json(res,401,{error:'Unauthorized',message:'Connect using a valid Strap MCP access token.'});
+  if(!token) { res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://strap60.vercel.app/.well-known/oauth-protected-resource/api/mcp"'); return json(res,401,{error:'Unauthorized',message:'Connect using Strap OAuth or a valid Strap access token.'}); }
   const body=req.body&&typeof req.body==='object'?req.body:{};
   if(body.jsonrpc!=='2.0'||typeof body.method!=='string') return json(res,400,rpcError(body.id,-32600,'Invalid JSON-RPC request.'));
   if(body.method==='notifications/initialized'||body.method==='notifications/cancelled') return json(res,202,{});
@@ -170,10 +210,11 @@ module.exports = function createMcp(options) {
   if(!await premiumActive(user.id)) return json(res,403,{ok:false,message:'Strap MCP connections require Strap Premium.'});
   if(req.method==='GET') {
    const rows=await q('select id::text,name,token_prefix,scopes,branch_ids,created_at,last_used_at from strap_mcp_tokens where user_id=$1 and revoked_at is null order by created_at desc',[user.id]);
+   const oauth=await q('select client_id,client_name,scopes,branch_ids,created_at,updated_at,revoked_at from strap_mcp_oauth_grants where user_id=$1 order by created_at desc',[user.id]);
    const activity=await q('select id,action,branch_id,resource_id,details,created_at from strap_mcp_audit_log where user_id=$1 order by created_at desc limit 50',[user.id]);
    const ctx=await ownerContext(user.id);
    const branches=ctx.branches.map(b=>({id:String(b.id),name:safeText(b.name,100)}));
-   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows,activity,branches});
+   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows,oauth_connections:oauth,activity,branches});
   }
   if(req.method==='POST') {
    const body=req.body||{}, name=safeText(body.name||'AI connection',80), scopes=Array.isArray(body.scopes)?body.scopes.filter(x=>['store:read','store:write'].includes(x)):['store:read'];
