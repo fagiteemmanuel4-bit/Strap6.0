@@ -301,7 +301,7 @@ window.StrapPages = (() => {
     const renderConnections = data => {
       const keys=(data.connections||[]).map(item=>'<div class="pg-r"><div><b>'+esc(item.name)+'</b><small>'+esc(item.token_prefix)+'… · '+esc(item.scopes.join(', '))+' · '+esc(item.branch_ids.includes('*')?'All branches':item.branch_ids.join(', '))+'</small></div><button class="pm-imp" type="button" data-revoke="'+esc(item.id)+'">Revoke</button></div>').join('');
       const oauth=(data.oauth_connections||[]).map(item=>{
-        const branches=(data.branches||[]).map(b=>'<option value="'+esc(b.id)+'" '+(item.branch_ids.includes(String(b.id))?'selected':'')+'>'+esc(b.name)+'</option>').join('');
+        const allBranches=item.branch_ids.includes('*'); const branches='<option value="*" '+(allBranches?'selected':'')+'>All branches</option>' +(data.branches||[]).map(b=>'<option value="'+esc(b.id)+'" '+(!allBranches&&item.branch_ids.includes(String(b.id))?'selected':'')+'>'+esc(b.name)+'</option>').join('');
         const revoked=!!item.revoked_at;
         return '<div class="pg-card" data-oauth-card="'+esc(item.client_id)+'"><div class="pg-r"><div><b>'+esc(item.client_name||'OAuth AI client')+'</b><small>OAuth client · '+esc(item.client_id)+'</small></div><b class="pg-pill">'+(revoked?'Revoked':'Connected')+'</b></div>'+(revoked?'<p class="pg-note">Access is blocked until you explicitly restore this connection.</p>':'')+'<label class="pm-fl"><span>Permissions</span><select data-oauth-scope><option value="read" '+(!item.scopes.includes('store:write')?'selected':'')+'>Read only</option><option value="write" '+(item.scopes.includes('store:write')?'selected':'')+'>Read and write products / stock</option></select></label><label class="pm-fl"><span>Allowed branches</span><select data-oauth-branches multiple size="3">'+branches+'</select></label><button class="pm-imp" type="button" data-oauth-save="'+esc(item.client_id)+'">'+(revoked?'Restore connection':'Save permissions')+'</button>'+(revoked?'':'<button class="pm-imp" type="button" data-revoke-oauth="'+esc(item.client_id)+'">Revoke OAuth access</button>')+'</div>';
       }).join('');
@@ -356,7 +356,7 @@ window.StrapPages = (() => {
       const oauthSave = event.target.closest('[data-oauth-save]');
       if (oauthSave) {
         const card=oauthSave.closest('[data-oauth-card]'), scope=$('select[data-oauth-scope]',card).value;
-        const branches=Array.from($('select[data-oauth-branches]',card).selectedOptions).map(option=>option.value);
+        const selectedBranches=Array.from($('select[data-oauth-branches]',card).selectedOptions).map(option=>option.value); const branches=selectedBranches.includes('*')?['*']:selectedBranches;
         oauthSave.disabled=true;
         try { await request('PATCH',{client_id:oauthSave.dataset.oauthSave,scopes:scope==='write'?['store:read','store:write']:['store:read'],branch_ids:branches});ctx.toast('OAuth permissions saved');await draw(); }
         catch(error){ctx.toast(error.message);oauthSave.disabled=false;}
