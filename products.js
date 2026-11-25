@@ -702,6 +702,7 @@ window.StrapProducts = (() => {
     renderAll();
     api.getProducts().then(r => { items = r; loading = false; renderAll(); }).catch(() => { items = []; loading = false; renderAll(); });
     return {
+      activeBranchId: () => productBranch(),
       items: () => items, openAdd: () => openPage(), openImport, openAI,
       countIn: name => items.filter(p => (p.collections || []).includes(name)).length,
       inCollection: name => items.filter(p => (p.collections || []).includes(name)).map(p => p.id),
