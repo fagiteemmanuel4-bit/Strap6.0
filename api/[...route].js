@@ -361,7 +361,7 @@ H['neon-auth'] = async (req, res) => {
 
 /* OAuth 2.1 protected-resource metadata for MCP clients (RFC 9728). */
 H['mcp/resource-metadata'] = async () => {
-  const issuer = String(E.NEON_AUTH_BASE_URL || '').replace(new RegExp('/
+  const issuer = String(E.NEON_AUTH_BASE_URL || '').replace(/\/$/, '');
   if (!issuer) return [503, { error: 'authorization_server_unavailable' }];
   return [200, {
     resource: 'https://strap60.vercel.app/api/mcp',
