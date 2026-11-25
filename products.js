@@ -549,7 +549,7 @@ window.StrapProducts = (() => {
       const trackedSwitch = $('[data-sw="tracked"]', page), quantity = $('input[name="qty"]', page);
       if (trackedSwitch) trackedSwitch.disabled = inventoryLocked;
       if (quantity) quantity.readOnly = inventoryLocked;
-      $('[data-step], [data-toggle="oos"]', page).forEach(x => { x.disabled = inventoryLocked; });
+      $$('[data-step], [data-toggle="oos"]', page).forEach(x => { x.disabled = inventoryLocked; });
       let lockNote = $('[data-inventory-lock]', page);
       if (!lockNote) {
         const invBox = $('[data-f="invbox"]', page);
@@ -566,14 +566,14 @@ window.StrapProducts = (() => {
       if (form && typeof form.reset === 'function') form.reset();
       const editor = $('.pm-ed', page); if (editor) editor.innerHTML = '';
       files = []; renderThumbs();
-      $('.rv', page).forEach(x => { x.hidden = true; });
-      $('.pm-chip.on', page).forEach(c => c.classList.remove('on'));
-      $('[data-toggle]', page).forEach(c => {
+      $$('.rv', page).forEach(x => { x.hidden = true; });
+      $$('.pm-chip.on', page).forEach(c => c.classList.remove('on'));
+      $$('[data-toggle]', page).forEach(c => {
         const badge = $('em', c), init = c.dataset.toggle === 'tax';
         c.dataset.state = init ? '1' : '0';
         if (badge) { badge.textContent = init ? c.dataset.on : c.dataset.off; badge.classList.toggle('on', init); }
       });
-      $('.pm-sw', page).forEach(sw => { sw.classList.add('on'); sw.setAttribute('aria-checked', 'true'); });
+      $$('.pm-sw', page).forEach(sw => { sw.classList.add('on'); sw.setAttribute('aria-checked', 'true'); });
       const inventory = $('[data-f=invbox]', page), shipping = $('[data-f=shipbox]', page), seo = $('[data-f=seo]', page);
       if (inventory) inventory.hidden = false;
       if (shipping) shipping.hidden = false;
@@ -581,7 +581,7 @@ window.StrapProducts = (() => {
       const options = $('#pm-opts', page), addOption = $('#pm-addopt', page);
       if (options) options.innerHTML = '';
       if (addOption) addOption.hidden = false;
-      $('.pm-tl2', page).forEach(x => { x.innerHTML = ''; });
+      $$('.pm-tl2', page).forEach(x => { x.innerHTML = ''; });
       updSeo();
       if (window.StrapPicker && typeof window.StrapPicker.sync === 'function') {
         window.setTimeout(() => { try { window.StrapPicker.sync(page); } catch (err) { console.warn('[Strap products] Picker refresh failed:', err); } }, 0);
@@ -692,7 +692,10 @@ window.StrapProducts = (() => {
       const tags = (k, arr) => { const w = $(`[data-tags=${k}] .pm-tl2`, page); (arr || []).forEach(v => { const s = document.createElement('span'); s.className = 'pm-tag'; s.innerHTML = `<span>${esc(v)}</span><button type="button" data-rmtag aria-label="Remove ${esc(v)}">${ic('x', 12, 2.8)}</button>`; w.appendChild(s); }); };
       tags('collections', p.collections); tags('tags', p.tags);
       if (p.seo && (p.seo.title || p.seo.description)) $('[data-f=seo]', page).hidden = false;
-      files = (p.files || []).map(f => ({ ...f })); renderThumbs(); updSeo(); StrapPicker.sync(page);
+      files = (p.files || []).map(f => ({ ...f })); renderThumbs(); updSeo();
+      if (window.StrapPicker && typeof window.StrapPicker.sync === 'function') {
+        try { window.StrapPicker.sync(page); } catch (err) { console.warn('[Strap products] Picker refresh failed:', err); }
+      }
     }
     let delTimer;
     async function removeProduct(btn) {
