@@ -828,7 +828,7 @@ H['premium/status'] = async (req,res,user) => {
   await ensurePremiumSchema();
   const row=(await q("select status,expires_at,amount,currency,tx_ref from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
-  if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
+  // MCP reads subscription status from the same database; no separate sync helper is needed.
   const nextAmount=await premiumCheckoutAmount(user.id);
   const readiness={mode:flwMode(),secretConfigured:!!flwSecret(),secretModeMatch:flwReady(),publicKeyConfigured:!!flwPublicKey(),publicKeyModeMatch:flwPublicReady(),introductoryAmount:premiumAmount(),nextAmount};
   console.info('[premium-status] checkout readiness:',JSON.stringify(readiness));
