@@ -112,7 +112,7 @@ window.StrapFeatures = (() => {
       to_email:safe(receipt.to_email||'your account email')
     };
     fetch('/emails/premium-payment-success.html',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('Receipt template unavailable');return r.text();}).then(source=>{
-      const rendered=source.replace(/{{\s*([a-z_]+)\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]: '');
+      const rendered=source.replace(/{{\s*([a-z_]+)\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]:'');
       const frame=document.createElement('iframe');
       frame.title='Strap Premium payment confirmation';
       frame.setAttribute('sandbox','allow-popups allow-popups-to-escape-sandbox');
@@ -121,17 +121,6 @@ window.StrapFeatures = (() => {
       const holder=overlay.querySelector('.strap-premium-success-frame');
       holder.replaceChildren(frame);
     }).catch(()=>{});
-    requestAnimationFrame(()=>overlay.classList.add('is-visible'));
-    window.setTimeout(()=>{overlay.classList.remove('is-visible');window.setTimeout(()=>{overlay.remove();location.reload();},380);},7000);
-  }
-    const existing=document.getElementById('strap-premium-success');
-    if(existing) existing.remove();
-    const overlay=document.createElement('div');
-    overlay.id='strap-premium-success';
-    overlay.setAttribute('role','dialog');
-    overlay.setAttribute('aria-modal','true');
-    overlay.innerHTML='<div class="strap-premium-success-card"><div class="strap-premium-success-mark">✦</div><div class="strap-premium-success-eyebrow">PAYMENT CONFIRMED</div><div class="strap-premium-success-title">You are on<br><span>Strap Premium.</span></div><p>Your payment was verified. Premium features are now unlocked for your business.</p><div class="strap-premium-success-pill">✦ &nbsp; All Premium features unlocked</div><div class="strap-premium-success-progress"><i></i></div><small>Taking you back to your dashboard…</small></div>';
-    document.body.appendChild(overlay);
     requestAnimationFrame(()=>overlay.classList.add('is-visible'));
     window.setTimeout(()=>{overlay.classList.remove('is-visible');window.setTimeout(()=>{overlay.remove();location.reload();},380);},7000);
   }
