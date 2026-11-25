@@ -56,6 +56,10 @@ window.StrapFeatures = (() => {
             callback: async payment => {
               if (finished) return;
               const transactionId = payment && (payment.transaction_id || payment.id);
+              if (payment && String(payment.status || '').toLowerCase() && String(payment.status).toLowerCase() !== 'successful') {
+                await StrapAPI.call('POST', 'billing/payment-failed', { tx_ref: r.tx_ref, reason: 'Flutterwave checkout returned ' + String(payment.status).slice(0, 40) }).catch(() => {});
+                finished = true; close(); resolve({ ok: false, msg: 'Payment was not completed.' }); toast('Payment was not completed. You can try again from Billing.'); return;
+              }
               if (!transactionId) { toast('Flutterwave did not return a transaction ID.'); return; }
               try {
                 const verified = await StrapAPI.call('POST', 'premium/verify', { tx_ref: r.tx_ref, transaction_id: String(transactionId) });
