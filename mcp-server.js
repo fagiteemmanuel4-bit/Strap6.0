@@ -159,7 +159,9 @@ module.exports = function createMcp(options) {
   if(req.method==='GET') {
    const rows=await q('select id::text,name,token_prefix,scopes,branch_ids,created_at,last_used_at from strap_mcp_tokens where user_id=$1 and revoked_at is null order by created_at desc',[user.id]);
    const activity=await q('select id,action,branch_id,resource_id,details,created_at from strap_mcp_audit_log where user_id=$1 order by created_at desc limit 50',[user.id]);
-   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows,activity});
+   const ctx=await ownerContext(user.id);
+   const branches=ctx.branches.map(b=>({id:String(b.id),name:safeText(b.name,100)}));
+   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows,activity,branches});
   }
   if(req.method==='POST') {
    const body=req.body||{}, name=safeText(body.name||'AI connection',80), scopes=Array.isArray(body.scopes)?body.scopes.filter(x=>['store:read','store:write'].includes(x)):['store:read'];
