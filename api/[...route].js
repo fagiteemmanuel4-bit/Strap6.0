@@ -431,7 +431,7 @@ async function activatePremium(payment, tx) {
   if(payment.customer_email) await sendBillingEmail(payment.user_id,'payment_success',{
     subject:'Your Strap Premium payment was successful',
     message:'Your Premium payment has been verified and your subscription is active.',
-    amount,currency:'NGN',tx_ref:payment.tx_ref,expires_at:subscription&&subscription.expires_at
+    amount,currency:'NGN',tx_ref:payment.tx_ref,paid_on:new Date().toISOString(),expires_at:subscription&&subscription.expires_at
   }).catch(e=>console.error('Billing confirmation email failed:',e.message));
 }
 
@@ -845,7 +845,7 @@ H['premium/verify'] = async (req,res,user) => {
   try {
     const tx=await flwVerify(id);
     await activatePremium({...payment,customer_email:user.email},tx);
-    return [200,{ok:true,active:true}];
+    const sub=(await q('select expires_at from strap_subscriptions where user_id=$1',[user.id]))[0]||{};\n    const receiptNo='STR-'+String(txRef).replace(/[^a-zA-Z0-9]/g,'').slice(-14).toUpperCase();\n    return [200,{ok:true,active:true,receipt:{receipt_no:receiptNo,amount:Number(payment.amount),currency:'NGN',paid_on:new Date().toISOString(),next_billing_date:sub.expires_at||null,tx_ref:txRef}}];
   } catch(e) { console.error('Premium verification failed:',e.message); return [402,{ok:false,msg:'Payment is not confirmed yet. If you were charged, wait a moment and refresh this page.'}]; }
 };
 H['flutterwave/webhook'] = async (req,res) => {
@@ -896,6 +896,40 @@ async function sendWelcomeEmail(to,profile={}) {
 function emailJsReady() {
   return !!(String(E.EMAILJS_SERVICE_ID||'').trim() && String(E.EMAILJS_TEMPLATE_ID||'').trim() && String(E.EMAILJS_PUBLIC_KEY||'').trim());
 }
+function receiptPdfBase64(data={}) {
+  const clean=v=>String(v==null?'—':v).normalize('NFKD').replace(/[^\x20-\x7E]/g,'').slice(0,110);
+  const escPdf=v=>clean(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+  const lines=[
+    ['STRAP',22],['PAYMENT RECEIPT',13],['',10],
+    ['Receipt number: '+clean(data.receipt_no),11],
+    ['Customer: '+clean(data.user_name),11],
+    ['Business: '+clean(data.store_name),11],
+    ['Plan: Strap Premium',11],
+    ['Amount paid: NGN '+Number(data.amount||0).toLocaleString('en-NG'),14],
+    ['Paid on: '+clean(data.paid_on),11],
+    ['Next billing: '+clean(data.next_billing_date),11],
+    ['Transaction reference: '+clean(data.tx_ref),9],
+    ['',10],['Payment verified by Strap',11],
+    ['Keep this receipt for your records.',9]
+  ];
+  let y=750, stream='0.04 0.04 0.04 rg\n';
+  for(const [line,size] of lines){if(!line){y-=14;continue;}stream+='BT /F1 '+size+' Tf 48 '+y+' Td ('+escPdf(line)+') Tj ET\n';y-=size+18;}
+  stream+='0.90 0.96 0.23 rg 48 700 90 4 re f\n';
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Length '+Buffer.byteLength(stream,'ascii')+' >>\nstream\n'+stream+'endstream'
+  ];
+  let pdf='%PDF-1.4\n', offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(Buffer.byteLength(pdf,'ascii'));pdf+=(i+1)+' 0 obj\n'+objects[i]+'\nendobj\n';}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';
+  for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+  return Buffer.from(pdf,'ascii').toString('base64');
+}
 async function sendBillingEmail(userId,eventType,payload={},options={}) {
   if(!emailJsReady()) return {ok:false,skipped:true,reason:'EmailJS is not configured'};
   const prefs=await billingPrefs(userId);
@@ -922,7 +956,7 @@ async function sendBillingEmail(userId,eventType,payload={},options={}) {
     currency:String(payload.currency||'NGN'),tx_ref:String(payload.tx_ref||''),receipt_no:receiptNo,
     paid_on:paidAt.toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}),
     plan_name:'Strap Premium',next_billing_date:expiry?expiry.toLocaleDateString('en-NG',{dateStyle:'medium'}):'See your Billing overview',
-    receipt_filename:receiptNo+'.pdf',store_name:String(profile.bizname||'your business'),
+    receipt_filename:receiptNo+'.pdf',receipt_pdf:receiptPdfBase64({receipt_no:receiptNo,user_name:name,store_name:profile.bizname||'your business',amount:payload.amount,currency:payload.currency,paid_on:paidAt.toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}),next_billing_date:expiry?expiry.toLocaleDateString('en-NG',{dateStyle:'medium'}):'See your Billing overview',tx_ref:payload.tx_ref}),store_name:String(profile.bizname||'your business'),
     support_email:String(E.SUPPORT_EMAIL||'support@strap60.vercel.app'),
     dashboard_url:'https://strap60.vercel.app/#billing-overview',
     expires_at:expiry?expiry.toLocaleString('en-NG',{dateStyle:'medium'}):'',
