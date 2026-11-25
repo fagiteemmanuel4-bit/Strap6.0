@@ -46,7 +46,8 @@ module.exports = function createMcp(options) {
   return {row,blob,settings,operations,branches};
  }
  function allowedBranch(ctx, token, branchId) {
-  const requested=safeText(branchId||ctx.settings.active||'b0',100), branch=ctx.branches.find(item=>String(item.id)===requested);
+  const defaultBranch=token.branch_ids.includes('*')?(ctx.settings.active||'b0'):token.branch_ids[0];
+  const requested=safeText(branchId||defaultBranch,100), branch=ctx.branches.find(item=>String(item.id)===requested);
   if(!branch) throw new Error('That branch does not exist in this store.');
   if(!token.branch_ids.includes('*')&&!token.branch_ids.includes(requested)) throw new Error('This AI connection is not allowed to access that branch.');
   return branch;
@@ -84,7 +85,7 @@ module.exports = function createMcp(options) {
   }
   if(name==='strap_search_customers') {
    const query=safeText(args.query,120).toLowerCase(), limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50)))), customers=Array.isArray(ctx.operations.customers)?ctx.operations.customers:[];
-   return customers.filter(c=>(token.branch_ids.includes('*')||token.branch_ids.includes(String(c.branchId||c.branch||'')))&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query))).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
+   return customers.filter(c=>{const customerBranch=String(c.branchId||c.branch||'');const inBranch=token.branch_ids.includes('*')||(customerBranch?token.branch_ids.includes(customerBranch):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
   }
   if(!token.scopes.includes('store:write')) throw new Error('This AI connection has read-only permission.');
   if(name==='strap_create_product'||name==='strap_update_product'||name==='strap_set_branch_stock') {
