@@ -996,7 +996,8 @@ H['billing/notifications'] = async (req,res,user) => {
       [user.id,req.body.email_enabled!==false,req.body.payment_success!==false,req.body.payment_failed!==false,req.body.renewal_reminders!==false,days]))[0];
     return [200,{ok:true,preferences:row,emailConfigured:emailJsReady()}];
   }
-  return [200,{ok:true,preferences:prefs,emailConfigured:emailJsReady()}];
+  const recentEmails=await q('select event_type,status,recipient,created_at,provider_response from strap_billing_email_log where user_id=$1 order by created_at desc limit 20',[user.id]);
+  return [200,{ok:true,preferences:prefs,emailConfigured:emailJsReady(),recentEmails}];
 };
 H['billing/email-test'] = async (req,res,user) => {
   if(!user) return [401,{ok:false}];
@@ -1044,7 +1045,7 @@ H['billing/reconcile'] = async (req,res,user) => {
 H['billing/cron'] = async (req,res) => {
   const secret=String(E.CRON_SECRET||'').trim(),auth=String(req.headers.authorization||'');
   if(!secret||auth!=='Bearer '+secret) return [401,{ok:false}];
-  if(!emailJsReady()) return [503,{ok:false,msg:'EmailJS is not configured.'}];
+  if(!emailJsReady()) return [200,{ok:true,skipped:true,reason:'EmailJS is not configured yet.'}];
   await ensurePremiumSchema();
   const due=await q(`select s.user_id,s.customer_email,s.amount,s.currency,s.tx_ref,s.expires_at,
     p.renewal_reminder_days,p.renewal_reminders,p.email_enabled
