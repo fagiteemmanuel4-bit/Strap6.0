@@ -359,6 +359,19 @@ H['neon-auth'] = async (req, res) => {
   } catch(error) { console.error('Neon Auth OAuth proxy failed:',error.message);res.statusCode=502;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({message:'Could not reach Strap authentication.'})); }
 };
 
+/* OAuth 2.1 protected-resource metadata for MCP clients (RFC 9728). */
+H['mcp/resource-metadata'] = async () => {
+  const issuer = String(E.NEON_AUTH_BASE_URL || '').replace(/\\/$/, '');
+  if (!issuer) return [503, { error: 'authorization_server_unavailable' }];
+  return [200, {
+    resource: 'https://strap60.vercel.app/api/mcp',
+    authorization_servers: [issuer],
+    bearer_methods_supported: ['header'],
+    scopes_supported: ['store:read', 'store:write'],
+    resource_documentation: 'https://strap60.vercel.app/MCP_SETUP.md'
+  }];
+};
+
 const strapMcp = createMcp({ pool, premiumActive });
 H['mcp'] = async (req, res) => { await strapMcp.handle(req, res); return null; };
 H['mcp/keys'] = async (req, res, user) => { await strapMcp.manage(req, res, user); return null; };
