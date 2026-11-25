@@ -146,10 +146,10 @@ module.exports = function createMcp(options) {
    }
    blob[key]=JSON.stringify(products);
    await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[token.user_id,JSON.stringify(blob)]);
+   await audit(token,name,branch.id,productId,{fields:Object.keys(args).filter(k=>k!=='branch_id'&&k!=='product_id'&&k!=='image_base64'),...(imageBuffer?{mime_type:imageMime,size_bytes:imageBuffer.length}:{})},(sql,params)=>client.query(sql,params));
    await client.query('commit');
   } catch(error) { await client.query('rollback').catch(()=>{}); throw error; }
   finally { client.release(); }
-  await audit(token,name,branch.id,productId,{fields:Object.keys(args).filter(k=>k!=='branch_id'&&k!=='product_id'&&k!=='image_base64'),...(imageBuffer?{mime_type:imageMime,size_bytes:imageBuffer.length}:{})});
   return {ok:true,product_id:productId,branch_id:branch.id,action:name,...(imageBuffer?{image_url:APP_URL+imageUrl,mime_type:imageMime,size_bytes:imageBuffer.length}:{})};
   throw new Error('Unknown Strap tool: '+name);
  }
