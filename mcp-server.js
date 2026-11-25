@@ -152,8 +152,9 @@ module.exports = function createMcp(options) {
     const body=await response.json();jwksCache={keys:Array.isArray(body.keys)?body.keys:[],expires:Date.now()+300000};
    }
    const jwk=jwksCache.keys.find(k=>k.kid===header.kid&&k.kty==='OKP'&&k.crv==='Ed25519');
-   if(!jwk) return null;
-   const key=crypto.createPublicKey({key:jwk,format:'jwk'});
+   if(!jwk) { jwksCache=null; const refresh=await fetch(issuer+'/.well-known/jwks.json',{headers:{Accept:'application/json'}}); if(!refresh.ok) return null; const fresh=await refresh.json(); jwksCache={keys:Array.isArray(fresh.keys)?fresh.keys:[],expires:Date.now()+300000}; }
+   const activeJwk=jwksCache.keys.find(k=>k.kid===header.kid&&k.kty==='OKP'&&k.crv==='Ed25519'); if(!activeJwk) return null;
+   const key=crypto.createPublicKey({key:activeJwk,format:'jwk'});
    const valid=crypto.verify(null,Buffer.from(parts[0]+'.'+parts[1]),key,Buffer.from(parts[2],'base64url'));
    return valid?payload:null;
   } catch(error) { console.error('MCP OAuth token verification failed:',error.message);return null; }
@@ -195,8 +196,8 @@ module.exports = function createMcp(options) {
   if(!token) { res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://strap60.vercel.app/.well-known/oauth-protected-resource/api/mcp"'); return json(res,401,{error:'Unauthorized',message:'Connect using Strap OAuth or a valid Strap access token.'}); }
   const body=req.body&&typeof req.body==='object'?req.body:{};
   if(body.jsonrpc!=='2.0'||typeof body.method!=='string') return json(res,400,rpcError(body.id,-32600,'Invalid JSON-RPC request.'));
-  if(body.method==='notifications/initialized'||body.method==='notifications/cancelled') return json(res,202,{});
-  if(body.method==='initialize') { res.setHeader('MCP-Protocol-Version',body.params&&body.params.protocolVersion||'2025-03-26'); return json(res,200,rpcResult(body.id,{protocolVersion:body.params&&body.params.protocolVersion||'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'strap',title:'Strap Business Management',version:'1.0.0',websiteUrl:APP_URL,icons:[{src:ICON_URL,mimeType:'image/svg+xml',sizes:['any']}]}})); }
+  if(body.method==='notifications/initialized'||body.method==='notifications/cancelled') { res.statusCode=202; return res.end(); }
+  if(body.method==='initialize') { res.setHeader('MCP-Protocol-Version',body.params&&body.params.protocolVersion||'2025-03-26'); return json(res,200,rpcResult(body.id,{protocolVersion:body.params&&body.params.protocolVersion||'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'Strap',title:'Strap Business Management',version:'1.0.0',websiteUrl:APP_URL,icons:[{src:ICON_URL,mimeType:'image/svg+xml',sizes:['any']}]}})); }
   if(body.method==='ping') return json(res,200,rpcResult(body.id,{}));
   if(body.method==='tools/list') return json(res,200,rpcResult(body.id,{tools:token.scopes.includes('store:write')?[...readTools,...writeTools]:readTools}));
   if(body.method==='tools/call') {
