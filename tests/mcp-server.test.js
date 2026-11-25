@@ -15,7 +15,7 @@ function fixture(scopes=['store:read'], branchIds=['b0']) {
     'ls:strap.v1': JSON.stringify({sales:[
       {id:'s1',no:'S-1',ts:Date.now(),total:100,paidNow:100,branchId:'b0',lines:[]},
       {id:'s2',no:'S-2',ts:Date.now(),total:200,paidNow:200,branchId:'b1',lines:[]}
-    ]})
+    ],customers:[{id:'c1',name:'Main customer',branchIds:['b0']},{id:'c2',name:'Second customer',branchIds:['b1']}]})
   };
   const pool = {
     async query(sql, params=[]) {
@@ -66,7 +66,11 @@ test('read-only token sees only its allowed branch and cannot write',async()=>{
   assert.deepEqual(products.body.result.structuredContent.map(x=>x.id),['p1']);
   const cross=await send({jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'strap_search_products',arguments:{query:'item',branch_id:'b1'}}});
   assert.equal(cross.body.result.isError,true);
-  const write=await send({jsonrpc:'2.0',id:4,method:'tools/call',params:{name:'strap_create_product',arguments:{title:'Blocked',price:1}}});
+  const sales=await send({jsonrpc:'2.0',id:4,method:'tools/call',params:{name:'strap_get_sales',arguments:{}}});
+  assert.deepEqual(sales.body.result.structuredContent.map(x=>x.id),['s1']);
+  const customers=await send({jsonrpc:'2.0',id:5,method:'tools/call',params:{name:'strap_search_customers',arguments:{query:'customer'}}});
+  assert.deepEqual(customers.body.result.structuredContent.map(x=>x.id),['c1']);
+  const write=await send({jsonrpc:'2.0',id:6,method:'tools/call',params:{name:'strap_create_product',arguments:{title:'Blocked',price:1}}});
   assert.equal(write.body.result.isError,true);
 });
 
