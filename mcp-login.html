@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a"><title>Connect to Strap</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080808;color:#f5f5f5;font:15px system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.panel{width:min(100%,420px);background:#111;border:1px solid #292929;border-radius:22px;padding:28px;box-shadow:0 24px 80px #0008}.mark{width:48px;height:48px;border-radius:15px;background:#e6f53a;color:#090909;display:grid;place-items:center;font-weight:900;font-size:25px}.muted{color:#a2a2a2;line-height:1.55}h1{font-size:25px;margin:20px 0 8px}label{display:block;font-size:13px;color:#bbb;margin:17px 0 7px}input{width:100%;padding:14px;border-radius:12px;border:1px solid #343434;background:#080808;color:white;font:inherit;outline:none}input:focus{border-color:#e6f53a}button{width:100%;border:0;border-radius:12px;padding:14px;font:600 15px inherit;cursor:pointer;margin-top:14px}.primary{background:#e6f53a;color:#080808}.secondary{background:#202020;color:#fff;border:1px solid #383838}.error{color:#ff8b8b;min-height:22px;margin-top:12px}.hidden{display:none}
+</style></head><body><main class="panel">
+<div class="mark">S</div><h1>Sign in to Strap</h1>
+<p class="muted">Sign in to continue connecting your AI assistant to your Strap business. Your account stays protected by Strap.</p>
+<form id="login-form">
+<label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="username" required>
+<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<button class="primary" id="submit" type="submit">Continue</button>
+</form>
+<button class="secondary" id="google" type="button">Continue with Google</button>
+<p id="error" class="error" role="alert"></p>
+<p class="muted" id="status">Secure sign-in powered by Neon Auth.</p>
+</main>
+<script type="module">
+import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.8.0?bundle';
+const auth=createAuthClient(location.origin+'/api/neon-auth');
+const params=new URLSearchParams(location.search), oauthVisit=params.has('client_id');
+const mustSignInAgain=oauthVisit&&/\b(login|create)\b/.test(params.get('prompt')||'');
+const error=document.getElementById('error'), status=document.getElementById('status');
+const message=e=>e instanceof Error?e.message:'Sign-in could not be completed.';
+(async()=>{try{const {data}=await auth.getSession();if(data?.user&&!mustSignInAgain){if(!oauthVisit){location.replace('/');return;}await auth.oauth2.continue({selected:true});}}catch(e){if(e?.status===400){error.textContent='This sign-in request expired. Return to your AI client and connect again.';document.getElementById('login-form').classList.add('hidden');document.getElementById('google').classList.add('hidden');}else{status.textContent='Please sign in to continue.';}}})();
+document.getElementById('login-form').addEventListener('submit',async e=>{e.preventDefault();const button=document.getElementById('submit');button.disabled=true;button.textContent='Signing in…';error.textContent='';try{const {data}=await auth.signIn.email({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value});if(!data?.redirect){if(oauthVisit)await auth.oauth2.continue({selected:true});else location.replace('/');}}catch(err){error.textContent=message(err);}finally{button.disabled=false;button.textContent='Continue';}});
+document.getElementById('google').addEventListener('click',async()=>{error.textContent='';try{await auth.signIn.social({provider:'google',callbackURL:location.href});}catch(err){error.textContent=message(err);}});
+</script></body></html>
