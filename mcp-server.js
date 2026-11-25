@@ -79,7 +79,7 @@ module.exports = function createMcp(options) {
     if(!Number.isFinite(ts)||ts<from||ts>to) return false;
     if(token.branch_ids.includes('*')) return true;
     const saleBranch=String(s.branchId||s.branch||'');
-    return !!saleBranch && token.branch_ids.includes(saleBranch);
+    return saleBranch ? token.branch_ids.includes(saleBranch) : token.branch_ids.includes('b0');
    }).slice(0,limit).map(s=>({id:String(s.id||s.no||''),receipt_number:safeText(s.no,80),date:s.ts?new Date(number(s.ts,Date.parse(s.ts))).toISOString():null,customer:safeText(s.customer,160),total:number(s.total),paid:number(s.paidNow,number(s.total)-number(s.due)),due:number(s.due),payment_method:safeText(s.method,40),items:Array.isArray(s.lines)?s.lines.length:0}));
   }
   if(name==='strap_search_customers') {
@@ -135,6 +135,11 @@ module.exports = function createMcp(options) {
   return rows[0];
  }
  async function handle(req,res) {
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id');
+  res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');
+  res.setHeader('Access-Control-Expose-Headers','MCP-Protocol-Version, MCP-Session-Id');
+  if(req.method==='OPTIONS') { res.statusCode=204; return res.end(); }
   await ensureSchema();
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return json(res,405,{error:'Use POST for the Strap MCP Streamable HTTP endpoint.'}); }
   const token=await authenticate(req);
@@ -142,7 +147,7 @@ module.exports = function createMcp(options) {
   const body=req.body&&typeof req.body==='object'?req.body:{};
   if(body.jsonrpc!=='2.0'||typeof body.method!=='string') return json(res,400,rpcError(body.id,-32600,'Invalid JSON-RPC request.'));
   if(body.method==='notifications/initialized'||body.method==='notifications/cancelled') return json(res,202,{});
-  if(body.method==='initialize') return json(res,200,rpcResult(body.id,{protocolVersion:body.params&&body.params.protocolVersion||'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'strap',title:'Strap Business Management',version:'1.0.0',websiteUrl:APP_URL,icons:[{src:ICON_URL,mimeType:'image/svg+xml',sizes:['any']}]}}));
+  if(body.method==='initialize') { res.setHeader('MCP-Protocol-Version',body.params&&body.params.protocolVersion||'2025-03-26'); return json(res,200,rpcResult(body.id,{protocolVersion:body.params&&body.params.protocolVersion||'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'strap',title:'Strap Business Management',version:'1.0.0',websiteUrl:APP_URL,icons:[{src:ICON_URL,mimeType:'image/svg+xml',sizes:['any']}]}})); }
   if(body.method==='ping') return json(res,200,rpcResult(body.id,{}));
   if(body.method==='tools/list') return json(res,200,rpcResult(body.id,{tools:token.scopes.includes('store:write')?[...readTools,...writeTools]:readTools}));
   if(body.method==='tools/call') {
