@@ -243,9 +243,41 @@ window.StrapPages = (() => {
     draw(); return { onShow: draw };
   }
 
-  function growth(root) {
-    root.innerHTML = head('growth', 'Growth') + empty('growth', 'Your growth starts here', 'Visitors, conversion and best sellers will show up once you start selling.') +
-      `<div class="pg-locks">${[['users', 'Visitors'], ['receipt', 'Conversion rate'], ['tag', 'Top products']].map(([i, t]) => `<div class="pg-lock"><span>${ic(i, 22, 1.8)}</span><b>${t}</b><small>${ic('lock', 14, 2)} After your first sales</small></div>`).join('')}</div>`;
+  function growth(root, ctx) {
+    const draw = () => {
+      const sales = S.sales();
+      const now = new Date();
+      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
+      const recent = sales.filter(x => Number(x.ts) >= start.getTime());
+      const revenue = sales.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
+      const recentRevenue = recent.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
+      const units = sales.reduce((sum, x) => sum + (Array.isArray(x.lines) ? x.lines.reduce((n, line) => n + (Number(line.qty) || 0), 0) : 0), 0);
+      const products = new Map();
+      sales.forEach(sale => (Array.isArray(sale.lines) ? sale.lines : []).forEach(line => {
+        const key = String(line.id || line.title || 'product');
+        const item = products.get(key) || { title: line.title || 'Product', qty: 0, revenue: 0 };
+        item.qty += Number(line.qty) || 0;
+        item.revenue += (Number(line.price) || 0) * (Number(line.qty) || 0);
+        products.set(key, item);
+      }));
+      const top = [...products.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(start); date.setDate(start.getDate() + i);
+        const key = S.dayKey(date.getTime());
+        const rows = recent.filter(s => S.dayKey(Number(s.ts)) === key);
+        return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), value: rows.reduce((sum, x) => sum + (Number(x.total) || 0), 0), count: rows.length };
+      });
+      const max = Math.max(1, ...days.map(x => x.value));
+      root.innerHTML = head('growth', 'Growth') + (sales.length ? `
+        <section class="pg-big"><span>All-time sales revenue</span><b>${ctx.money(revenue)}</b><small>${sales.length.toLocaleString('en-NG')} sales recorded · ${units.toLocaleString('en-NG')} items sold</small></section>
+        <div class="pg-sum two"><div><b>${ctx.money(recentRevenue)}</b><small>Last 7 days</small></div><div><b>${recent.length.toLocaleString('en-NG')}</b><small>Sales this week</small></div></div>
+        <section class="pg-card"><h3>Sales over the last 7 days</h3><div class="pg-bars">${days.map(day => `<i title="${day.label}: ${ctx.money(day.value)} · ${day.count} sales" style="--h:${Math.max(day.value ? 8 : 0, day.value / max * 100)}%;--d:${days.indexOf(day) * 50}ms"></i>`).join('')}</div><div class="pg-bar-labels">${days.map(day => `<small>${day.label}</small>`).join('')}</div></section>
+        <section class="pg-card"><h3>Best-selling products</h3>${top.length ? `<div class="pg-rows">${top.map((item, i) => `<div class="pg-r"><span>${i + 1}. ${esc(item.title)}</span><b>${item.qty.toLocaleString('en-NG')} sold</b></div>`).join('')}</div>` : '<p>No product sales yet.</p>'}</section>
+        <p class="pg-note">Visitor counts and conversion rates will appear when online-store analytics tracking is connected. These figures are based on sales recorded in Strap on this device.</p>
+      ` : empty('growth', 'Your growth starts here', 'Record your first sale to see revenue trends, sales activity and your best-selling products.'));
+    };
+    draw();
+    return { onShow: draw };
   }
   function online(root, ctx) {
     root.innerHTML = head('store', 'Online store') + empty('online', 'Your online store is coming soon', 'Soon you’ll be able to launch a storefront straight from Strap.', `<button type="button" class="pm-add" data-n>Notify me</button>`);
