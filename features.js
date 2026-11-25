@@ -494,6 +494,99 @@ window.StrapFeatures = (() => {
     });
   };
 
+
+  /* --- Billing workspace: live account-scoped billing pages --- */
+  const BILLING_IDS = ['billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'];
+  const billMoney = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:2}).format(Number(n)||0);
+  const billDate = v => v ? new Date(v).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}) : '—';
+  const billStatus = v => '<span class="bill-status '+esc(String(v||'pending').toLowerCase())+'">'+esc(String(v||'pending').replace(/_/g,' '))+'</span>';
+  const billEmpty = (title,body) => '<div class="bill-empty"><span>'+ic('receipt',25,1.8)+'</span><b>'+title+'</b><p>'+body+'</p></div>';
+  async function billGet(path) { return StrapAPI.call('GET',path); }
+  async function billLaunchRenew() {
+    const r=await StrapAPI.call('POST','billing/renew',{});
+    if(!r.ok||!r.public_key||!r.tx_ref) throw new Error(r.msg||'Could not prepare renewal checkout.');
+    if(typeof window.FlutterwaveCheckout!=='function') await new Promise((resolve,reject)=>{
+      let script=document.querySelector('script[data-strap-flw-inline]');
+      if(script){if(script.dataset.loaded==='true')return resolve();script.addEventListener('load',resolve,{once:true});script.addEventListener('error',reject,{once:true});return;}
+      script=document.createElement('script');script.src='https://checkout.flutterwave.com/v3.js';script.async=true;script.dataset.strapFlwInline='true';
+      script.onload=()=>{script.dataset.loaded='true';resolve();};script.onerror=()=>reject(new Error('Flutterwave payment library could not load.'));document.head.appendChild(script);
+    });
+    await new Promise((resolve,reject)=>{
+      let done=false,modal;
+      modal=window.FlutterwaveCheckout({public_key:r.public_key,tx_ref:r.tx_ref,amount:Number(r.amount),currency:'NGN',payment_options:'card',
+        customer:r.customer,customizations:{title:'Strap Premium renewal',description:'Renew your Strap Premium subscription'},
+        callback:async p=>{if(done)return;const id=p&&(p.transaction_id||p.id);if(!id)return;
+          try{const v=await StrapAPI.call('POST','premium/verify',{tx_ref:r.tx_ref,transaction_id:String(id)});if(!v.ok||!v.active)throw new Error(v.msg||'Payment verification is pending.');
+            done=true;await refreshPlan();toast('Premium renewed successfully.');try{modal&&modal.close&&modal.close();}catch(e){}resolve();
+            setTimeout(()=>location.reload(),500);
+          }catch(e){done=true;try{modal&&modal.close&&modal.close();}catch(x){}reject(e);}
+        },onclose:()=>{if(!done){done=true;resolve();}}
+      });
+    });
+  }
+  PAGES['billing-overview'] = s => {
+    const draw=async()=>{s.set(head('Billing overview')+'<div class="bill-loading">Loading your billing details…</div>');
+      try{const r=await billGet('billing/overview');if(!r.ok)throw new Error(r.msg||'Could not load billing details.');
+        const sub=r.subscription||{},t=r.totals||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date();
+        s.set(head('Billing overview')+`
+          <section class="bill-hero"><div class="bill-hero-top"><span>Current plan</span>${billStatus(active?'active':'free')}</div><h2>${active?'Strap Premium':'Free plan'}</h2><p>${active?'Your Premium tools are available until '+billDate(sub.expires_at):'Upgrade whenever you are ready to unlock Premium.'}</p><div class="bill-hero-foot"><b>${active?billMoney(sub.amount):'₦0'}</b><small>${active?'per 30-day billing period':'No active subscription'}</small></div></section>
+          <div class="bill-metrics"><article><small>Total paid</small><b>${billMoney(t.paid)}</b></article><article><small>Successful payments</small><b>${Number(t.successful||0).toLocaleString('en-NG')}</b></article><article><small>Pending</small><b>${Number(t.pending||0).toLocaleString('en-NG')}</b></article></div>
+          <section class="bill-card"><div class="bill-card-head"><b>Subscription details</b><button data-fx="billing-subscription">Manage</button></div><div class="bill-kv"><span>Renewal type</span><b>Manual</b></div><div class="bill-kv"><span>Next renewal price</span><b>${billMoney(r.nextAmount)}</b></div><div class="bill-kv"><span>Expiry date</span><b>${active?billDate(sub.expires_at):'Not subscribed'}</b></div><div class="bill-kv"><span>Renewal setting</span><b>${sub.cancel_at_period_end?'Ends at expiry':'Not automatic'}</b></div></section>
+          <div class="bill-actions"><button class="bill-primary" data-fx="billing-renew">${active?'Renew Premium':'Get Premium'}</button><button class="bill-secondary" data-fx="billing-history">Payment history</button></div>
+          <section class="bill-links"><button data-fx="billing-receipts"><span>${ic('file-text',19,1.8)} Receipts and payments received</span>${ic('chevR',18,2)}</button><button data-fx="billing-results"><span>${ic('activity',19,1.8)} Payment results</span>${ic('chevR',18,2)}</button><button data-fx="billing-notifications"><span>${ic('mail',19,1.8)} Billing email notifications</span>${ic('chevR',18,2)}</button><button data-fx="billing-reconciliation"><span>${ic('refresh-cw',19,1.8)} Payment reconciliation</span>${ic('chevR',18,2)}</button></section>`);
+      }catch(e){s.set(head('Billing overview')+billEmpty('Billing details unavailable',esc(e.message))+'<button class="bill-secondary" data-reload>Try again</button>');}};
+    draw();s.el.addEventListener('click',e=>{if(e.target.closest('[data-reload]'))draw();});
+  };
+  PAGES['billing-history'] = s => {
+    let status='all';
+    const draw=async()=>{s.set(head('Payment history')+'<div class="bill-loading">Loading payments…</div>');
+      const r=await billGet('billing/payments?limit=100'+(status==='all'?'':'&status='+encodeURIComponent(status)));
+      if(!r.ok){s.set(head('Payment history')+billEmpty('Could not load payments',esc(r.msg||'Please try again.')));return;}
+      const rows=r.payments||[];
+      s.set(head('Payment history')+`<div class="bill-filter">${['all','successful','pending','failed'].map(x=>'<button data-filter="'+x+'" class="'+(status===x?'on':'')+'">'+(x==='all'?'All':x[0].toUpperCase()+x.slice(1))+'</button>').join('')}</div>
+        <p class="bill-subtitle">Your Strap Premium charges, newest first.</p>${rows.length?'<div class="bill-list">'+rows.map(x=>'<button class="bill-payment" data-detail="'+esc(x.tx_ref)+'"><span class="bill-payment-icon">'+ic('receipt',19,1.8)+'</span><span class="bill-payment-main"><b>'+billMoney(x.amount)+'</b><small>'+billDate(x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small></span>'+billStatus(x.status)+ic('chevR',17,2)+'</button>').join('')+'</div>':billEmpty('No payments yet','Your Premium payment history will appear here.')}`);
+    };
+    draw();s.el.addEventListener('click',e=>{const f=e.target.closest('[data-filter]');if(f){status=f.dataset.filter;draw();return;}const b=e.target.closest('[data-detail]');if(b){PAGES['billing-receipts'](s,b.dataset.detail);}});
+  };
+  PAGES['billing-receipts'] = (s,selectedRef) => {
+    const draw=async(ref)=>{s.set(head(ref?'Payment receipt':'Payments received')+'<div class="bill-loading">Loading payment records…</div>');
+      if(ref){const r=await billGet('billing/payment?tx_ref='+encodeURIComponent(ref));if(!r.ok){s.set(head('Payment receipt')+billEmpty('Receipt unavailable',esc(r.msg||'')));return;}
+        const x=r.payment;s.set(head('Payment receipt')+`<section class="bill-receipt"><div class="bill-receipt-brand"><b>STRAP</b><small>PAYMENT RECEIPT</small></div><div class="bill-receipt-total"><small>Amount paid</small><b>${billMoney(x.amount)}</b>${billStatus(x.status)}</div><div class="bill-kv"><span>Payment reference</span><b>${esc(x.tx_ref)}</b></div><div class="bill-kv"><span>Flutterwave transaction</span><b>${esc(x.transaction_id||'Not available')}</b></div><div class="bill-kv"><span>Payment date</span><b>${billDate(x.created_at)}</b></div><div class="bill-kv"><span>Verified</span><b>${billDate(x.verified_at)}</b></div><div class="bill-kv"><span>Currency</span><b>${esc(x.currency)}</b></div><p>Issued by Strap. Keep this receipt for your records.</p></section><button class="bill-primary" data-print>Print / Save receipt</button><button class="bill-secondary" data-back-list>All payments</button>`);
+      }else{const r=await billGet('billing/payments?limit=100');if(!r.ok){s.set(head('Payments received')+billEmpty('Could not load receipts',esc(r.msg||'')));return;}const rows=(r.payments||[]).filter(x=>x.status==='successful');
+        s.set(head('Payments received')+`<p class="bill-subtitle">Verified Premium payments and downloadable receipts.</p>${rows.length?'<div class="bill-list">'+rows.map(x=>'<button class="bill-payment" data-detail="'+esc(x.tx_ref)+'"><span class="bill-payment-icon">'+ic('file-check',19,1.8)+'</span><span class="bill-payment-main"><b>'+billMoney(x.amount)+'</b><small>'+billDate(x.verified_at||x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small></span>'+billStatus(x.status)+ic('chevR',17,2)+'</button>').join('')+'</div>':billEmpty('No verified payments yet','Receipts appear here after Flutterwave confirms a payment.')}`);
+      }};
+    draw(selectedRef);s.el.addEventListener('click',e=>{const b=e.target.closest('[data-detail]');if(b){draw(b.dataset.detail);return;}if(e.target.closest('[data-print]'))window.print();if(e.target.closest('[data-back-list]'))draw(null);});
+  };
+  PAGES['billing-results'] = s => {
+    const draw=async()=>{s.set(head('Payment results')+'<div class="bill-loading">Checking payment status…</div>');const r=await billGet('billing/payments?limit=100');if(!r.ok){s.set(head('Payment results')+billEmpty('Results unavailable',esc(r.msg||'')));return;}
+      const rows=r.payments||[];s.set(head('Payment results')+`<p class="bill-subtitle">Every checkout attempt and its latest recorded result.</p>${rows.length?'<div class="bill-list">'+rows.map(x=>'<article class="bill-result"><div><b>'+billMoney(x.amount)+'</b>'+billStatus(x.status)+'</div><small>'+billDate(x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small>'+(x.status==='pending'?'<button class="bill-text-btn" data-fx="billing-reconciliation">Resolve this payment</button>':'')+'</article>').join('')+'</div>':billEmpty('No payment attempts','When you start a Premium checkout, its result will appear here.')}`);
+    };draw();
+  };
+  PAGES['billing-renew'] = s => {
+    const draw=async()=>{s.set(head('Renew Premium')+'<div class="bill-loading">Checking your subscription…</div>');const r=await billGet('billing/overview');if(!r.ok){s.set(head('Renew Premium')+billEmpty('Could not load subscription',esc(r.msg||'')));return;}
+      const sub=r.subscription||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date();
+      s.set(head('Renew Premium')+`<section class="bill-hero"><span>Strap Premium</span><h2>${billMoney(r.nextAmount)} <small>/ 30 days</small></h2><p>${active?'Your current access remains active. Renewing early adds 30 days to the existing expiry date.':'Restore full access to your Strap business tools.'}</p></section><div class="bill-card"><div class="bill-kv"><span>Payment</span><b>Flutterwave · Card</b></div><div class="bill-kv"><span>Currency</span><b>NGN</b></div><div class="bill-kv"><span>Billing</span><b>Manual renewal</b></div><div class="bill-kv"><span>Price sequence</span><b>₦4,500 first 3 successful payments, then ₦6,000</b></div></div><p class="bill-help">You will be taken to Flutterwave's secure checkout. Strap never collects your card number or CVV.</p><button class="bill-primary" data-renew>Continue to secure payment</button>`);
+    };draw();s.el.addEventListener('click',async e=>{const b=e.target.closest('[data-renew]');if(!b)return;b.disabled=true;b.textContent='Opening secure checkout…';try{await billLaunchRenew();}catch(err){toast(err.message||'Renewal could not be completed.');}finally{b.disabled=false;b.textContent='Continue to secure payment';}});
+  };
+  PAGES['billing-subscription'] = s => {
+    const draw=async()=>{s.set(head('Subscription management')+'<div class="bill-loading">Loading subscription…</div>');const r=await billGet('billing/subscription');if(!r.ok){s.set(head('Subscription management')+billEmpty('Subscription unavailable',esc(r.msg||'')));return;}
+      const sub=r.subscription;if(!sub){s.set(head('Subscription management')+billEmpty('No Premium subscription','Choose Premium when you are ready to upgrade.')+'<button class="bill-primary" data-fx="billing-renew">Get Premium</button>');return;}
+      const active=sub.status==='active'&&new Date(sub.expires_at)>new Date();
+      s.set(head('Subscription management')+`<section class="bill-card"><div class="bill-card-head"><b>Strap Premium</b>${billStatus(active?'active':'expired')}</div><div class="bill-kv"><span>Started</span><b>${billDate(sub.started_at)}</b></div><div class="bill-kv"><span>Expires</span><b>${billDate(sub.expires_at)}</b></div><div class="bill-kv"><span>Current price</span><b>${billMoney(sub.amount)} / 30 days</b></div><div class="bill-kv"><span>Renewal</span><b>Manual</b></div></section><section class="bill-card"><b>Renewal preference</b><p class="bill-help">Strap does not charge automatically. You stay in control and renew manually. You can request that your subscription ends when the current paid period expires.</p><div class="bill-toggle-row"><span><b>End subscription at expiry</b><small>${sub.cancel_at_period_end?'Your Premium access remains until the expiry date.':'Your plan remains active until its paid expiry date.'}</small></span><button class="bill-secondary" data-cancel="${sub.cancel_at_period_end?'false':'true'}">${sub.cancel_at_period_end?'Keep subscription':'End at expiry'}</button></div></section><button class="bill-primary" data-fx="billing-renew">Renew Premium</button>`);
+    };draw();s.el.addEventListener('click',async e=>{const b=e.target.closest('[data-cancel]');if(!b)return;b.disabled=true;const r=await StrapAPI.call('PUT','billing/subscription',{cancel_at_period_end:b.dataset.cancel==='true'});if(!r.ok){toast(r.msg||'Could not update subscription.');b.disabled=false;return;}toast(b.dataset.cancel==='true'?'Subscription set to end at expiry.':'Subscription will remain active.');draw();});
+  };
+  PAGES['billing-notifications'] = s => {
+    const draw=async()=>{s.set(head('Billing notifications')+'<div class="bill-loading">Loading email preferences…</div>');const r=await billGet('billing/notifications');if(!r.ok){s.set(head('Billing notifications')+billEmpty('Preferences unavailable',esc(r.msg||'')));return;}const p=r.preferences||{};
+      s.set(head('Billing notifications')+`<section class="bill-card"><div class="bill-card-head"><b>Email delivery</b>${r.emailConfigured?'<span class="bill-status successful">Configured</span>':'<span class="bill-status pending">Setup required</span>'}</div><p class="bill-help">${r.emailConfigured?'Billing emails are routed through your configured EmailJS service.':'Connect EmailJS in Vercel to enable delivery. The settings below can still be saved.'}</p>${[['email_enabled','All billing emails'],['payment_success','Successful payment receipts'],['payment_failed','Payment failure alerts'],['renewal_reminders','Subscription expiry reminders']].map(([k,t])=>'<label class="bill-switch"><span>'+t+'</span><input type="checkbox" data-pref="'+k+'" '+(p[k]!==false?'checked':'')+'><i></i></label>').join('')}</section><section class="bill-card"><b>Renewal reminder timing</b><p class="bill-help">Choose when to receive expiry reminders.</p><div class="bill-checks">${[7,3,1,14].map(n=>'<label><input type="checkbox" data-day="'+n+'" '+((p.renewal_reminder_days||[7,3,1]).includes(n)?'checked':'')+'> '+n+' days before</label>').join('')}</div></section><button class="bill-primary" data-save-pref>Save email preferences</button><button class="bill-secondary" data-test-email ${r.emailConfigured?'':'disabled'}>Send test email to my account</button><div class="bill-help">EmailJS setup requires a Service ID, a template ID and a Public Key. Template variables are listed in the Strap setup notes.</div>`);
+    };draw();s.el.addEventListener('click',async e=>{if(e.target.closest('[data-save-pref]')){const prefs={};s.el.querySelectorAll('[data-pref]').forEach(x=>prefs[x.dataset.pref]=x.checked);prefs.renewal_reminder_days=[...s.el.querySelectorAll('[data-day]:checked')].map(x=>Number(x.dataset.day));const r=await StrapAPI.call('PUT','billing/notifications',prefs);toast(r.ok?'Billing email preferences saved.':r.msg||'Could not save preferences.');return;}if(e.target.closest('[data-test-email]')){const b=e.target.closest('[data-test-email]');b.disabled=true;const r=await StrapAPI.call('POST','billing/email-test',{});toast(r.msg|| (r.ok?'Test email sent.':'Email could not be sent.'));b.disabled=false;}});
+  };
+  PAGES['billing-reconciliation'] = s => {
+    const draw=async()=>{s.set(head('Payment reconciliation')+'<div class="bill-loading">Checking payment records…</div>');const r=await billGet('billing/reconcile');if(!r.ok){s.set(head('Payment reconciliation')+billEmpty('Could not load reconciliation',esc(r.msg||'')));return;}
+      const rows=r.payments||[],pending=rows.filter(x=>x.status==='pending');
+      s.set(head('Payment reconciliation')+`<section class="bill-card"><b>Resolve a payment</b><p class="bill-help">If Flutterwave shows that you paid but Strap has not updated your Premium access, enter the original Strap reference and Flutterwave transaction ID. Strap verifies directly with Flutterwave before changing your account.</p><label class="bill-field">Strap payment reference<input id="bill-ref" placeholder="STRAP-TEST-…"></label><label class="bill-field">Flutterwave transaction ID<input id="bill-txid" inputmode="numeric" placeholder="Numeric transaction ID"></label><button class="bill-primary" data-reconcile>Verify payment</button></section><h2 class="bill-section-title">Pending and recent attempts</h2>${rows.length?'<div class="bill-list">'+rows.map(x=>'<article class="bill-result"><div><b>'+billMoney(x.amount)+'</b>'+billStatus(x.status)+'</div><small>'+billDate(x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small>'+(x.status==='pending'?'<button class="bill-text-btn" data-fill="'+esc(x.tx_ref)+'">Use this reference</button>':'')+'</article>').join('')+'</div>':billEmpty('No payments to reconcile','Your payment attempts will appear here.')}`);
+    };draw();s.el.addEventListener('click',async e=>{const fill=e.target.closest('[data-fill]');if(fill){$('#bill-ref',s.el).value=fill.dataset.fill;$('#bill-txid',s.el).focus();return;}if(e.target.closest('[data-reconcile]')){const b=e.target.closest('[data-reconcile]'),ref=$('#bill-ref',s.el).value.trim(),id=$('#bill-txid',s.el).value.trim();if(!ref||!id){toast('Enter both payment reference and transaction ID.');return;}b.disabled=true;b.textContent='Verifying with Flutterwave…';const r=await StrapAPI.call('POST','billing/reconcile',{tx_ref:ref,transaction_id:id});toast(r.msg|| (r.ok?'Payment verified.':'Verification failed.'));if(r.ok){await refreshPlan();draw();}else{b.disabled=false;b.textContent='Verify payment';}}});
+  };
+
   /* --- Premium subscription --- */
   PAGES.premium = (s) => {
     const perks = [
