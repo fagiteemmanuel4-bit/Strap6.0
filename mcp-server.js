@@ -88,7 +88,7 @@ module.exports = function createMcp(options) {
   }
   if(name==='strap_search_customers') {
    const query=safeText(args.query,120).toLowerCase(), limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50)))), customers=Array.isArray(ctx.operations.customers)?ctx.operations.customers:[];
-   return customers.filter(c=>{if(!c||typeof c!=='object') return false;const customerBranch=String(c.branchId||c.branch_id||c.branch||'');const inBranch=token.branch_ids.includes('*')||(customerBranch?token.branch_ids.includes(customerBranch):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
+   return customers.filter(c=>{if(!c||typeof c!=='object') return false;const customerBranches=Array.isArray(c.branchIds)?c.branchIds.map(String):[String(c.branchId||c.branch_id||c.branch||'')].filter(Boolean);const inBranch=token.branch_ids.includes('*')||(customerBranches.length?customerBranches.some(id=>token.branch_ids.includes(id)):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
   }
   if(!token.scopes.includes('store:write')) throw new Error('This AI connection has read-only permission.');
   if(name==='strap_create_product'||name==='strap_update_product'||name==='strap_set_branch_stock') {
