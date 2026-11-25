@@ -247,7 +247,7 @@ window.StrapProducts = (() => {
       }
       const it = t.closest('.pm-row[data-id], .pm-gc[data-id]');
       if (it && !t.closest('.pm-ck')) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); else toast('This product could not be opened. Refresh the page and try again.'); }
-    });
+    }, true);
     root.addEventListener('keydown', e => { if (e.key === 'Enter') { const it = e.target.closest('.pm-row[data-id], .pm-gc[data-id]'); if (it) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); } } });
     body.addEventListener('change', e => { const c = e.target.closest('input[type=checkbox]'); if (!c) return; c.checked ? picked.add(c.dataset.id) : picked.delete(c.dataset.id); renderSel(); });
     $('#pm-q', root).addEventListener('input', e => { query = e.target.value.trim(); renderBody(); });
