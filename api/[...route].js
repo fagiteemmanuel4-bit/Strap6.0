@@ -3,6 +3,7 @@
 const { Pool } = require('pg');
 const GiftRules = require('../gift-card-rules');
 const crypto = require('crypto');
+const createMcp = require('../mcp-server');
 const E = process.env;
 const pool = global.__sp || (global.__sp = new Pool({ connectionString: E.DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } }));
 const q = async (t, p) => (await pool.query(t, p)).rows;
@@ -327,6 +328,9 @@ async function formSubmitSupport(fields) {
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
 
 const H = {};
+const strapMcp = createMcp({ pool, premiumActive });
+H['mcp'] = async (req, res) => { await strapMcp.handle(req, res); return null; };
+H['mcp/keys'] = async (req, res, user) => { await strapMcp.manage(req, res, user); return null; };
 /* ---- Premium access + Flutterwave (live/test mode selected by Vercel env) ---- */
 let premiumSchemaReady;
 async function ensurePremiumSchema() {
