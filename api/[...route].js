@@ -327,7 +327,7 @@ async function formSubmitSupport(fields) {
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
 
 const H = {};
-/* ---- Premium access + Flutterwave (test mode first) ---- */
+/* ---- Premium access + Flutterwave (live/test mode selected by Vercel env) ---- */
 let premiumSchemaReady;
 async function ensurePremiumSchema() {
   if (!premiumSchemaReady) premiumSchemaReady=(async()=>{
@@ -350,7 +350,7 @@ async function ensurePremiumSchema() {
 }
 const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
 const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
-const flwReady=()=>flwMode()==='test' && flwSecret().startsWith('FLWSECK_TEST-') && !!String(E.FLW_WEBHOOK_SECRET_HASH||'').trim();
+const flwReady=()=>{const mode=flwMode(),key=flwSecret();return (mode==='live'&&key.startsWith('FLWSECK_LIVE-'))||(mode==='test'&&key.startsWith('FLWSECK_TEST-'));};
 const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
 const premiumStandardAmount=()=>{const n=Number(E.FLW_PREMIUM_STANDARD_AMOUNT_NGN||6000);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:6000;};
 async function premiumCheckoutAmount(userId) {
@@ -364,7 +364,7 @@ async function premiumActive(userId) {
 }
 async function flwVerify(id) {
   const key=flwSecret();
-  if(!flwReady()) throw new Error('Flutterwave test credentials are not configured.');
+  if(!flwReady()) throw new Error('Flutterwave credentials do not match the configured payment mode.');
   const response=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(String(id))+'/verify',{headers:{Authorization:'Bearer '+key,Accept:'application/json'}});
   const body=await response.json().catch(()=>({}));
   if(!response.ok || !body || body.status!=='success' || !body.data) throw new Error('Flutterwave could not verify this transaction.');
@@ -787,17 +787,17 @@ H['premium/status'] = async (req,res,user) => {
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
   if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
   const nextAmount=await premiumCheckoutAmount(user.id);
-  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:'test'}];
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
 };
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
-  if(!flwReady()) return [503,{ok:false,msg:'Flutterwave test credentials are not configured yet.'}];
+  if(!flwReady()) return [503,{ok:false,msg:'Flutterwave live credentials are not configured correctly. Check FLW_MODE and FLW_SECRET_KEY.'}];
   await ensurePremiumSchema();
   const amount=await premiumCheckoutAmount(user.id);
   if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the introductory Premium amount when you are ready to charge.'}];
   const active=await premiumActive(user.id);
   if(active) return [409,{ok:false,msg:'Your Premium subscription is already active.'}];
-  const txRef='STRAP-TEST-'+crypto.randomBytes(12).toString('hex').toUpperCase();
+  const txRef='STRAP-'+(flwMode()==='live'?'LIVE':'TEST')+'-'+crypto.randomBytes(12).toString('hex').toUpperCase();
   await q("insert into strap_payments(tx_ref,user_id,amount,currency,status) values($1,$2,$3,'NGN','pending')",[txRef,user.id,amount]);
   const payload={tx_ref:txRef,amount,currency:'NGN',redirect_url:origin(req)+'/dashboard.html?payment=flutterwave',
     customer:{email:user.email,name:user.name||'Strap customer'},
@@ -811,7 +811,7 @@ H['premium/checkout'] = async (req,res,user) => {
     console.error('Flutterwave checkout creation failed:',response.status,JSON.stringify(body).slice(0,500));
     return [502,{ok:false,msg:'Flutterwave could not start checkout. Please try again.'}];
   }
-  return [200,{ok:true,link:body.data.link,tx_ref:txRef,amount,currency:'NGN',mode:'test'}];
+  return [200,{ok:true,link:body.data.link,tx_ref:txRef,amount,currency:'NGN',mode:flwMode()}];
 };
 H['premium/verify'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
