@@ -84,8 +84,8 @@ window.StrapStore = (() => {
       const phone = String(customer.phone || '').replace(/\\D/g, '');
       const email = String(customer.email || '').trim().toLowerCase();
       let row = rows.find(x => (phone && String(x.phone || '').replace(/\\D/g, '') === phone) || (email && String(x.email || '').trim().toLowerCase() === email));
-      if (row) { row.name = customer.name || row.name; row.phone = customer.phone || row.phone; row.email = customer.email || row.email; row.lastSeenAt = Date.now(); }
-      else { row = { id: uid('cus'), ...customer, createdAt: Date.now(), lastSeenAt: Date.now() }; rows.unshift(row); }
+      if (row) { row.name = customer.name || row.name; row.phone = customer.phone || row.phone; row.email = customer.email || row.email; const branchId = String(customer.branchId || ''); const branchIds = Array.isArray(row.branchIds) ? row.branchIds.map(String) : (row.branchId ? [String(row.branchId)] : []); if (branchId && !branchIds.includes(branchId)) branchIds.push(branchId); if (branchIds.length) row.branchIds = branchIds; if (branchId) row.branchId = branchId; row.lastSeenAt = Date.now(); }
+      else { const branchId = String(customer.branchId || ''); row = { id: uid('cus'), ...customer, ...(branchId ? { branchId, branchIds: [branchId] } : {}), createdAt: Date.now(), lastSeenAt: Date.now() }; rows.unshift(row); }
       save(); return row;
     },
     nextNo() { S.seq++; save(); return 'S-' + pad(S.seq, 4); },
