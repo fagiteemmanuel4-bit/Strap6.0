@@ -427,6 +427,7 @@ async function activatePremium(payment, tx) {
     [payment.user_id,payment.customer_email||'',amount,payment.tx_ref]);
   const subscription=(await q('select expires_at from strap_subscriptions where user_id=$1',[payment.user_id]))[0];
   if(subscription&&payment.customer_email) await syncMcpPremium(payment.customer_email,'active',subscription.expires_at,payment.tx_ref,amount);
+  await billingPrefs(payment.user_id).catch(e=>console.error('Billing preferences initialization failed:',e.message));
   if(payment.customer_email) await sendBillingEmail(payment.user_id,'payment_success',{
     subject:'Your Strap Premium payment was successful',
     message:'Your Premium payment has been verified and your subscription is active.',
@@ -999,6 +1000,19 @@ H['billing/email-test'] = async (req,res,user) => {
   if(!emailJsReady()) return [503,{ok:false,msg:'EmailJS is not configured. Add the EmailJS service, template and public key in Vercel.'}];
   try { await sendBillingEmail(user.id,'test',{subject:'Your Strap billing email is ready',message:'This is a test of your Strap billing email notifications.'},{force:true,eventKey:'test:'+user.id+':'+Date.now()}); return [200,{ok:true,msg:'Test email sent. Check your inbox.'}]; }
   catch(e) { return [502,{ok:false,msg:e.message||'EmailJS could not send the test email.'}]; }
+};
+H['billing/payment-failed'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  const ref=String(req.body.tx_ref||'').trim(),reason=String(req.body.reason||'Payment was not completed.').slice(0,180);
+  if(!ref) return [400,{ok:false}];
+  const payment=(await q('select tx_ref,amount,currency,status from strap_payments where tx_ref=$1 and user_id=$2',[ref,user.id]))[0];
+  if(!payment) return [404,{ok:false}];
+  if(payment.status==='successful') return [200,{ok:true,alreadySuccessful:true}];
+  await q("update strap_payments set status='failed' where tx_ref=$1 and user_id=$2 and status='pending'",[ref,user.id]);
+  await q("insert into strap_payment_reconciliation(user_id,tx_ref,action,outcome,details) values($1,$2,'checkout_callback','failed',$3::jsonb)",[user.id,ref,JSON.stringify({reason})]);
+  await sendBillingEmail(user.id,'payment_failed',{subject:'Your Strap Premium payment was not completed',message:'Your checkout was not completed. No Premium access was added. You can safely try again from Billing.',amount:Number(payment.amount),currency:payment.currency,tx_ref:ref}).catch(e=>console.error('Payment failure email failed:',e.message));
+  return [200,{ok:true}];
 };
 H['billing/reconcile'] = async (req,res,user) => {
   if(!user) return [401,{ok:false}];
