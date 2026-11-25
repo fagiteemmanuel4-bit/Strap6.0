@@ -228,13 +228,29 @@ module.exports = function createMcp(options) {
    const rows=await q('insert into strap_mcp_tokens(user_id,token_hash,token_prefix,name,scopes,branch_ids) values($1,$2,$3,$4,$5,$6) returning id::text,name,token_prefix,scopes,branch_ids,created_at',[user.id,sha(raw),raw.slice(0,16),name,cleanScopes,branches]);
    return json(res,201,{ok:true,endpoint:APP_URL+'/api/mcp',connection:rows[0],access_token:raw,warning:'Copy this token now. It will not be shown again.'});
   }
+  if(req.method==='PATCH') {
+   const body=req.body||{}, clientId=safeText(body.client_id,256);
+   if(!clientId) return json(res,400,{ok:false,message:'OAuth client ID is required.'});
+   const ctx=await ownerContext(user.id);
+   const scopes=Array.isArray(body.scopes)?[...new Set(['store:read',...body.scopes.filter(x=>x==='store:write')])]:['store:read'];
+   const branches=Array.isArray(body.branch_ids)&&body.branch_ids.length?[...new Set(body.branch_ids.map(x=>safeText(x,100)).filter(Boolean))]:[];
+   if(!branches.length||branches.includes('*')&&branches.length>1||branches.some(id=>id!=='*'&&!ctx.branches.some(b=>String(b.id)===id))) return json(res,400,{ok:false,message:'Choose one or more valid branches.'});
+   const updated=await q('update strap_mcp_oauth_grants set scopes=$3::text[],branch_ids=$4::text[],revoked_at=null,updated_at=now() where user_id=$1 and client_id=$2 returning client_id',[user.id,clientId,scopes,branches]);
+   if(!updated.length) return json(res,404,{ok:false,message:'OAuth connection not found. Connect the AI client first.'});
+   return json(res,200,{ok:true,updated:true});
+  }
   if(req.method==='DELETE') {
-   const id=safeText((req.query&&req.query.id)||(req.body&&req.body.id),80);
+   const body=req.body||{}, clientId=safeText(body.client_id||(req.query&&req.query.client_id),256);
+   if(clientId) {
+    const rows=await q('update strap_mcp_oauth_grants set revoked_at=now(),updated_at=now() where user_id=$1 and client_id=$2 and revoked_at is null returning client_id',[user.id,clientId]);
+    return json(res,200,{ok:true,revoked:rows.length===1});
+   }
+   const id=safeText((req.query&&req.query.id)||body.id,80);
    if(!id) return json(res,400,{ok:false,message:'Connection ID is required.'});
    const rows=await q('update strap_mcp_tokens set revoked_at=now() where id=$1::uuid and user_id=$2 and revoked_at is null returning id',[id,user.id]);
    return json(res,200,{ok:true,revoked:rows.length===1});
   }
-  res.setHeader('Allow','GET, POST, DELETE');
+  res.setHeader('Allow','GET, POST, PATCH, DELETE');
   return json(res,405,{ok:false,message:'Method not allowed.'});
  }
  return {handle,manage};
