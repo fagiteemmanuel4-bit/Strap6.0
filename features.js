@@ -68,8 +68,8 @@ window.StrapFeatures = (() => {
                 await refreshPlan();
                 toast('Strap Premium is now active.');
                 close();
+                showPremiumActivationSuccess();
                 resolve({ ok: true });
-                setTimeout(() => location.reload(), 500);
               } catch (error) {
                 toast(error.message || 'We could not verify this payment yet.');
                 close();
@@ -89,6 +89,19 @@ window.StrapFeatures = (() => {
     },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
+
+  function showPremiumActivationSuccess() {
+    const existing=document.getElementById('strap-premium-success');
+    if(existing) existing.remove();
+    const overlay=document.createElement('div');
+    overlay.id='strap-premium-success';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    overlay.innerHTML='<div class="strap-premium-success-card"><div class="strap-premium-success-mark">✦</div><div class="strap-premium-success-eyebrow">PAYMENT CONFIRMED</div><div class="strap-premium-success-title">You are on<br><span>Strap Premium.</span></div><p>Your payment was verified. Premium features are now unlocked for your business.</p><div class="strap-premium-success-pill">✦ &nbsp; All Premium features unlocked</div><div class="strap-premium-success-progress"><i></i></div><small>Taking you back to your dashboard…</small></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>overlay.classList.add('is-visible'));
+    window.setTimeout(()=>{overlay.classList.remove('is-visible');window.setTimeout(()=>{overlay.remove();location.reload();},380);},7000);
+  }
 
   /* ===== theme ===== */
   const applyTheme = () => {
