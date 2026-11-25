@@ -246,6 +246,7 @@
       signOut: async () => { try { await StrapAPI.signOut(); } finally { location.replace('/'); } }
     };
     StrapFeatures.init(ctx);
+    setTimeout(() => { StrapFeatures.showPendingPremiumWelcome().catch(e => console.warn('[Strap Premium] Welcome check failed:',e)); }, 400);
     function ensure(id) {
       if (panes[id]) return panes[id];
       const p = document.createElement('div'); p.className = 'pane'; p.dataset.id = id; p.hidden = true; sheet.appendChild(p); panes[id] = p;
