@@ -451,13 +451,13 @@ window.StrapFeatures = (() => {
         <div class="fx-card"><ul class="pr-ul">${perks.map((x, i) => `<li style="--i:${i}"><i>${ic('check', 14, 3)}</i><span>${x}</span></li>`).join('')}</ul></div>
         <div class="fx-card"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('tag',22,1.8)}</span><div><b>One simple Premium plan</b><small>₦4,500/month for your first 3 successful monthly payments, then ₦6,000/month. Free accounts can keep up to 30 products.</small></div></div></div>
         ${prem ? '<p class="fx-p pr-note">Premium is active. Renewal is currently manual; your business data stays safe if access expires.</p>' :
-          (S.checkoutReady ? `<button type="button" class="fx-btn" data-up>${ic('flash',20,2)} Continue to secure test checkout</button>` :
-          '<p class="fx-p pr-note">Premium pricing is currently paused. Checkout will open when the Premium amount and Flutterwave test credentials are configured.</p>')}`);
+          (S.checkoutReady ? `<section class="paycard" aria-label="Secure card payment"><div class="cardh"><span>Pay securely with your card</span><span class="brands" data-b="card"><i class="bd visa on">VISA</i><i class="bd mc on"><i></i><i></i></i><i class="bd verve on">VERVE</i></span></div><div class="cbox"><div class="crow"><div class="ci" style="font-size:14px;line-height:1.5">Your card details are entered on Flutterwave’s secure payment page. Strap never receives or stores your card number or CVV.</div></div><div class="crow two"><div class="ci" style="font-size:13px">Amount<strong style="display:block;font-size:20px;margin-top:4px">₦${Number(S.checkoutAmount||4500).toLocaleString('en-NG')}</strong></div><div class="ci" style="font-size:13px">Billing<strong style="display:block;font-size:16px;margin-top:4px">Monthly</strong></div></div></div><p class="note">Payments are processed securely by Flutterwave. Your Premium access is activated only after payment verification.</p><button type="button" class="fx-btn" data-up>${ic('flash',20,2)} Continue to secure payment</button></section>` :
+          '<p class="fx-p pr-note">Secure payment is temporarily unavailable. Please try again shortly.</p>')}`);
     };
     draw();
     s.el.addEventListener('click', async e => {
       if (!e.target.closest('[data-up]')) return;
-      const b=e.target.closest('[data-up]'); b.disabled=true; b.textContent='Opening Flutterwave…';
+      const b=e.target.closest('[data-up]'); b.disabled=true; b.textContent='Opening secure payment…';
       const result=await api.checkout();
       if(!result.ok){b.disabled=false;b.textContent='Try again';}
     });
@@ -472,6 +472,7 @@ window.StrapFeatures = (() => {
         S.plan=r.active?'premium':'free';
         S.sub=r.active?{expiresAt:r.expiresAt}:null;
         S.checkoutReady=!!r.checkoutReady;
+        S.checkoutAmount=Number(r.amount)||Number(r.introductoryAmount)||4500;
         save();
       }
     } catch(e) { S.plan='free'; S.sub=null; S.checkoutReady=false; }
