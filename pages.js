@@ -291,9 +291,74 @@ window.StrapPages = (() => {
   const devices = soon('phone', 'Devices & printers', 'devices', 'Devices and printers are coming soon', 'Soon you’ll connect receipt printers and scanners and manage signed-in devices.');
   const orders = soon('receipt', 'Orders', 'online', 'Orders are coming soon', 'Online orders will show up here once online stores launch.');
   function mcp(root, ctx) {
-    root.innerHTML = head('plug', 'MCP') + empty('mcp', 'Connect Strap to your AI tools', 'MCP lets assistants like Claude read your products and sales securely. Set-up is coming soon.', `<button type="button" class="pm-imp" data-n>${ic('copy', 20, 2)} Copy server address</button>`) +
-      `<div class="pg-rows"><div class="pg-r static"><span>Status</span><b class="pg-pill">Not connected</b></div></div>`;
-    $('[data-n]', root).addEventListener('click', () => ctx.toast('Your MCP address will be available at launch'));
+    const endpoint = 'https://strap60.vercel.app/api/mcp';
+    const request = async (method, body) => {
+      const response = await fetch('/api/mcp/keys', { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Could not load MCP settings.');
+      return data;
+    };
+    const copy = async (value, label) => {
+      try { await navigator.clipboard.writeText(value); ctx.toast(label + ' copied'); }
+      catch (_) { ctx.toast('Copy is not available in this browser.'); }
+    };
+    const draw = async () => {
+      root.innerHTML = head('plug', 'MCP') + '<section class="pg-card"><h3>Connect your AI tools</h3><p>Connect Claude or another MCP-compatible assistant to your Strap store. Your data stays in your Neon account.</p><div class="pg-r"><span>Server address</span><b>strap60.vercel.app</b></div><button class="pm-imp" type="button" data-copy-endpoint>' + ic('copy', 18, 2) + ' Copy MCP address</button><p class="pg-note">Server URL: <code>' + endpoint + '</code></p><p class="pg-note">Strap icon: <code>https://strap60.vercel.app/favicon.svg</code></p></section><section class="pg-card"><h3>Create an AI connection</h3><p>Each connection gets its own access token. Start with read-only access; only enable writing when you trust the AI client.</p><label class="pm-fl"><span>Connection name</span><input id="mcp-name" maxlength="80" placeholder="e.g. Claude on my phone" autocomplete="off"></label><label class="pm-fl"><span>Branch access</span><select id="mcp-branch"><option value="*">All branches</option></select></label><label class="pm-fl"><span>Permissions</span><select id="mcp-scope"><option value="read">Read only</option><option value="write">Read and write products / stock</option></select></label><button class="pm-add wide" type="button" data-create>Generate access token</button><div id="mcp-new-token" hidden></div></section><section class="pg-card"><h3>Active connections</h3><div id="mcp-connections"><p class="pg-note">Loading connections…</p></div></section><section class="pg-card"><h3>Recent AI activity</h3><div id="mcp-activity"><p class="pg-note">Loading activity…</p></div></section>';
+      try {
+        const data = await request('GET');
+        const branch = $('#mcp-branch', root);
+        branch.innerHTML = '<option value="*">All branches</option>' + (data.branches || []).map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('');
+        const connections = $('#mcp-connections', root);
+        connections.innerHTML = data.connections && data.connections.length ? data.connections.map(item => '<div class="pg-r"><div><b>' + esc(item.name) + '</b><small>' + esc(item.token_prefix) + '… · ' + esc(item.scopes.join(', ')) + ' · ' + esc(item.branch_ids.includes('*') ? 'All branches' : item.branch_ids.join(', ')) + '</small></div><button class="pm-imp" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('') : '<p class="pg-note">No AI connections yet.</p>';
+        const activity = $('#mcp-activity', root);
+        activity.innerHTML = data.activity && data.activity.length ? data.activity.map(item => '<div class="pg-r"><div><b>' + esc(item.action.replaceAll('strap_', '').replaceAll('_', ' ')) + '</b><small>' + esc(item.branch_id || 'Store') + ' · ' + esc(new Date(item.created_at).toLocaleString()) + '</small></div></div>').join('') : '<p class="pg-note">No AI actions recorded yet.</p>';
+      } catch (error) {
+        if (/Premium/i.test(error.message)) {
+          $('#mcp-connections', root).innerHTML = '<p class="pg-note">MCP connections require Strap Premium. Upgrade your plan to enable AI access.</p>';
+          $('#mcp-activity', root).innerHTML = '';
+          $('[data-create]', root).disabled = true;
+        } else {
+          $('#mcp-connections', root).innerHTML = '<p class="pg-note">' + esc(error.message) + '</p>';
+          $('#mcp-activity', root).innerHTML = '';
+        }
+      }
+    };
+    root.addEventListener('click', async event => {
+      const copyButton = event.target.closest('[data-copy-endpoint]');
+      if (copyButton) return copy(endpoint, 'MCP address');
+      const createButton = event.target.closest('[data-create]');
+      if (createButton) {
+        createButton.disabled = true;
+        try {
+          const name = $('#mcp-name', root).value.trim() || 'AI connection';
+          const scope = $('#mcp-scope', root).value;
+          const branch = $('#mcp-branch', root).value || '*';
+          const data = await request('POST', { name, scopes: scope === 'write' ? ['store:read', 'store:write'] : ['store:read'], branch_ids: [branch] });
+          const panel = $('#mcp-new-token', root);
+          panel.hidden = false;
+          panel.innerHTML = '<div class="pg-note"><b>Copy this token now.</b> Strap will not show it again.</div><textarea readonly rows="3" id="mcp-token-value">' + esc(data.access_token) + '</textarea><button type="button" class="pm-add wide" data-copy-token>Copy access token</button><p class="pg-note">Add this token to your AI client as a Bearer token. Keep it private.</p>';
+          ctx.toast('AI connection created');
+          await drawConnectionsOnly();
+        } catch (error) { ctx.toast(error.message); }
+        finally { createButton.disabled = false; }
+        return;
+      }
+      const revoke = event.target.closest('[data-revoke]');
+      if (revoke) {
+        if (!confirm('Revoke this AI connection? It will stop working immediately.')) return;
+        try { await request('DELETE', { id: revoke.dataset.revoke }); ctx.toast('Connection revoked'); await draw(); }
+        catch (error) { ctx.toast(error.message); }
+        return;
+      }
+      if (event.target.closest('[data-copy-token]')) return copy($('#mcp-token-value', root).value, 'Access token');
+    });
+    async function drawConnectionsOnly() {
+      try {
+        const data = await request('GET');
+        $('#mcp-connections', root).innerHTML = data.connections && data.connections.length ? data.connections.map(item => '<div class="pg-r"><div><b>' + esc(item.name) + '</b><small>' + esc(item.token_prefix) + '… · ' + esc(item.scopes.join(', ')) + ' · ' + esc(item.branch_ids.includes('*') ? 'All branches' : item.branch_ids.join(', ')) + '</small></div><button class="pm-imp" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('') : '<p class="pg-note">No AI connections yet.</p>';
+      } catch (_) {}
+    }
+    draw();
   }
   const MAP = { 'sales-today': (r, c) => StrapSales.today(r, c), 'sales-history': (r, c) => StrapSales.history(r, c), 'new-sale': (r, c) => StrapSales.mount(r, c), growth, online, mcp, activity, devices, settings: (r, c) => StrapSettings.mount(r, c), inventory };
   function build(id, root, ctx) {
