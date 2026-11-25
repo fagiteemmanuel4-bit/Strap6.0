@@ -382,6 +382,7 @@ async function ensurePremiumSchema() {
     await q('create index if not exists strap_payments_user_idx on strap_payments(user_id,created_at desc)');
     await q("alter table strap_subscriptions add column if not exists cancel_at_period_end boolean not null default false");
     await q("alter table strap_subscriptions add column if not exists cancelled_at timestamptz");
+    await q("alter table strap_subscriptions add column if not exists welcome_seen boolean not null default false");
     await q(`create table if not exists strap_billing_preferences (
       user_id text primary key, email_enabled boolean not null default true,
       payment_success boolean not null default true, payment_failed boolean not null default true,
@@ -826,13 +827,19 @@ H['gift/redeem'] = async (req, res, user, staff) => {
 H['premium/status'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
   await ensurePremiumSchema();
-  const row=(await q("select status,expires_at,amount,currency,tx_ref from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
+  const row=(await q("select status,expires_at,amount,currency,tx_ref,welcome_seen from strap_subscriptions where user_id=$1 limit 1",[user.id]))[0];
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
   // MCP reads subscription status from the same database; no separate sync helper is needed.
   const nextAmount=await premiumCheckoutAmount(user.id);
   const readiness={mode:flwMode(),secretConfigured:!!flwSecret(),secretModeMatch:flwReady(),publicKeyConfigured:!!flwPublicKey(),publicKeyModeMatch:flwPublicReady(),introductoryAmount:premiumAmount(),nextAmount};
   console.info('[premium-status] checkout readiness:',JSON.stringify(readiness));
-  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:readiness.secretModeMatch&&readiness.publicKeyModeMatch&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,welcomePending:active&&row.welcome_seen!==true,checkoutReady:readiness.secretModeMatch&&readiness.publicKeyModeMatch&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
+};
+H['premium/welcome-seen'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
+  await ensurePremiumSchema();
+  await q("update strap_subscriptions set welcome_seen=true,updated_at=now() where user_id=$1",[user.id]);
+  return [200,{ok:true}];
 };
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
