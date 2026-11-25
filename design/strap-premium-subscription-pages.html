@@ -9,7 +9,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-/* All Premium, subscription, billing, receipt and feature-screen styles from Strap. */
 /* Strap – features: screens, steps, cards, dark theme */
 .fx-screen{position:fixed;inset:0;z-index:44;background:#fff;overflow-y:auto;overscroll-behavior:contain;transform:translateY(100%);transition:transform .5s cubic-bezier(.2,.9,.25,1);padding:env(safe-area-inset-top,0px) 0 calc(env(safe-area-inset-bottom,0px) + 28px)}
 .fx-screen.on{transform:none}
@@ -1018,7 +1017,7 @@ window.StrapFeatures = (() => {
   }
   document.addEventListener('click', e => { const f = e.target.closest('[data-fx]'); if (f && ctx) { e.stopPropagation(); open(f.dataset.fx); } }, true);
 
-  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(qs.get('status')==='successful'&&tx_ref&&/^\\d+$/.test(transaction_id)) { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Payment verified. Strap Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } else toast('Payment was not completed.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
+  return { api, state: S, notify, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&/^\\d+$/.test(transaction_id)) { try { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') toast('Payment verified. Strap Premium is now active.'); else toast(v.msg||'Payment is not confirmed yet.'); } catch(err) { console.error('[Strap Premium] Return verification failed:',err); toast('Payment verification is still pending. Check Billing before trying again.'); } } else toast('Flutterwave returned without a transaction ID. If you were charged, contact support before retrying.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
 })();
 
 </script>
