@@ -66,6 +66,7 @@ module.exports = function createMcp(options) {
    if(!Array.isArray(products)) return [];
    const query=safeText(args.query,120).toLowerCase(), threshold=Math.max(0,number(args.threshold,5)), limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50))));
    return products.filter(p=>{
+    if(!p||typeof p!=='object') return false;
     const stock=number(p.qty,0);
     if(name==='strap_get_low_stock') return p&&p.tracked!==false&&stock<=threshold;
     if(!query) return true;
@@ -77,16 +78,17 @@ module.exports = function createMcp(options) {
    if((args.from&&!Number.isFinite(from))||(args.to&&!Number.isFinite(to))) throw new Error('Use valid ISO-8601 dates for from and to.');
    const limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50)))), sales=Array.isArray(ctx.operations.sales)?ctx.operations.sales:[];
    return sales.filter(s=>{
+    if(!s||typeof s!=='object') return false;
     const ts=number(s.ts,Date.parse(s.ts||''));
     if(!Number.isFinite(ts)||ts<from||ts>to) return false;
     if(token.branch_ids.includes('*')) return true;
-    const saleBranch=String(s.branchId||s.branch||'');
+    const saleBranch=String(s.branchId||s.branch_id||s.branch||'');
     return saleBranch ? token.branch_ids.includes(saleBranch) : token.branch_ids.includes('b0');
    }).slice(0,limit).map(s=>({id:String(s.id||s.no||''),receipt_number:safeText(s.no,80),date:s.ts?new Date(number(s.ts,Date.parse(s.ts))).toISOString():null,customer:safeText(s.customer,160),total:number(s.total),paid:number(s.paidNow,number(s.total)-number(s.due)),due:number(s.due),payment_method:safeText(s.method,40),items:Array.isArray(s.lines)?s.lines.length:0}));
   }
   if(name==='strap_search_customers') {
    const query=safeText(args.query,120).toLowerCase(), limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50)))), customers=Array.isArray(ctx.operations.customers)?ctx.operations.customers:[];
-   return customers.filter(c=>{const customerBranch=String(c.branchId||c.branch||'');const inBranch=token.branch_ids.includes('*')||(customerBranch?token.branch_ids.includes(customerBranch):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
+   return customers.filter(c=>{if(!c||typeof c!=='object') return false;const customerBranch=String(c.branchId||c.branch_id||c.branch||'');const inBranch=token.branch_ids.includes('*')||(customerBranch?token.branch_ids.includes(customerBranch):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
   }
   if(!token.scopes.includes('store:write')) throw new Error('This AI connection has read-only permission.');
   if(name==='strap_create_product'||name==='strap_update_product'||name==='strap_set_branch_stock') {
