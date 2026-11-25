@@ -519,7 +519,12 @@ window.StrapFeatures = (() => {
       let done=false,modal;
       modal=window.FlutterwaveCheckout({public_key:r.public_key,tx_ref:r.tx_ref,amount:Number(r.amount),currency:'NGN',payment_options:'card',
         customer:r.customer,customizations:{title:'Strap Premium renewal',description:'Renew your Strap Premium subscription'},
-        callback:async p=>{if(done)return;const id=p&&(p.transaction_id||p.id);if(!id)return;
+        callback:async p=>{if(done)return;
+          if(p&&String(p.status||'').toLowerCase()&&String(p.status).toLowerCase()!=='successful'){
+            await StrapAPI.call('POST','billing/payment-failed',{tx_ref:r.tx_ref,reason:'Flutterwave checkout returned '+String(p.status).slice(0,40)}).catch(()=>{});
+            done=true;try{modal&&modal.close&&modal.close();}catch(e){}resolve();toast('Payment was not completed. You can try again from Billing.');return;
+          }
+          const id=p&&(p.transaction_id||p.id);if(!id)return;
           try{const v=await StrapAPI.call('POST','premium/verify',{tx_ref:r.tx_ref,transaction_id:String(id)});if(!v.ok||!v.active)throw new Error(v.msg||'Payment verification is pending.');
             done=true;await refreshPlan();toast('Premium renewed successfully.');try{modal&&modal.close&&modal.close();}catch(e){}resolve();
             setTimeout(()=>location.reload(),500);
