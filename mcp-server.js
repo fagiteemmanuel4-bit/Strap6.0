@@ -127,7 +127,7 @@ module.exports = function createMcp(options) {
  }
  async function authenticate(req) {
   await ensureSchema();
-  const match=/^Bearer\\s+(.+)$/i.exec(String(req.headers.authorization||''));
+  const match=/^Bearer\s+(.+)$/i.exec(String(req.headers.authorization||''));
   if(!match||match[1].length<24) return null;
   const rows=await q('select t.id,t.user_id,t.scopes,t.branch_ids,t.name from strap_mcp_tokens t join app_users a on a.id=t.user_id where t.token_hash=$1 and t.revoked_at is null and a.deleted_at is null limit 1',[sha(match[1])]);
   if(!rows[0] || !await premiumActive(rows[0].user_id)) return null;
