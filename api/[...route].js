@@ -328,6 +328,36 @@ async function formSubmitSupport(fields) {
 const wrap = (t, b) => `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2>${t}</h2>${b}<p style="color:#888;font-size:12px;margin-top:28px">${esc(APP)}</p></div>`;
 
 const H = {};
+H['neon-auth'] = async (req, res) => {
+  const route = String(req.__strap_route || ''), prefix = 'neon-auth/';
+  const authPath = route.startsWith(prefix) ? route.slice(prefix.length) : '';
+  const allowed = new Set(['get-session','sign-in/email','sign-in/social','sign-out','oauth2/continue','oauth2/public-client','oauth2/consent']);
+  if (!allowed.has(authPath)) { res.statusCode=404; return res.end('Not found'); }
+  const base=String(E.NEON_AUTH_BASE_URL||'').replace(/\/$/,'');
+  if(!base){res.statusCode=503;return res.end('Authentication is unavailable.');}
+  const params=new URLSearchParams(String(req.url||'').split('?')[1]||'');params.delete('__strap_route');
+  const query=params.toString(), cookie=upCookie(req);
+  try {
+    const upstream=await fetch(base+'/'+authPath+(query?'?'+query:''),{
+      method:req.method,
+      headers:{'Content-Type':'application/json','Accept':req.headers.accept||'application/json',Origin:origin(req),...(cookie?{Cookie:cookie}:{})},
+      body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body||{}),
+      redirect:'manual'
+    });
+    const raw=await upstream.text(), setCookies=typeof upstream.headers.getSetCookie==='function'?upstream.headers.getSetCookie():[];
+    if(setCookies.length){
+      const jar=new Map(cookie.split(';').map(x=>x.trim()).filter(Boolean).map(x=>[x.slice(0,x.indexOf('=')),x]));
+      for(const item of setCookies){const pair=item.split(';')[0],at=pair.indexOf('=');if(at<1)continue;const name=pair.slice(0,at),value=pair.slice(at+1);if(!value||/Max-Age=0/i.test(item))jar.delete(name);else jar.set(name,pair);}
+      if(jar.size)mine(res,[...jar.values()]);else clearMine(res);
+    }
+    res.statusCode=upstream.status;
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json; charset=utf-8');
+    const location=upstream.headers.get('location');if(location)res.setHeader('Location',location);
+    res.end(raw);
+  } catch(error) { console.error('Neon Auth OAuth proxy failed:',error.message);res.statusCode=502;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({message:'Could not reach Strap authentication.'})); }
+};
+
 const strapMcp = createMcp({ pool, premiumActive });
 H['mcp'] = async (req, res) => { await strapMcp.handle(req, res); return null; };
 H['mcp/keys'] = async (req, res, user) => { await strapMcp.manage(req, res, user); return null; };
@@ -1245,7 +1275,7 @@ H['account/delete'] = async (req, res, user) => {
 module.exports = async (req, res) => {
   try {
     req.query = Object.assign({}, req.query || {}, Object.fromEntries(new URLSearchParams(String(req.url || '').split('?')[1] || '')));
-    const route = String(req.query.__strap_route || req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/^health\//, '').replace(/\/+$/, ''), h = H[route];
+    const route = String(req.query.__strap_route || req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/^health\//, '').replace(/\/+$/, ''); req.__strap_route=route; const h = H[route] || (route.startsWith('neon-auth/') ? H['neon-auth'] : null);
     if (!h) { res.statusCode = 404; return res.json({ ok: false }); }
     if (typeof req.body === 'string') { try { req.body = JSON.parse(req.body); } catch (e) { req.body = {}; } }
     req.body = req.body || {};
