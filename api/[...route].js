@@ -897,10 +897,13 @@ async function sendBillingEmail(userId,eventType,payload={},options={}) {
   if(!user||!user.email) return {ok:false,skipped:true,reason:'No account email'};
   const profile=user.profile||{}, name=String(profile.name||profile.full_name||'Strap customer');
   const eventKey=String(options.eventKey||eventType+':'+(payload.tx_ref||payload.expires_at||Date.now()));
-  await q(`insert into strap_billing_email_log(user_id,event_key,event_type,recipient,status)
-    values($1,$2,$3,$4,'sending') on conflict(event_key) do nothing`,[userId,eventKey,eventType,user.email]);
-  const log=(await q('select status from strap_billing_email_log where event_key=$1',[eventKey]))[0];
-  if(log&&log.status==='sent') return {ok:true,alreadySent:true};
+  const claimed=await q(`insert into strap_billing_email_log(user_id,event_key,event_type,recipient,status)
+    values($1,$2,$3,$4,'sending') on conflict(event_key) do nothing returning id`,[userId,eventKey,eventType,user.email]);
+  if(!claimed.length) {
+    const log=(await q('select status from strap_billing_email_log where event_key=$1',[eventKey]))[0];
+    if(log&&(log.status==='sent'||log.status==='sending')) return {ok:log.status==='sent',alreadySent:log.status==='sent',inProgress:log.status==='sending'};
+    await q("update strap_billing_email_log set status='sending',provider_response=null where event_key=$1",[eventKey]);
+  }
   const params={
     to_email:user.email,to_name:name,subject:String(payload.subject||'A billing update from Strap'),
     message:String(payload.message||''),event_type:eventType,amount:Number(payload.amount||0).toLocaleString('en-NG'),
@@ -1050,7 +1053,9 @@ H['billing/cron'] = async (req,res) => {
       and p.email_enabled=true and p.renewal_reminders=true
       and (s.expires_at::date-current_date)=any(p.renewal_reminder_days)`);
   let sent=0,failed=0;
-  for(const row of due) {
+  for(let index=0;index<due.length;index++) {
+    const row=due[index];
+    if(index) await new Promise(resolve=>setTimeout(resolve,1100)); // EmailJS allows one request per second.
     try {
       const days=Math.max(0,Math.ceil((new Date(row.expires_at).getTime()-Date.now())/86400000));
       await sendBillingEmail(row.user_id,'renewal_reminder',{subject:days?'Your Strap Premium renews soon':'Your Strap Premium expires today',
