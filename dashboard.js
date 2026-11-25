@@ -145,7 +145,7 @@
     ['products', 'Products', 'tag', [['products', 'All products'], ['collections', 'Collections'], ['inventory', 'Inventory'], ['purchase', 'Purchase orders'], ['transfers', 'Transfers'], ['gift', 'Gift cards']]],
     ['customers', 'Customers', 'users'], ['staff', 'Staff', 'users', 'soon'], ['growth', 'Growth', 'growth'], ['activity', 'Activity log', 'clock', 'soon'], ['devices', 'Devices & printers', 'phone', 'soon'],
     ['@', 'Sales channels'], ['online', 'Online store', 'store'], ['mcp', 'MCP', 'plug'],
-    ['@', ''], ['premium', 'Premium', 'flash'], ['settings', 'Settings', 'gear']
+    ['@', ''], ['billing', 'Billing', 'wallet', [['billing-overview', 'Overview'], ['billing-history', 'Payment history'], ['billing-receipts', 'Payments received & receipts'], ['billing-results', 'Payment results'], ['billing-renew', 'Renew Premium'], ['billing-subscription', 'Subscription management'], ['billing-notifications', 'Billing notifications'], ['billing-reconciliation', 'Payment reconciliation']]], ['premium', 'Premium', 'flash'], ['settings', 'Settings', 'gear']
   ];
   const STAFF_MENU = {
     'new-sale':['new-sale','Sales desk','receipt'],
@@ -266,7 +266,7 @@
     function show(id, options = {}) {
       if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
-      if (!['home','products','settings','premium'].includes(id) && StrapFeatures.state.plan !== 'premium') {
+      if (!['home','products','settings','premium', 'billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'].includes(id) && StrapFeatures.state.plan !== 'premium') {
         closeDrawer();
         toast('This feature requires Strap Premium.');
         StrapFeatures.open('premium');
