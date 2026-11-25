@@ -18,7 +18,71 @@ window.StrapFeatures = (() => {
   /* ===== backend hooks ===== */
   const api = {
     deleteAccount: p => StrapAPI.auth.deleteAccount(p),
-    async checkout() { const r = await StrapAPI.call('POST', 'premium/checkout', {}); if (r.ok && r.link) { location.assign(r.link); return r; } toast(r.msg || 'Could not start checkout.'); return r; },
+    async checkout() {
+      const r = await StrapAPI.call('POST', 'premium/checkout', {});
+      if (!r.ok || !r.public_key || !r.tx_ref) { toast(r.msg || 'Could not start checkout.'); return r; }
+      try {
+        if (typeof window.FlutterwaveCheckout !== 'function') {
+          await new Promise((resolve, reject) => {
+            let script = document.querySelector('script[data-strap-flw-inline]');
+            if (script) {
+              if (script.dataset.loaded === 'true') return resolve();
+              script.addEventListener('load', resolve, { once: true });
+              script.addEventListener('error', reject, { once: true });
+              return;
+            }
+            script = document.createElement('script');
+            script.src = 'https://checkout.flutterwave.com/v3.js';
+            script.async = true;
+            script.dataset.strapFlwInline = 'true';
+            script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
+            script.onerror = () => reject(new Error('Flutterwave payment library could not load.'));
+            document.head.appendChild(script);
+          });
+        }
+        if (typeof window.FlutterwaveCheckout !== 'function') throw new Error('Flutterwave payment library is unavailable.');
+        return await new Promise(resolve => {
+          let modal = null, finished = false;
+          const close = () => { try { if (modal && typeof modal.close === 'function') modal.close(); } catch (_) {} };
+          modal = window.FlutterwaveCheckout({
+            public_key: r.public_key,
+            tx_ref: r.tx_ref,
+            amount: Number(r.amount),
+            currency: 'NGN',
+            payment_options: 'card',
+            customer: r.customer,
+            customizations: { title: 'Strap Premium', description: 'Premium access for your Strap business' },
+            configurations: { session_duration: 30, max_retry_attempt: 3 },
+            callback: async payment => {
+              if (finished) return;
+              const transactionId = payment && (payment.transaction_id || payment.id);
+              if (!transactionId) { toast('Flutterwave did not return a transaction ID.'); return; }
+              try {
+                const verified = await StrapAPI.call('POST', 'premium/verify', { tx_ref: r.tx_ref, transaction_id: String(transactionId) });
+                if (!verified.ok || !verified.active) throw new Error(verified.msg || 'Payment verification is still pending.');
+                finished = true;
+                await refreshPlan();
+                toast('Strap Premium is now active.');
+                close();
+                resolve({ ok: true });
+                setTimeout(() => location.reload(), 500);
+              } catch (error) {
+                toast(error.message || 'We could not verify this payment yet.');
+                close();
+                finished = true;
+                resolve({ ok: false, msg: error.message || 'Payment verification failed.' });
+              }
+            },
+            onclose: () => {
+              if (!finished) { finished = true; resolve({ ok: false, msg: 'Payment window closed.' }); }
+            }
+          });
+        });
+      } catch (error) {
+        toast(error.message || 'Could not open Flutterwave checkout.');
+        return { ok: false, msg: error.message || 'Could not open Flutterwave checkout.' };
+      }
+    },
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
 
