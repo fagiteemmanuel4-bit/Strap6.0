@@ -108,9 +108,13 @@ module.exports = function createMcp(options) {
      } else {
       const fields=['title','price','qty','category','sku','barcode','description','tracked','status'], patch={};
       for(const field of fields) if(Object.prototype.hasOwnProperty.call(args,field)) patch[field]=args[field];
-      if(patch.title!==undefined) patch.title=safeText(patch.title,160);
-      if(patch.price!==undefined&&(!Number.isFinite(Number(patch.price))||Number(patch.price)<0)) throw new Error('Price must be a non-negative number.');
-      if(patch.qty!==undefined&&(!Number.isFinite(Number(patch.qty))||Number(patch.qty)<0)) throw new Error('Quantity must be a non-negative number.');
+      if(patch.title!==undefined) { patch.title=safeText(patch.title,160); if(!patch.title) throw new Error('Product title cannot be empty.'); }
+      if(patch.price!==undefined) { if(!Number.isFinite(Number(patch.price))||Number(patch.price)<0) throw new Error('Price must be a non-negative number.'); patch.price=Number(patch.price); }
+      if(patch.qty!==undefined) { if(!Number.isFinite(Number(patch.qty))||Number(patch.qty)<0) throw new Error('Quantity must be a non-negative number.'); patch.qty=Number(patch.qty); }
+      if(patch.category!==undefined) patch.category=safeText(patch.category,100);
+      if(patch.sku!==undefined) patch.sku=safeText(patch.sku,80);
+      if(patch.barcode!==undefined) patch.barcode=safeText(patch.barcode,80);
+      if(patch.description!==undefined) patch.description=safeText(patch.description,2000);
       if(patch.status!==undefined&&!['active','draft','archived'].includes(patch.status)) throw new Error('Invalid product status.');
       products[index]={...products[index],...patch};
      }
@@ -152,7 +156,7 @@ module.exports = function createMcp(options) {
   if(body.method==='tools/list') return json(res,200,rpcResult(body.id,{tools:token.scopes.includes('store:write')?[...readTools,...writeTools]:readTools}));
   if(body.method==='tools/call') {
    const name=safeText(body.params&&body.params.name,100), args=body.params&&body.params.arguments&&typeof body.params.arguments==='object'?body.params.arguments:{};
-   try { const result=await callTool(name,args,token); return json(res,200,rpcResult(body.id,{content:[{type:'text',text:JSON.stringify(result)}],structuredContent:result,isError:false})); }
+   try { const result=await callTool(name,args,token); if(!writeTools.some(tool=>tool.name===name)) await audit(token,name,args.branch_id||null,null,{read:true}); return json(res,200,rpcResult(body.id,{content:[{type:'text',text:JSON.stringify(result)}],structuredContent:result,isError:false})); }
    catch(error) { return json(res,200,rpcResult(body.id,{content:[{type:'text',text:error.message||'Tool call failed.'}],isError:true})); }
   }
   return json(res,200,rpcError(body.id,-32601,'Method not found.'));
@@ -170,6 +174,8 @@ module.exports = function createMcp(options) {
   }
   if(req.method==='POST') {
    const body=req.body||{}, name=safeText(body.name||'AI connection',80), scopes=Array.isArray(body.scopes)?body.scopes.filter(x=>['store:read','store:write'].includes(x)):['store:read'];
+   const activeCount=await q('select count(*)::int as count from strap_mcp_tokens where user_id=$1 and revoked_at is null',[user.id]);
+   if(Number(activeCount[0]&&activeCount[0].count||0)>=10) return json(res,429,{ok:false,message:'You can have up to 10 active AI connections. Revoke one before adding another.'});
    const cleanScopes=[...new Set(['store:read',...scopes])], branches=Array.isArray(body.branch_ids)&&body.branch_ids.length?[...new Set(body.branch_ids.map(x=>safeText(x,100)).filter(Boolean))].slice(0,30):['*'];
    if(branches.includes('*')&&branches.length>1) return json(res,400,{ok:false,message:'Use * by itself for all branches, or select specific branch IDs.'});
    const ctx=await ownerContext(user.id);
