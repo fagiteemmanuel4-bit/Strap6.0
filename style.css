@@ -275,3 +275,8 @@ body{
 @keyframes strapPremiumPop{0%{transform:scale(.4) rotate(-35deg);opacity:0}70%{transform:scale(1.12) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
 @keyframes strapPremiumCountdown{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 @media(prefers-reduced-motion:reduce){#strap-premium-success,.strap-premium-success-card{transition:none} .strap-premium-success-mark,.strap-premium-success-progress i{animation:none}}
+
+/* Premium success uses the approved email layout in a timed in-app frame. */
+#strap-premium-success .strap-premium-success-frame{width:min(100%,560px);max-height:88vh;overflow:auto;border-radius:24px;background:#efefe8;box-shadow:0 35px 100px rgba(0,0,0,.42)}
+#strap-premium-success .strap-premium-success-frame iframe{display:block;width:100%;height:min(82vh,820px);min-height:520px;border:0;border-radius:24px;background:#efefe8}
+@media(max-width:480px){#strap-premium-success{padding:10px}#strap-premium-success .strap-premium-success-frame{max-height:92vh;border-radius:18px}#strap-premium-success .strap-premium-success-frame iframe{height:88vh;min-height:460px;border-radius:18px}}
