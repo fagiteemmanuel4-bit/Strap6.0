@@ -22,7 +22,8 @@ const readTools = [
 const writeTools = [
  { name:'strap_create_product', description:'Create a product in an allowed branch. Requires write permission.', inputSchema:{type:'object',properties:{title:{type:'string',minLength:1,maxLength:160},price:{type:'number',minimum:0},qty:{type:'number',minimum:0},category:{type:'string',maxLength:100},sku:{type:'string',maxLength:80},barcode:{type:'string',maxLength:80},description:{type:'string',maxLength:2000},branch_id:{type:'string'}},required:['title','price'],additionalProperties:false} },
  { name:'strap_update_product', description:'Update allowed product fields. Requires write permission.', inputSchema:{type:'object',properties:{product_id:{type:'string'},branch_id:{type:'string'},title:{type:'string',maxLength:160},price:{type:'number',minimum:0},qty:{type:'number',minimum:0},category:{type:'string',maxLength:100},sku:{type:'string',maxLength:80},barcode:{type:'string',maxLength:80},description:{type:'string',maxLength:2000},tracked:{type:'boolean'},status:{type:'string',enum:['active','draft','archived']}},required:['product_id'],additionalProperties:false} },
- { name:'strap_set_branch_stock', description:'Set a product quantity in an allowed branch. Requires write permission.', inputSchema:{type:'object',properties:{product_id:{type:'string'},branch_id:{type:'string'},quantity:{type:'number',minimum:0}},required:['product_id','quantity'],additionalProperties:false} }
+ { name:'strap_set_branch_stock', description:'Set a product quantity in an allowed branch. Requires write permission.', inputSchema:{type:'object',properties:{product_id:{type:'string'},branch_id:{type:'string'},quantity:{type:'number',minimum:0}},required:['product_id','quantity'],additionalProperties:false} },
+ { name:'strap_upload_product_image', description:'Upload a JPG, PNG, WEBP or GIF image (maximum 3 MB) to a product in an allowed branch. Supply raw base64 image data and MIME type. Requires write permission.', inputSchema:{type:'object',properties:{product_id:{type:'string'},branch_id:{type:'string'},file_name:{type:'string',maxLength:120},mime_type:{type:'string',enum:['image/jpeg','image/png','image/webp','image/gif']},image_base64:{type:'string',minLength:16,maxLength:4194304}},required:['product_id','mime_type','image_base64'],additionalProperties:false} }
 ];
 
 module.exports = function createMcp(options) {
@@ -131,7 +132,7 @@ module.exports = function createMcp(options) {
    } catch(error) { await client.query('rollback').catch(()=>{}); throw error; }
    finally { client.release(); }
    await audit(token,name,branch.id,productId,{fields:Object.keys(args).filter(k=>k!=='branch_id'&&k!=='product_id')});
-   return {ok:true,product_id:productId,branch_id:branch.id,action:name};
+   return {ok:true,product_id:productId,branch_id:branch.id,action:name,...(name==='strap_upload_product_image'?{image_url:APP_URL+`/api/media?id=${safeText(args.product_id,100)}`,mime_type:imageMime,size_bytes:imageBuffer.length}:{})};
   }
   throw new Error('Unknown Strap tool: '+name);
  }
