@@ -83,34 +83,6 @@
       loaderMsg.style.animation = 'none'; void loaderMsg.offsetWidth; loaderMsg.style.animation = '';
     }, LOAD_MIN / LOAD_MSGS.length);
   }
-  async function handleFlutterwaveReturn() {
-    const params = new URLSearchParams(location.search);
-    if (params.get('payment') !== 'flutterwave') return;
-    const txRef = params.get('tx_ref') || '';
-    const transactionId = params.get('transaction_id') || '';
-    const status = (params.get('status') || '').toLowerCase();
-    try {
-      if (status === 'successful' && txRef && /^\\d+$/.test(transactionId)) {
-        const result = await StrapAPI.call('POST', 'premium/verify', { tx_ref: txRef, transaction_id: transactionId });
-        if (result && result.ok && result.active) {
-          await StrapFeatures.refreshPlan?.();
-          toast('Payment verified. Strap Premium is now active.');
-        } else {
-          toast((result && result.msg) || 'Payment is not confirmed yet. Check Premium again shortly.');
-        }
-      } else {
-        toast(status === 'cancelled' ? 'Payment was cancelled. No Premium charge was confirmed.' : 'Payment was not completed. You can try again from Premium.');
-      }
-    } catch (err) {
-      console.error('[Strap payment] Return verification failed:', err);
-      toast('We could not confirm the payment yet. Please open Premium and retry status check.');
-    } finally {
-      params.delete('payment'); params.delete('status'); params.delete('tx_ref'); params.delete('transaction_id');
-      const query = params.toString();
-      history.replaceState(history.state, '', location.pathname + (query ? '?' + query : '') + location.hash);
-    }
-  }
-
   async function boot() {
     loader.hidden = false; loader.classList.add('on');
     const msgs = startMsgs(), t0 = Date.now();
@@ -136,7 +108,6 @@
     if (!Array.isArray(data.hourly) || !data.hourly.length) data.hourly = Array(12).fill(0);
     try {
       buildDash(data);
-      await handleFlutterwaveReturn();
       dash.hidden = false; document.body.classList.add('is-dash');
       const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = '#0a0a0a';
       window.scrollTo(0, 0);
@@ -274,9 +245,10 @@
     let current = 'home';
     const ctx = {
       toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products, openMenu: () => openDrawer(),
-      rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
+      rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $('.sn', dash).forEach(n => n.textContent = v); $('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
       signOut: async () => { try { await StrapAPI.signOut(); } finally { location.replace('/'); } }
     };
+    StrapFeatures.init(ctx);
     function ensure(id) {
       if (panes[id]) return panes[id];
       const p = document.createElement('div'); p.className = 'pane'; p.dataset.id = id; p.hidden = true; sheet.appendChild(p); panes[id] = p;
