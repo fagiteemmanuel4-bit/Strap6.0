@@ -60,11 +60,10 @@ window.StrapProducts = (() => {
         image = u;
       }
       const { media, ...rest } = p;
-      const saved = { ...rest, image, id: p.id || ('p' + Date.now() + Math.random().toString(36).slice(2, 7)) };
-      const rows = readProducts(), index = rows.findIndex(x => String(x.id) === String(saved.id));
-      if (index >= 0) rows[index] = saved; else rows.unshift(saved);
-      await writeProducts(rows);
-      return saved;
+      // Build the record here, but let the caller persist the final list exactly once.
+      // Previously this function flushed the whole store and save() flushed it again,
+      // causing duplicate writes and intermittent save failures on slower connections.
+      return { ...rest, image, id: p.id ?? ('p' + Date.now() + Math.random().toString(36).slice(2, 7)) };
     },
     async deleteProduct(id) {
       await writeProducts(readProducts().filter(x => String(x.id) !== String(id)));
@@ -692,10 +691,15 @@ window.StrapProducts = (() => {
         const saved = await api.saveProduct({ ...product, files: files.map(({ name, type, url }) => ({ name, type, url })), media: files.map(f => f.file).filter(Boolean) });
         const rec = { ...saved, ...product, id: saved.id, image: saved.image || product.image || '', files: files.map(({ name, type, url }) => ({ name, type, url })) };
         await api.persistProducts(editing ? items.map(x => String(x.id) === String(editing.id) ? rec : x) : [rec, ...items]);
-        if (editing) { const i = items.findIndex(x => x.id === editing.id); if (i > -1) items[i] = rec; } else items.unshift(rec);
+        if (editing) { const i = items.findIndex(x => String(x.id) === String(editing.id)); if (i > -1) items[i] = rec; else items.unshift(rec); } else items.unshift(rec);
         renderAll(); closePage(); toast(editing ? 'Changes saved' : 'Product added');
-      } catch (err) { toast('Could not save. Try again.'); }
-      btn.disabled = false; btn.textContent = idle;
+      } catch (err) {
+        console.error('[Strap products] Save failed:', err);
+        const reason = err && err.message ? String(err.message) : '';
+        toast(reason && reason.length < 110 ? reason : 'Could not save product. Check your connection and try again.');
+      } finally {
+        btn.disabled = false; btn.textContent = idle;
+      }
     }
 
     // ----- boot -----
