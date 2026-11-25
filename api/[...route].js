@@ -336,6 +336,7 @@ H['neon-auth'] = async (req, res) => {
   const base=String(E.NEON_AUTH_BASE_URL||'').replace(/\/$/,'');
   if(!base){res.statusCode=503;return res.end('Authentication is unavailable.');}
   const params=new URLSearchParams(String(req.url||'').split('?')[1]||'');params.delete('__strap_route');
+  for(const [key,value] of Object.entries(req.query||{})){if(key==='__strap_route'||params.has(key)||value==null)continue;for(const item of Array.isArray(value)?value:[value])params.append(key,String(item));}
   const query=params.toString(), cookie=upCookie(req);
   try {
     const upstream=await fetch(base+'/'+authPath+(query?'?'+query:''),{
