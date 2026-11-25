@@ -805,14 +805,25 @@ H['premium/checkout'] = async (req,res,user) => {
     payment_options:'card',
     configuration:{session_duration:30,max_retry_attempt:3}};
   // Billing is renewed through a fresh verified checkout so the price can move from NGN 4,500 to NGN 6,000 after cycle three.
-  const response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
-  const body=await response.json().catch(()=>({}));
-  if(!response.ok||body.status!=='success'||!body.data||!body.data.link) {
+  let response,body;
+  try {
+    response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
+    body=await response.json().catch(()=>({}));
+  } catch(error) {
     await q("update strap_payments set status='failed' where tx_ref=$1",[txRef]);
-    console.error('Flutterwave checkout creation failed:',response.status,JSON.stringify(body).slice(0,500));
+    console.error('[premium-checkout] Flutterwave request failed:',String(error&&error.message||error).slice(0,240));
+    return [502,{ok:false,msg:'Could not connect to Flutterwave. Please try again.'}];
+  }
+  const checkoutLink=String(body&&body.data&&body.data.link||'');
+  let checkoutHost='';
+  try { checkoutHost=checkoutLink?new URL(checkoutLink).host:''; } catch (_) {}
+  console.info('[premium-checkout] Flutterwave response:',JSON.stringify({httpStatus:response.status,apiStatus:body&&body.status||'',message:String(body&&body.message||'').slice(0,180),hasLink:!!checkoutLink,checkoutHost,mode:flwMode(),txRef}));
+  if(!response.ok||body.status!=='success'||!checkoutLink||!/^https:\/\//i.test(checkoutLink)) {
+    await q("update strap_payments set status='failed' where tx_ref=$1",[txRef]);
+    console.error('[premium-checkout] Link creation rejected:',JSON.stringify({httpStatus:response.status,apiStatus:body&&body.status||'',message:String(body&&body.message||'').slice(0,240)}));
     return [502,{ok:false,msg:'Flutterwave could not start checkout. Please try again.'}];
   }
-  return [200,{ok:true,link:body.data.link,tx_ref:txRef,amount,currency:'NGN',mode:flwMode()}];
+  return [200,{ok:true,link:checkoutLink,tx_ref:txRef,amount,currency:'NGN',mode:flwMode()}];
 };
 H['premium/verify'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
