@@ -519,6 +519,9 @@ window.StrapFeatures = (() => {
           '<p class="fx-p pr-note">Secure payment is temporarily unavailable. Please try again shortly.</p>')}`);
     };
     draw();
+    // Refresh server-authoritative payment readiness after the page is mounted.
+    // The initial auth/bootstrap request may still be in flight when the user opens Premium.
+    refreshPlan().then(draw);
     s.el.addEventListener('click', async e => {
       if (!e.target.closest('[data-up]')) return;
       const b=e.target.closest('[data-up]'); b.disabled=true; b.textContent='Opening secure payment…';
