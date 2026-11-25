@@ -112,7 +112,7 @@ window.StrapFeatures = (() => {
       to_email:safe(receipt.to_email||'your account email')
     };
     fetch('/emails/premium-payment-success.html',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('Receipt template unavailable');return r.text();}).then(source=>{
-      const rendered=source.replace(/{{\\s*([a-z_]+)\\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]: '');
+      const rendered=source.replace(/{{\s*([a-z_]+)\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]: '');
       const frame=document.createElement('iframe');
       frame.title='Strap Premium payment confirmation';
       frame.setAttribute('sandbox','allow-popups allow-popups-to-escape-sandbox');
