@@ -845,7 +845,9 @@ H['premium/verify'] = async (req,res,user) => {
   try {
     const tx=await flwVerify(id);
     await activatePremium({...payment,customer_email:user.email},tx);
-    const sub=(await q('select expires_at from strap_subscriptions where user_id=$1',[user.id]))[0]||{};\n    const receiptNo='STR-'+String(txRef).replace(/[^a-zA-Z0-9]/g,'').slice(-14).toUpperCase();\n    return [200,{ok:true,active:true,receipt:{receipt_no:receiptNo,amount:Number(payment.amount),currency:'NGN',paid_on:new Date().toISOString(),next_billing_date:sub.expires_at||null,tx_ref:txRef}}];
+    const sub=(await q('select expires_at from strap_subscriptions where user_id=$1',[user.id]))[0]||{};
+    const receiptNo='STR-'+String(txRef).replace(/[^a-zA-Z0-9]/g,'').slice(-14).toUpperCase();\n    const account=(await q('select email,profile from app_users where id=$1',[user.id]))[0]||{};
+    return [200,{ok:true,active:true,receipt:{receipt_no:receiptNo,amount:Number(payment.amount),currency:'NGN',paid_on:new Date().toISOString(),next_billing_date:sub.expires_at||null,tx_ref:txRef,user_name:String(account.profile&&(account.profile.name||account.profile.full_name)||'Thank you'),store_name:String(account.profile&&account.profile.bizname||'your business'),to_email:String(account.email||'')}}];
   } catch(e) { console.error('Premium verification failed:',e.message); return [402,{ok:false,msg:'Payment is not confirmed yet. If you were charged, wait a moment and refresh this page.'}]; }
 };
 H['flutterwave/webhook'] = async (req,res) => {
