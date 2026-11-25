@@ -2,6 +2,10 @@
   "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/.well-known/oauth-protected-resource/api/mcp",
+      "destination": "/api/health?__strap_route=mcp/resource-metadata"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/health?__strap_route=:path*"
     }
@@ -13,6 +17,15 @@
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/mcp-*.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'none'"
         }
       ]
     }
