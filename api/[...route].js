@@ -331,7 +331,7 @@ const H = {};
 H['neon-auth'] = async (req, res) => {
   const route = String(req.__strap_route || ''), prefix = 'neon-auth/';
   const authPath = route.startsWith(prefix) ? route.slice(prefix.length) : '';
-  const allowed = new Set(['get-session','sign-in/email','sign-in/social','sign-out','oauth2/continue','oauth2/public-client','oauth2/consent']);
+  const allowed = new Set(['get-session','sign-in/email','sign-in/social','sign-out','oauth2/continue','oauth2/public-client','oauth2/public-client-prelogin','oauth2/consent']);
   if (!allowed.has(authPath)) { res.statusCode=404; return res.end('Not found'); }
   const base=String(E.NEON_AUTH_BASE_URL||'').replace(/\/$/,'');
   if(!base){res.statusCode=503;return res.end('Authentication is unavailable.');}
