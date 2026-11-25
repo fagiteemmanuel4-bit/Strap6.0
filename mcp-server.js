@@ -190,7 +190,7 @@ module.exports = function createMcp(options) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id');
   res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers','MCP-Protocol-Version, MCP-Session-Id');
+  res.setHeader('Access-Control-Expose-Headers','MCP-Protocol-Version, MCP-Session-Id, WWW-Authenticate');
   if(req.method==='OPTIONS') { res.statusCode=204; return res.end(); }
   await ensureSchema();
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return json(res,405,{error:'Use POST for the Strap MCP Streamable HTTP endpoint.'}); }
