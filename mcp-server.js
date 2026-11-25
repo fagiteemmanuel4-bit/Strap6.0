@@ -92,48 +92,65 @@ module.exports = function createMcp(options) {
    return customers.filter(c=>{if(!c||typeof c!=='object') return false;const customerBranches=Array.isArray(c.branchIds)?c.branchIds.map(String):[String(c.branchId||c.branch_id||c.branch||'')].filter(Boolean);const inBranch=token.branch_ids.includes('*')||(customerBranches.length?customerBranches.some(id=>token.branch_ids.includes(id)):token.branch_ids.includes('b0'));return inBranch&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query));}).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
   }
   if(!token.scopes.includes('store:write')) throw new Error('This AI connection has read-only permission.');
-  if(name==='strap_create_product'||name==='strap_update_product'||name==='strap_set_branch_stock') {
-   const branch=allowedBranch(ctx,token,args.branch_id), client=await pool.connect(); let productId=safeText(args.product_id,100);
-   try {
-    await client.query('begin');
-    await client.query("insert into user_data(user_id,blob,updated_at) values($1,'{}'::jsonb,now()) on conflict(user_id) do nothing",[token.user_id]);
-    const locked=await client.query('select blob from user_data where user_id=$1 for update',[token.user_id]), blob=locked.rows[0].blob||{}, key='ls:strap.f1.items.'+branch.id, products=parse(blob[key],[]);
-    if(!Array.isArray(products)) throw new Error('Product data is not available for this branch.');
-    if(name==='strap_create_product') {
-     const title=safeText(args.title,160), price=Number(args.price), qty=args.qty==null?0:Number(args.qty);
-     if(!title||!Number.isFinite(price)||price<0||!Number.isFinite(qty)||qty<0) throw new Error('Provide a product title, a valid non-negative price, and a valid non-negative quantity.');
-     productId=crypto.randomUUID();
-     products.unshift({id:productId,title,price,qty,category:safeText(args.category,100),sku:safeText(args.sku,80),barcode:safeText(args.barcode,80),description:safeText(args.description,2000),tracked:true,status:'active',createdAt:Date.now()});
-    } else {
-     const index=products.findIndex(p=>String(p.id)===productId);
-     if(index<0) throw new Error('Product not found in the selected branch.');
-     if(name==='strap_set_branch_stock') {
-      const qty=Number(args.quantity); if(!Number.isFinite(qty)||qty<0) throw new Error('Quantity must be a non-negative number.');
-      products[index]={...products[index],qty};
-     } else {
-      const fields=['title','price','qty','category','sku','barcode','description','tracked','status'], patch={};
-      for(const field of fields) if(Object.prototype.hasOwnProperty.call(args,field)) patch[field]=args[field];
-      if(patch.title!==undefined) { patch.title=safeText(patch.title,160); if(!patch.title) throw new Error('Product title cannot be empty.'); }
-      if(patch.price!==undefined) { if(!Number.isFinite(Number(patch.price))||Number(patch.price)<0) throw new Error('Price must be a non-negative number.'); patch.price=Number(patch.price); }
-      if(patch.qty!==undefined) { if(!Number.isFinite(Number(patch.qty))||Number(patch.qty)<0) throw new Error('Quantity must be a non-negative number.'); patch.qty=Number(patch.qty); }
-      if(patch.category!==undefined) patch.category=safeText(patch.category,100);
-      if(patch.sku!==undefined) patch.sku=safeText(patch.sku,80);
-      if(patch.barcode!==undefined) patch.barcode=safeText(patch.barcode,80);
-      if(patch.description!==undefined) patch.description=safeText(patch.description,2000);
-      if(patch.tracked!==undefined&&typeof patch.tracked!=='boolean') throw new Error('Tracked must be true or false.');
-      if(patch.status!==undefined&&!['active','draft','archived'].includes(patch.status)) throw new Error('Invalid product status.');
-      if(!Object.keys(patch).length) throw new Error('Provide at least one product field to update.');
-      products[index]={...products[index],...patch};
-     }
-    }
-    blob[key]=JSON.stringify(products);
-    await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[token.user_id,JSON.stringify(blob)]);
-    await client.query('commit');
-   } catch(error) { await client.query('rollback').catch(()=>{}); throw error; }
-   finally { client.release(); }
-   await audit(token,name,branch.id,productId,{fields:Object.keys(args).filter(k=>k!=='branch_id'&&k!=='product_id')});
-   return {ok:true,product_id:productId,branch_id:branch.id,action:name,...(name==='strap_upload_product_image'?{image_url:APP_URL+`/api/media?id=${safeText(args.product_id,100)}`,mime_type:imageMime,size_bytes:imageBuffer.length}:{})};
+  const writeNames=['strap_create_product','strap_update_product','strap_set_branch_stock','strap_upload_product_image'];
+  if(!writeNames.includes(name)) throw new Error('Unknown Strap tool: '+name);
+  const branch=allowedBranch(ctx,token,args.branch_id);
+  let productId=safeText(args.product_id,100), imageBuffer=null, imageMime='', imageUrl='';
+  if(name==='strap_upload_product_image') {
+   imageMime=safeText(args.mime_type,40);
+   if(!['image/jpeg','image/png','image/webp','image/gif'].includes(imageMime)) throw new Error('Only JPG, PNG, WEBP or GIF images are supported.');
+   const encoded=String(args.image_base64||'').replace(/\s/g,'');
+   if(!encoded||encoded.length>4194304||!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error('Provide a valid base64 image smaller than 3 MB.');
+   imageBuffer=Buffer.from(encoded,'base64');
+   if(!imageBuffer.length||imageBuffer.length>3*1024*1024||imageBuffer.toString('base64').replace(/=+$/,'')!==encoded.replace(/=+$/,'')) throw new Error('The image is invalid or exceeds the 3 MB limit.');
+   const valid=imageMime==='image/jpeg'?imageBuffer[0]===255&&imageBuffer[1]===216&&imageBuffer[2]===255:imageMime==='image/png'?imageBuffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):imageMime==='image/webp'?imageBuffer.toString('ascii',0,4)==='RIFF'&&imageBuffer.toString('ascii',8,12)==='WEBP':['GIF87a','GIF89a'].includes(imageBuffer.toString('ascii',0,6));
+   if(!valid) throw new Error('The image contents do not match the selected MIME type.');
   }
+  const client=await pool.connect();
+  try {
+   await client.query('begin');
+   await client.query("insert into user_data(user_id,blob,updated_at) values($1,'{}'::jsonb,now()) on conflict(user_id) do nothing",[token.user_id]);
+   const locked=await client.query('select blob from user_data where user_id=$1 for update',[token.user_id]), blob=locked.rows[0].blob||{}, key='ls:strap.f1.items.'+branch.id, products=parse(blob[key],[]);
+   if(!Array.isArray(products)) throw new Error('Product data is not available for this branch.');
+   if(name==='strap_create_product') {
+    const title=safeText(args.title,160), price=Number(args.price), qty=args.qty==null?0:Number(args.qty);
+    if(!title||!Number.isFinite(price)||price<0||!Number.isFinite(qty)||qty<0) throw new Error('Provide a product title, a valid non-negative price, and a valid non-negative quantity.');
+    productId=crypto.randomUUID();
+    products.unshift({id:productId,title,price,qty,category:safeText(args.category,100),sku:safeText(args.sku,80),barcode:safeText(args.barcode,80),description:safeText(args.description,2000),tracked:true,status:'active',createdAt:Date.now()});
+   } else {
+    const index=products.findIndex(p=>p&&String(p.id)===productId);
+    if(index<0) throw new Error('Product not found in the selected branch.');
+    if(name==='strap_set_branch_stock') {
+     const qty=Number(args.quantity); if(!Number.isFinite(qty)||qty<0) throw new Error('Quantity must be a non-negative number.');
+     products[index]={...products[index],qty};
+    } else if(name==='strap_upload_product_image') {
+     const uploaded=await client.query('insert into media(user_id,name,mime,data) values($1,$2,$3,$4) returning id',[token.user_id,safeText(args.file_name||'product-image',120),imageMime,imageBuffer]);
+     if(!uploaded.rows[0]) throw new Error('The image could not be stored.');
+     imageUrl='/api/media?id='+uploaded.rows[0].id;
+     products[index]={...products[index],image:imageUrl};
+    } else {
+     const fields=['title','price','qty','category','sku','barcode','description','tracked','status'], patch={};
+     for(const field of fields) if(Object.prototype.hasOwnProperty.call(args,field)) patch[field]=args[field];
+     if(patch.title!==undefined) { patch.title=safeText(patch.title,160); if(!patch.title) throw new Error('Product title cannot be empty.'); }
+     if(patch.price!==undefined) { if(!Number.isFinite(Number(patch.price))||Number(patch.price)<0) throw new Error('Price must be a non-negative number.'); patch.price=Number(patch.price); }
+     if(patch.qty!==undefined) { if(!Number.isFinite(Number(patch.qty))||Number(patch.qty)<0) throw new Error('Quantity must be a non-negative number.'); patch.qty=Number(patch.qty); }
+     if(patch.category!==undefined) patch.category=safeText(patch.category,100);
+     if(patch.sku!==undefined) patch.sku=safeText(patch.sku,80);
+     if(patch.barcode!==undefined) patch.barcode=safeText(patch.barcode,80);
+     if(patch.description!==undefined) patch.description=safeText(patch.description,2000);
+     if(patch.tracked!==undefined&&typeof patch.tracked!=='boolean') throw new Error('Tracked must be true or false.');
+     if(patch.status!==undefined&&!['active','draft','archived'].includes(patch.status)) throw new Error('Invalid product status.');
+     if(!Object.keys(patch).length) throw new Error('Provide at least one product field to update.');
+     products[index]={...products[index],...patch};
+    }
+   }
+   blob[key]=JSON.stringify(products);
+   await client.query('update user_data set blob=$2::jsonb,updated_at=now() where user_id=$1',[token.user_id,JSON.stringify(blob)]);
+   await client.query('commit');
+  } catch(error) { await client.query('rollback').catch(()=>{}); throw error; }
+  finally { client.release(); }
+  await audit(token,name,branch.id,productId,{fields:Object.keys(args).filter(k=>k!=='branch_id'&&k!=='product_id'&&k!=='image_base64'),...(imageBuffer?{mime_type:imageMime,size_bytes:imageBuffer.length}:{})});
+  return {ok:true,product_id:productId,branch_id:branch.id,action:name,...(imageBuffer?{image_url:APP_URL+imageUrl,mime_type:imageMime,size_bytes:imageBuffer.length}:{})};
   throw new Error('Unknown Strap tool: '+name);
  }
  async function verifyOAuthJwt(raw) {
