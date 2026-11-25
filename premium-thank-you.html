@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e6f53a">
+<title>Thank you</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@800&display=swap">
+<style>
+:root{--lemon:#e6f53a;--black:#0a0a0a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--lemon);font-family:"Sora","Helvetica Neue",Arial,sans-serif;font-weight:800;-webkit-font-smoothing:antialiased;overflow:hidden}
+.stage{position:relative;height:100%;background:var(--lemon);overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;--px:0;--py:0}
+.stage *{will-change:transform}
+.sh{position:absolute;top:0;bottom:0;width:25.2%;background:var(--black);z-index:20;transform-origin:top;pointer-events:none}
+.sh:nth-of-type(1){left:0}.sh:nth-of-type(2){left:25%}.sh:nth-of-type(3){left:50%}.sh:nth-of-type(4){left:75%}
+.go .sh{animation:open .9s cubic-bezier(.76,0,.18,1) forwards;animation-delay:calc(var(--i)*.09s)}
+@keyframes open{to{transform:scaleY(0)}}
+.orb{position:absolute;left:50%;top:50%;width:62vmin;height:62vmin;margin:-31vmin 0 0 -31vmin;border-radius:50%;background:var(--black);transform:scale(0);z-index:1}
+.go .orb{animation:orbIn .8s cubic-bezier(.2,1.4,.3,1) .7s forwards,sweep 5.2s cubic-bezier(.65,0,.35,1) 1.5s infinite alternate}
+@keyframes orbIn{to{transform:scale(1)}}
+@keyframes sweep{0%{transform:translate(-30vw,-6vh) scale(1);border-radius:50%}50%{transform:translate(0,8vh) scale(1.25,.7);border-radius:50% / 40%}100%{transform:translate(30vw,-6vh) scale(1);border-radius:50%}}
+.txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;mix-blend-mode:difference;color:var(--lemon);line-height:.8;letter-spacing:-.075em;transform:translate(calc(var(--px)*-14px),calc(var(--py)*-10px))}
+.w{display:block;font-size:min(31vw,34vh);white-space:nowrap;overflow:hidden;padding:.06em .04em .1em}
+.w i{display:inline-block;font-style:normal;transform:translateY(115%) rotate(10deg);transform-origin:left bottom}
+.go .w i{animation:rise .8s cubic-bezier(.2,1,.25,1) forwards,squash 2.4s ease-in-out infinite;animation-delay:calc(1s + var(--n)*.07s + var(--r)*.35s),calc(2.6s + var(--n)*.12s)}
+@keyframes rise{to{transform:none}}
+@keyframes squash{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.93) skewX(-5deg)}}
+.rib{position:absolute;left:-30%;width:160%;overflow:hidden;z-index:5;font-size:clamp(17px,4.6vw,30px);letter-spacing:-.02em;white-space:nowrap;padding:12px 0;transform:translateX(130%) rotate(var(--a))}
+.rib.a{--a:-11deg;top:10%;background:var(--black);color:var(--lemon)}
+.rib.b{--a:8deg;bottom:11%;background:#fff;color:var(--black);border-block:3px solid var(--black)}
+.go .rib{animation:ribIn 1s cubic-bezier(.2,1,.2,1) forwards;animation-delay:1.3s}
+.go .rib.b{animation-delay:1.45s}
+@keyframes ribIn{to{transform:translateX(0) rotate(var(--a))}}
+.trk{display:inline-block;animation:mq 12s linear infinite}
+.rib.b .trk{animation-direction:reverse;animation-duration:15s}
+@keyframes mq{to{transform:translateX(-50%)}}
+.badge{position:absolute;right:5vw;top:24%;width:clamp(92px,24vw,150px);z-index:6;transform:scale(0) rotate(-90deg)}
+.go .badge{animation:badgeIn .8s cubic-bezier(.2,1.5,.3,1) 2.1s forwards}
+@keyframes badgeIn{to{transform:scale(1) rotate(0)}}
+.badge svg{width:100%;display:block;animation:spin 9s linear infinite;overflow:visible}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ast{position:absolute;left:-14vmin;bottom:18%;width:42vmin;z-index:1;transform:translate(calc(var(--px)*24px),calc(var(--py)*18px))}
+.ast svg{width:100%;display:block;animation:spin 16s linear infinite,pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{scale:1.12}}
+.ring{position:absolute;right:-18vmin;bottom:-12vmin;width:54vmin;height:54vmin;border:4px solid var(--black);border-radius:50%;z-index:1;transform:scale(0);transform-origin:center}
+.go .ring{animation:ringIn .9s cubic-bezier(.2,1.2,.3,1) 1.8s forwards}
+@keyframes ringIn{to{transform:scale(1)}}
+.ring::after{content:"";position:absolute;left:50%;top:-11px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--black);transform-origin:9px calc(27vmin + 11px);animation:spin 3.4s linear infinite}
+.hint{position:absolute;z-index:7;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);text-align:center;font-size:11px;color:var(--black);opacity:.55}
+.x{position:absolute;z-index:30;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:46px;height:46px;border-radius:50%;border:0;background:var(--black);color:var(--lemon);display:grid;place-items:center;cursor:pointer;opacity:0;transform:scale(.4) rotate(-90deg)}
+.go .x{animation:badgeIn .7s cubic-bezier(.2,1.5,.3,1) 1.6s forwards}
+.x:active{scale:.9}
+.x svg{width:20px;height:20px}
+.stage{transition:opacity .35s,transform .35s}
+.stage.closing{opacity:0;transform:scale(1.04);pointer-events:none}
+.reopen{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);border:0;border-radius:99px;background:var(--lemon);color:var(--black);font:800 15px "Sora",sans-serif;padding:14px 26px;cursor:pointer}
+.reopen[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <i class="sh" style="--i:0"></i><i class="sh" style="--i:1"></i><i class="sh" style="--i:2"></i><i class="sh" style="--i:3"></i>
+  <div class="orb"></div>
+  <div class="ast" aria-hidden="true"><svg viewBox="-50 -50 100 100"><g fill="#0a0a0a"><rect x="-6" y="-48" width="12" height="96" rx="6"/><rect x="-6" y="-48" width="12" height="96" rx="6" transform="rotate(45)"/><rect x="-6" y="-48" width="12" height="96" rx="6" transform="rotate(90)"/><rect x="-6" y="-48" width="12" height="96" rx="6" transform="rotate(135)"/></g></svg></div>
+  <div class="ring" aria-hidden="true"></div>
+  <h1 class="txt" aria-label="Thank you">
+    <span class="w" id="w1" style="--r:0" aria-hidden="true"></span>
+    <span class="w" id="w2" style="--r:1" aria-hidden="true"></span>
+  </h1>
+  <div class="rib a" aria-hidden="true"><span class="trk" id="t1"></span></div>
+  <div class="rib b" aria-hidden="true"><span class="trk" id="t2"></span></div>
+  <div class="badge" aria-hidden="true">
+    <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="60" fill="#0a0a0a"/><defs><path id="c" d="M60 60m-43 0a43 43 0 1 1 86 0a43 43 0 1 1-86 0"/></defs><text font-size="12.5" fill="#e6f53a" letter-spacing="1.2"><textPath href="#c">Premium unlocked ✦ Premium unlocked ✦</textPath></text><g fill="#e6f53a" transform="translate(60 60)"><rect x="-3" y="-16" width="6" height="32" rx="3"/><rect x="-3" y="-16" width="6" height="32" rx="3" transform="rotate(60)"/><rect x="-3" y="-16" width="6" height="32" rx="3" transform="rotate(120)"/></g></svg>
+  </div>
+  <p class="hint">tap to replay</p>
+  <button class="x" id="x" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+</main>
+<button class="reopen" id="reopen" type="button" hidden>Replay</button>
+<script>
+(function(){
+  var st=document.getElementById('stage');
+  function L(id,s){document.getElementById(id).innerHTML=s.split('').map(function(c,i){return '<i style="--n:'+i+'">'+c+'</i>'}).join('')}
+  L('w1','Thank');L('w2','you.');
+  var a='Welcome to Premium  ✦  ',b='Thank you for subscribing  ●  ';
+  document.getElementById('t1').textContent=a.repeat(14);
+  document.getElementById('t2').textContent=b.repeat(12);
+  function play(){st.classList.remove('go');void st.offsetWidth;st.classList.add('go')}
+  function move(x,y){st.style.setProperty('--px',(x/innerWidth-.5)*2);st.style.setProperty('--py',(y/innerHeight-.5)*2)}
+  addEventListener('pointermove',function(e){move(e.clientX,e.clientY)});
+  var ro=document.getElementById('reopen');
+  function close(){
+    st.classList.add('closing');
+    setTimeout(function(){
+      st.hidden=true;ro.hidden=false;
+      document.dispatchEvent(new CustomEvent('premium:close'));
+      if(typeof window.onPremiumClose==='function')window.onPremiumClose();
+      try{parent!==window&&parent.postMessage({type:'premium:close'},'*')}catch(e){}
+    },360);
+  }
+  function open(){st.hidden=false;ro.hidden=true;st.classList.remove('closing');play()}
+  document.getElementById('x').addEventListener('click',function(e){e.stopPropagation();close()});
+  ro.addEventListener('click',open);
+  addEventListener('keydown',function(e){if(e.key==='Escape'&&!st.hidden)close()});
+  st.addEventListener('click',play);
+  play();
+})();
+</script>
+</body>
+</html>
