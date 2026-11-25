@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#e6f53a">
+<title>Strap — Billing workspace design source</title>
+<style>
+/* =========================================================
+   STRAP BILLING WORKSPACE — SINGLE-FILE DESIGN SOURCE
+   All eight billing pages live in this document.
+   Edit each page's CSS section independently below.
+   This is a visual/design preview with sample data; it does
+   not connect to the live billing API or trigger payments.
+========================================================= */
+:root{--lime:#e6f53a;--ink:#10110d;--muted:#77786f;--line:#e9e9e2;--paper:#fff;--canvas:#f6f6f1;--green:#16834d;--red:#c74343;--amber:#a86b0b;--radius:20px;--shadow:0 12px 34px rgba(20,20,10,.06);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas)}button,input{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:270px minmax(0,1fr)}
+.sidebar{background:#fff;border-right:1px solid var(--line);padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:0 12px 30px;font-size:20px;font-weight:900;letter-spacing:-1px}.brand-mark{width:34px;height:34px;border-radius:11px;background:var(--lime);display:grid;place-items:center;font-weight:1000}
+.nav-label{padding:0 12px 10px;color:#99998f;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;text-align:left;color:#5c5d55;font-size:13px;font-weight:650}.nav button:hover{background:#f5f5ef}.nav button.active{background:var(--lime);color:#111}.nav .num{margin-left:auto;color:#929389;font-size:10px}
+.side-foot{margin-top:auto;padding:18px 12px 0;border-top:1px solid var(--line);font-size:11px;color:#929389;line-height:1.6}
+.main{min-width:0;padding:34px clamp(18px,4vw,58px) 70px;max-width:1250px;width:100%;margin:0 auto}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}.eyebrow{font-size:11px;font-weight:800;color:#929389;letter-spacing:1.4px;text-transform:uppercase}.profile{width:38px;height:38px;border-radius:50%;background:#171812;color:var(--lime);display:grid;place-items:center;font-weight:800;font-size:12px}
+.page{display:none;animation:enter .2s ease}.page.active{display:block}@keyframes enter{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 24px}.page-head h1{font-size:clamp(25px,3vw,34px);letter-spacing:-1.3px;margin:0 0 7px}.page-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);margin-bottom:16px}.card-title{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;font-weight:800;margin-bottom:16px}.muted{color:var(--muted)}.small{font-size:11px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:11px 15px;font-size:12px;font-weight:800}.btn.primary{background:var(--lime);border-color:var(--lime)}.btn.dark{background:#111;color:#fff;border-color:#111}.btn:disabled{opacity:.4;cursor:not-allowed}
+.status{display:inline-flex;align-items:center;gap:6px;border-radius:30px;padding:6px 10px;font-size:10px;font-weight:800;text-transform:capitalize;background:#f0f0eb;color:#67685f}.status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.status.active,.status.successful{background:#e9f7ef;color:var(--green)}.status.pending{background:#fff5df;color:var(--amber)}.status.failed,.status.expired{background:#ffeded;color:var(--red)}
+.kv{display:flex;justify-content:space-between;gap:16px;padding:13px 0;border-bottom:1px solid var(--line);font-size:12px}.kv:last-child{border:0;padding-bottom:0}.kv span{color:var(--muted)}.kv b{text-align:right;font-weight:750}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.metric small{display:block;color:var(--muted);font-size:11px;margin-bottom:10px}.metric b{font-size:21px;letter-spacing:-.7px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.rows{display:grid;gap:9px}.row{width:100%;border:1px solid var(--line);background:#fff;border-radius:15px;padding:14px;display:flex;align-items:center;gap:13px;text-align:left}.row-icon{width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#f3f3ed;display:grid;place-items:center;font-size:16px}.row-main{min-width:0;flex:1}.row-main b{display:block;font-size:12px;margin-bottom:5px}.row-main small{display:block;font-size:10px;color:var(--muted);overflow-wrap:anywhere}.row .status{margin-left:auto}
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 15px}.filters button{border:1px solid var(--line);background:#fff;border-radius:30px;padding:8px 13px;font-size:11px;color:#666;font-weight:750}.filters button.active{background:#171812;color:var(--lime);border-color:#171812}
+.empty{border:1px dashed #d9d9d0;border-radius:16px;padding:35px 20px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}.empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:5px}
+.field{display:grid;gap:7px;margin:14px 0;font-size:11px;font-weight:750}.field input{width:100%;border:1px solid var(--line);border-radius:11px;padding:13px;background:#fff;outline:none}.field input:focus{border-color:#a7b02a;box-shadow:0 0 0 3px rgba(230,245,58,.2)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid var(--line);font-size:12px}.switch-row:last-child{border:0}.switch-row input{accent-color:#151610;width:17px;height:17px}
+/* PAGE 1 — BILLING OVERVIEW */
+#billing-overview .plan-hero{background:#171812;color:#fff;border-radius:24px;padding:26px;position:relative;overflow:hidden;margin-bottom:15px}.plan-hero:after{content:"";position:absolute;width:220px;height:220px;border:1px solid rgba(230,245,58,.22);border-radius:50%;right:-65px;top:-100px;box-shadow:0 0 0 25px rgba(230,245,58,.04),0 0 0 55px rgba(230,245,58,.03)}.plan-hero h2{font-size:30px;letter-spacing:-1px;margin:22px 0 8px}.plan-hero p{color:#b9baaf;font-size:12px;max-width:460px;line-height:1.6}.plan-hero .hero-foot{display:flex;align-items:baseline;gap:9px;margin-top:25px}.plan-hero .hero-foot b{font-size:25px;color:var(--lime)}.plan-hero .hero-foot small{color:#a7a89f}
+/* PAGE 2 — PAYMENT HISTORY */
+#billing-history .history-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:15px}
+/* PAGE 3 — PAYMENTS RECEIVED & RECEIPTS */
+#billing-receipts .receipt-paper{max-width:570px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px}.receipt-brand{display:flex;justify-content:space-between;align-items:center;padding-bottom:22px;border-bottom:1px dashed #d9d9d0}.receipt-brand b{font-size:19px;letter-spacing:-1px}.receipt-total{padding:24px 0}.receipt-total small{display:block;color:var(--muted);font-size:11px}.receipt-total strong{display:block;font-size:30px;letter-spacing:-1px;margin:7px 0}
+/* PAGE 4 — PAYMENT RESULTS */
+#billing-results .result-item{display:grid;gap:8px}.result-item-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+/* PAGE 5 — RENEW PREMIUM */
+#billing-renew .renew-hero{background:var(--lime);border-radius:22px;padding:26px;margin-bottom:15px}.renew-hero h2{font-size:34px;letter-spacing:-1.5px;margin:15px 0 5px}.renew-hero h2 small{font-size:12px;letter-spacing:0}
+/* PAGE 6 — SUBSCRIPTION MANAGEMENT */
+#billing-subscription .subscription-callout{background:#f7f8e8;border:1px solid #eceec7;border-radius:15px;padding:15px;font-size:11px;line-height:1.7;color:#555}
+/* PAGE 7 — BILLING NOTIFICATIONS */
+#billing-notifications .notice-intro{font-size:11px;color:var(--muted);line-height:1.7;margin:-5px 0 12px}
+/* PAGE 8 — PAYMENT RECONCILIATION */
+#billing-reconciliation .reconcile-help{font-size:11px;line-height:1.7;color:var(--muted);margin:8px 0 16px}
+@media(max-width:760px){.app{display:block}.sidebar{position:relative;height:auto;padding:15px 14px;border-right:0;border-bottom:1px solid var(--line)}.brand{padding:0 5px 13px}.nav-label,.side-foot{display:none}.nav{display:flex;overflow:auto;padding-bottom:2px}.nav button{white-space:nowrap;padding:10px 12px;font-size:11px}.nav button .num{display:none}.main{padding:22px 15px 45px}.topline{margin-bottom:20px}.grid3{grid-template-columns:1fr}.metric{padding:15px}.page-head{margin-bottom:18px}.card{padding:17px}.plan-hero{padding:22px!important}.row{padding:12px}.kv{font-size:11px}}
+@media print{body{background:#fff}.sidebar,.topline,.page-head,.no-print{display:none!important}.app{display:block}.main{padding:0}.page{display:none!important}#billing-receipts.page.active{display:block!important}.receipt-paper{box-shadow:none!important;border:0!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><span class="brand-mark">S</span> STRAP <span class="small">/ BILLING</span></div>
+  <div class="nav-label">Billing workspace</div>
+  <nav class="nav" aria-label="Billing pages">
+    <button class="active" data-page="billing-overview">◫ <span>Overview</span><span class="num">01</span></button>
+    <button data-page="billing-history">↗ <span>Payment history</span><span class="num">02</span></button>
+    <button data-page="billing-receipts">▤ <span>Payments & receipts</span><span class="num">03</span></button>
+    <button data-page="billing-results">◷ <span>Payment results</span><span class="num">04</span></button>
+    <button data-page="billing-renew">✳ <span>Renew Premium</span><span class="num">05</span></button>
+    <button data-page="billing-subscription">▣ <span>Subscription</span><span class="num">06</span></button>
+    <button data-page="billing-notifications">✉ <span>Notifications</span><span class="num">07</span></button>
+    <button data-page="billing-reconciliation">⟳ <span>Reconciliation</span><span class="num">08</span></button>
+  </nav>
+  <div class="side-foot">STRAP BILLING<br>Single-file styling reference<br><span style="color:#b0b0a7">Design preview · sample records</span></div>
+</aside>
+<main class="main">
+  <div class="topline"><div><div class="eyebrow">Workspace / Billing</div><div class="small" style="margin-top:5px">Manage payments, receipts and your Premium plan</div></div><div class="profile">ST</div></div>
+
+  <!-- PAGE 1: BILLING OVERVIEW -->
+  <section class="page active" id="billing-overview">
+    <header class="page-head"><div><h1>Billing overview</h1><p>A clear view of your plan, payments and account billing.</p></div></header>
+    <section class="plan-hero"><div class="card-title"><span>Current plan</span><span class="status active">Active</span></div><h2>Strap Premium</h2><p>Your Premium tools are available until 25 December 2026. Your subscription renews manually, so you stay in control.</p><div class="hero-foot"><b>₦4,500</b><small>per 30-day billing period</small></div></section>
+    <div class="grid3"><article class="metric"><small>Total paid</small><b>₦13,500</b></article><article class="metric"><small>Successful payments</small><b>3</b></article><article class="metric"><small>Pending payments</small><b>0</b></article></div>
+    <section class="card" style="margin-top:16px"><div class="card-title">Subscription details <button class="btn" data-open="billing-subscription">Manage</button></div><div class="kv"><span>Renewal type</span><b>Manual</b></div><div class="kv"><span>Next renewal price</span><b>₦6,000</b></div><div class="kv"><span>Expiry date</span><b>25 Dec 2026</b></div><div class="kv"><span>Renewal setting</span><b>Not automatic</b></div></section>
+    <div class="actions"><button class="btn primary" data-open="billing-renew">Renew Premium</button><button class="btn" data-open="billing-history">Payment history</button></div>
+    <section class="card"><div class="card-title">Billing shortcuts</div><div class="rows"><button class="row" data-open="billing-receipts"><span class="row-icon">▤</span><span class="row-main"><b>Receipts and payments received</b><small>View verified payments and receipts</small></span>›</button><button class="row" data-open="billing-results"><span class="row-icon">◷</span><span class="row-main"><b>Payment results</b><small>See every checkout attempt</small></span>›</button><button class="row" data-open="billing-notifications"><span class="row-icon">✉</span><span class="row-main"><b>Billing email notifications</b><small>Choose the emails you receive</small></span>›</button><button class="row" data-open="billing-reconciliation"><span class="row-icon">⟳</span><span class="row-main"><b>Payment reconciliation</b><small>Resolve a payment that has not updated</small></span>›</button></div></section>
+  </section>
+
+  <!-- PAGE 2: PAYMENT HISTORY -->
+  <section class="page" id="billing-history">
+    <header class="page-head"><div><h1>Payment history</h1><p>Your Strap Premium charges, newest first.</p></div></header>
+    <div class="history-toolbar"><div class="filters" id="history-filters"><button class="active" data-filter="all">All</button><button data-filter="successful">Successful</button><button data-filter="pending">Pending</button><button data-filter="failed">Failed</button></div><span class="small">3 records</span></div>
+    <div class="rows" id="history-rows">
+      <button class="row" data-receipt="STRAP-2026-003"><span class="row-icon">▤</span><span class="row-main"><b>₦4,500</b><small>25 Nov 2026 · STRAP-2026-003</small></span><span class="status successful">Successful</span></button>
+      <button class="row" data-receipt="STRAP-2026-002"><span class="row-icon">▤</span><span class="row-main"><b>₦4,500</b><small>25 Oct 2026 · STRAP-2026-002</small></span><span class="status successful">Successful</span></button>
+      <button class="row" data-receipt="STRAP-2026-001"><span class="row-icon">▤</span><span class="row-main"><b>₦4,500</b><small>25 Sep 2026 · STRAP-2026-001</small></span><span class="status failed">Failed</span></button>
+    </div>
+  </section>
+
+  <!-- PAGE 3: PAYMENTS RECEIVED & RECEIPTS -->
+  <section class="page" id="billing-receipts">
+    <header class="page-head"><div><h1>Payments received & receipts</h1><p>Verified Premium payments and printable receipts.</p></div></header>
+    <div class="receipt-paper" id="receipt-paper"><div class="receipt-brand"><b>STRAP.</b><small class="muted">PAYMENT RECEIPT</small></div><div class="receipt-total"><small>Amount paid</small><strong id="receipt-amount">₦4,500.00</strong><span class="status successful">Successful</span></div><div class="kv"><span>Payment reference</span><b id="receipt-ref">STRAP-2026-003</b></div><div class="kv"><span>Flutterwave transaction</span><b>986542310</b></div><div class="kv"><span>Payment date</span><b>25 Nov 2026, 10:42</b></div><div class="kv"><span>Verified</span><b>25 Nov 2026, 10:42</b></div><div class="kv"><span>Currency</span><b>NGN</b></div><p class="small" style="margin:20px 0 0">Issued by Strap. Keep this receipt for your records.</p></div>
+    <div class="actions no-print" style="justify-content:center"><button class="btn primary" onclick="window.print()">Print / Save receipt</button><button class="btn" data-open="billing-history">All payments</button></div>
+  </section>
+
+  <!-- PAGE 4: PAYMENT RESULTS -->
+  <section class="page" id="billing-results">
+    <header class="page-head"><div><h1>Payment results</h1><p>Every checkout attempt and its latest recorded result.</p></div></header>
+    <div class="rows">
+      <article class="card result-item"><div class="result-item-top"><b>₦4,500</b><span class="status successful">Successful</span></div><small class="muted">25 Nov 2026 · 10:42</small><small class="muted">STRAP-2026-003</small></article>
+      <article class="card result-item"><div class="result-item-top"><b>₦4,500</b><span class="status successful">Successful</span></div><small class="muted">25 Oct 2026 · 09:18</small><small class="muted">STRAP-2026-002</small></article>
+      <article class="card result-item"><div class="result-item-top"><b>₦4,500</b><span class="status failed">Failed</span></div><small class="muted">25 Sep 2026 · 14:06</small><small class="muted">STRAP-2026-001</small></article>
+    </div>
+  </section>
+
+  <!-- PAGE 5: RENEW PREMIUM -->
+  <section class="page" id="billing-renew">
+    <header class="page-head"><div><h1>Renew Premium</h1><p>Keep your business tools available with a secure renewal.</p></div></header>
+    <section class="renew-hero"><span class="eyebrow">Strap Premium</span><h2>₦6,000 <small>/ 30 days</small></h2><p class="muted" style="font-size:12px;line-height:1.7">Your current access remains active. Renewing early adds 30 days to your existing expiry date.</p></section>
+    <section class="card"><div class="card-title">Payment details</div><div class="kv"><span>Payment method</span><b>Flutterwave · Card</b></div><div class="kv"><span>Currency</span><b>NGN</b></div><div class="kv"><span>Billing</span><b>Manual renewal</b></div><div class="kv"><span>Price sequence</span><b>₦4,500 first 3 payments, then ₦6,000</b></div></section>
+    <p class="small" style="line-height:1.7;margin:14px 2px">You will be taken to Flutterwave's secure checkout. Strap never collects or stores your card number or CVV.</p>
+    <button class="btn primary" id="demo-checkout">Continue to secure payment</button>
+  </section>
+
+  <!-- PAGE 6: SUBSCRIPTION MANAGEMENT -->
+  <section class="page" id="billing-subscription">
+    <header class="page-head"><div><h1>Subscription management</h1><p>Review your Premium subscription and renewal preference.</p></div></header>
+    <section class="card"><div class="card-title">Strap Premium <span class="status active">Active</span></div><div class="kv"><span>Started</span><b>25 Sep 2026</b></div><div class="kv"><span>Expires</span><b>25 Dec 2026</b></div><div class="kv"><span>Current price</span><b>₦4,500 / 30 days</b></div><div class="kv"><span>Renewal</span><b>Manual</b></div></section>
+    <section class="card"><div class="card-title">Renewal preference</div><p class="subscription-callout">Strap does not charge automatically. You stay in control and renew manually. You can request that your subscription ends when the current paid period expires.</p><div class="switch-row"><span><b>End subscription at expiry</b><br><small class="muted" id="cancel-description">Your plan remains active until its paid expiry date.</small></span><input type="checkbox" id="cancel-toggle" aria-label="End subscription at expiry"></div></section>
+    <button class="btn primary" data-open="billing-renew">Renew Premium</button>
+  </section>
+
+  <!-- PAGE 7: BILLING NOTIFICATIONS -->
+  <section class="page" id="billing-notifications">
+    <header class="page-head"><div><h1>Billing notifications</h1><p>Choose which billing updates arrive in your inbox.</p></div></header>
+    <section class="card"><div class="card-title">Email delivery <span class="status active">Configured</span></div><p class="notice-intro">Billing emails are routed through your configured EmailJS service. You can change these preferences at any time.</p><label class="switch-row"><span>All billing emails</span><input type="checkbox" checked></label><label class="switch-row"><span>Successful payment receipts</span><input type="checkbox" checked></label><label class="switch-row"><span>Payment failure alerts</span><input type="checkbox" checked></label><label class="switch-row"><span>Subscription expiry reminders</span><input type="checkbox" checked></label></section>
+    <section class="card"><div class="card-title">Renewal reminder timing</div><p class="notice-intro">Choose when to receive expiry reminders.</p><div class="grid3"><label class="switch-row"><span>14 days before</span><input type="checkbox"></label><label class="switch-row"><span>7 days before</span><input type="checkbox" checked></label><label class="switch-row"><span>3 days before</span><input type="checkbox" checked></label></div><label class="switch-row"><span>1 day before</span><input type="checkbox" checked></label></section>
+    <div class="actions"><button class="btn primary" id="save-prefs">Save email preferences</button><button class="btn" id="test-email">Send test email to my account</button></div>
+    <section class="card"><div class="card-title">Recent email activity</div><div class="kv"><span>Payment success · 25 Nov 2026</span><span class="status successful">Sent</span></div><div class="kv"><span>Renewal reminder · 18 Nov 2026</span><span class="status successful">Sent</span></div></section>
+  </section>
+
+  <!-- PAGE 8: PAYMENT RECONCILIATION -->
+  <section class="page" id="billing-reconciliation">
+    <header class="page-head"><div><h1>Payment reconciliation</h1><p>Resolve a payment that Flutterwave completed but Strap has not updated.</p></div></header>
+    <section class="card"><div class="card-title">Resolve a payment</div><p class="reconcile-help">If Flutterwave shows that you paid but Strap has not updated your Premium access, enter the original Strap reference and Flutterwave transaction ID. Strap verifies directly with Flutterwave before changing your account.</p><label class="field">Strap payment reference<input id="reconcile-ref" placeholder="STRAP-TEST-…"></label><label class="field">Flutterwave transaction ID<input id="reconcile-id" inputmode="numeric" placeholder="Numeric transaction ID"></label><button class="btn primary" id="verify-payment">Verify payment</button></section>
+    <h2 style="font-size:15px;margin:26px 0 13px">Pending and recent attempts</h2><div class="rows"><article class="card"><div class="result-item-top"><b>₦4,500</b><span class="status pending">Pending</span></div><small class="muted">25 Nov 2026 · STRAP-TEST-004</small><button class="btn" style="margin-top:12px" data-fill="STRAP-TEST-004">Use this reference</button></article><article class="card"><div class="result-item-top"><b>₦4,500</b><span class="status successful">Successful</span></div><small class="muted">25 Nov 2026 · STRAP-2026-003</small></article></div>
+    <section class="card"><div class="card-title">Reconciliation activity</div><div class="kv"><span>Manual verification · 25 Nov 2026</span><b>Payment confirmed</b></div></section>
+  </section>
+</main>
+</div>
+<script>
+/* =========================================================
+   BILLING WORKSPACE JAVASCRIPT
+   Page switching and small preview-only interactions.
+   Replace demo handlers with the live Strap API when needed.
+========================================================= */
+(() => {
+  const pages=[...document.querySelectorAll('.page')];
+  const nav=[...document.querySelectorAll('[data-page]')];
+  function openPage(id){
+    pages.forEach(p=>p.classList.toggle('active',p.id===id));
+    nav.forEach(n=>n.classList.toggle('active',n.dataset.page===id));
+    const page=document.getElementById(id);if(page)page.scrollIntoView({block:'start',behavior:'smooth'});
+    history.replaceState(null,'','#'+id);
+  }
+  nav.forEach(n=>n.addEventListener('click',()=>openPage(n.dataset.page)));
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-open]');if(b)openPage(b.dataset.open);
+    const receipt=e.target.closest('[data-receipt]');if(receipt){document.getElementById('receipt-ref').textContent=receipt.dataset.receipt;document.getElementById('receipt-amount').textContent='₦4,500.00';openPage('billing-receipts');}
+    const fill=e.target.closest('[data-fill]');if(fill)document.getElementById('reconcile-ref').value=fill.dataset.fill;
+  });
+  document.querySelectorAll('[data-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
+    document.querySelectorAll('#history-rows .row').forEach(row=>{
+      const state=row.querySelector('.status')?.textContent.toLowerCase()||'';
+      row.hidden=btn.dataset.filter!=='all'&&state!==btn.dataset.filter;
+    });
+  }));
+  const cancel=document.getElementById('cancel-toggle');
+  cancel?.addEventListener('change',()=>document.getElementById('cancel-description').textContent=cancel.checked?'Your Premium access will remain active until 25 Dec 2026.':'Your plan remains active until its paid expiry date.');
+  document.getElementById('save-prefs')?.addEventListener('click',()=>alert('Preview only — connect this button to the billing notifications API.'));
+  document.getElementById('test-email')?.addEventListener('click',()=>alert('Preview only — connect this button to the EmailJS test-email API.'));
+  document.getElementById('verify-payment')?.addEventListener('click',()=>alert('Preview only — connect this button to the secure payment reconciliation API.'));
+  document.getElementById('demo-checkout')?.addEventListener('click',()=>alert('Preview only — live Flutterwave checkout is not called from this design file.'));
+  const initial=location.hash.slice(1);if(pages.some(p=>p.id===initial))openPage(initial);
+})();
+</script>
+</body>
+</html>
