@@ -789,7 +789,9 @@ H['premium/status'] = async (req,res,user) => {
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
   if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
   const nextAmount=await premiumCheckoutAmount(user.id);
-  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&flwPublicReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
+  const readiness={mode:flwMode(),secretConfigured:!!flwSecret(),secretModeMatch:flwReady(),publicKeyConfigured:!!flwPublicKey(),publicKeyModeMatch:flwPublicReady(),introductoryAmount:premiumAmount(),nextAmount};
+  console.info('[premium-status] checkout readiness:',JSON.stringify(readiness));
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:readiness.secretModeMatch&&readiness.publicKeyModeMatch&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
 };
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
