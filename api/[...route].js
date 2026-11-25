@@ -349,7 +349,7 @@ async function ensurePremiumSchema() {
   return premiumSchemaReady;
 }
 const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
-const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
+const flwSecret=()=>String(flwMode()==='test'?(E.FLW_TEST_SECRET_KEY||''): (E.FLW_SECRET_KEY||'')).trim();
 const flwReady=()=>{const mode=flwMode(),key=flwSecret();return (mode==='live'&&key.startsWith('FLWSECK_LIVE-'))||(mode==='test'&&key.startsWith('FLWSECK_TEST-'));};
 const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
 const premiumStandardAmount=()=>{const n=Number(E.FLW_PREMIUM_STANDARD_AMOUNT_NGN||6000);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:6000;};
