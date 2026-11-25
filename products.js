@@ -540,7 +540,8 @@ window.StrapProducts = (() => {
 
     function openPage(p) {
       page.hidden = false; document.body.classList.add('pm-open'); page.scrollTop = 0; void page.offsetWidth; page.classList.add('on');
-      resetForm(); editing = p || null; if (p) fillForm(p);
+      try {
+        resetForm(); editing = p || null; if (p) fillForm(p);
       $('#pm-ptitle', page).textContent = p ? 'Edit product' : 'Add product';
       $('[data-save]', page).textContent = p ? 'Save changes' : 'Save product';
       const dl = $('[data-del]', page); dl.hidden = !p; dl.classList.remove('arm');
@@ -554,7 +555,11 @@ window.StrapProducts = (() => {
         const invBox = $('[data-f="invbox"]', page);
         if (invBox) { invBox.insertAdjacentHTML('afterend', '<p class="pm-tl" data-inventory-lock hidden>Inventory changes require Premium. Your current stock is preserved.</p>'); lockNote = $('[data-inventory-lock]', page); }
       }
-      if (lockNote) lockNote.hidden = !inventoryLocked;
+        if (lockNote) lockNote.hidden = !inventoryLocked;
+      } catch (err) {
+        console.error('[Strap products] Product panel initialisation failed:', err);
+        toast('The product panel opened, but some fields failed to load. Please try again.');
+      }
     }
     function closePage() { page.classList.remove('on'); document.body.classList.remove('pm-open'); setTimeout(() => { if (!page.classList.contains('on')) page.hidden = true; }, 360); }
     function resetForm() {
