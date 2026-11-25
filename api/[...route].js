@@ -841,7 +841,12 @@ H['premium/verify'] = async (req,res,user) => {
   await ensurePremiumSchema();
   const payment=(await q("select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 and user_id=$2 limit 1",[txRef,user.id]))[0];
   if(!payment) return [404,{ok:false,msg:'We could not find this payment.'}];
-  if(payment.status==='successful') return [200,{ok:true,active:await premiumActive(user.id),alreadyProcessed:true}];
+  if(payment.status==='successful') {
+    const active=await premiumActive(user.id),sub=(await q('select expires_at from strap_subscriptions where user_id=$1',[user.id]))[0]||{};
+    const account=(await q('select email,profile from app_users where id=$1',[user.id]))[0]||{};
+    const receiptNo='STR-'+String(txRef).replace(/[^a-zA-Z0-9]/g,'').slice(-14).toUpperCase();
+    return [200,{ok:true,active,alreadyProcessed:true,receipt:{receipt_no:receiptNo,amount:Number(payment.amount),currency:'NGN',paid_on:payment.verified_at||new Date().toISOString(),next_billing_date:sub.expires_at||null,tx_ref:txRef,user_name:String(account.profile&&(account.profile.name||account.profile.full_name)||'Thank you'),store_name:String(account.profile&&account.profile.bizname||'your business'),to_email:String(account.email||'')}}];
+  }
   try {
     const tx=await flwVerify(id);
     await activatePremium({...payment,customer_email:user.email},tx);
