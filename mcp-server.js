@@ -99,8 +99,8 @@ module.exports = function createMcp(options) {
     const locked=await client.query('select blob from user_data where user_id=$1 for update',[token.user_id]), blob=locked.rows[0].blob||{}, key='ls:strap.f1.items.'+branch.id, products=parse(blob[key],[]);
     if(!Array.isArray(products)) throw new Error('Product data is not available for this branch.');
     if(name==='strap_create_product') {
-     const title=safeText(args.title,160), price=Number(args.price), qty=Math.max(0,number(args.qty,0));
-     if(!title||!Number.isFinite(price)||price<0) throw new Error('Provide a product title and a valid non-negative price.');
+     const title=safeText(args.title,160), price=Number(args.price), qty=args.qty==null?0:Number(args.qty);
+     if(!title||!Number.isFinite(price)||price<0||!Number.isFinite(qty)||qty<0) throw new Error('Provide a product title, a valid non-negative price, and a valid non-negative quantity.');
      productId=crypto.randomUUID();
      products.unshift({id:productId,title,price,qty,category:safeText(args.category,100),sku:safeText(args.sku,80),barcode:safeText(args.barcode,80),description:safeText(args.description,2000),tracked:true,status:'active',createdAt:Date.now()});
     } else {
@@ -119,7 +119,9 @@ module.exports = function createMcp(options) {
       if(patch.sku!==undefined) patch.sku=safeText(patch.sku,80);
       if(patch.barcode!==undefined) patch.barcode=safeText(patch.barcode,80);
       if(patch.description!==undefined) patch.description=safeText(patch.description,2000);
+      if(patch.tracked!==undefined&&typeof patch.tracked!=='boolean') throw new Error('Tracked must be true or false.');
       if(patch.status!==undefined&&!['active','draft','archived'].includes(patch.status)) throw new Error('Invalid product status.');
+      if(!Object.keys(patch).length) throw new Error('Provide at least one product field to update.');
       products[index]={...products[index],...patch};
      }
     }
@@ -142,7 +144,7 @@ module.exports = function createMcp(options) {
   try { header=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));payload=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8')); } catch(_) { return null; }
   if(header.alg!=='EdDSA'||!header.kid||payload.iss!==issuer||!payload.sub) return null;
   const now=Math.floor(Date.now()/1000);
-  if(!Number.isFinite(Number(payload.exp))||Number(payload.exp)<=now||(payload.nbf&&Number(payload.nbf)>now+30)) return null;
+  if(!Number.isFinite(Number(payload.exp))||Number(payload.exp)<=now||(payload.nbf&&Number(payload.nbf)>now+30)||(payload.iat&&Number(payload.iat)>now+30)) return null;
   const aud=Array.isArray(payload.aud)?payload.aud:[payload.aud];
   if(!aud.includes(APP_URL+'/api/mcp')) return null;
   try {
