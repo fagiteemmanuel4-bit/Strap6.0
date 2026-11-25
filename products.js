@@ -219,6 +219,11 @@ window.StrapProducts = (() => {
       const rows = visible();
       if (!rows.length) { body.innerHTML = `<div class="pm-nomatch">${ic('search', 26, 1.8)}<p>No products match your search.</p></div>`; return; }
       body.innerHTML = viewMode === 'grid' ? `<ul class="pm-grid">${rows.map(cardHtml).join('')}</ul>` : `<ul class="pm-list">${rows.map(rowHtml).join('')}</ul>`;
+      body.querySelectorAll('.pm-row[data-id], .pm-gc[data-id]').forEach(item => {
+        const open = e => { if (e && e.target && e.target.closest && e.target.closest('.pm-ck')) return; const product = items.find(x => String(x.id) === String(item.dataset.id)); if (product) openPage(product); else toast('This product could not be opened. Refresh and try again.'); };
+        item.addEventListener('click', open);
+        item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
+      });
     }
     function renderSel() { selbar.hidden = !picked.size; $('b', selbar).textContent = `${picked.size} selected`; }
     const subs = [];
@@ -234,8 +239,7 @@ window.StrapProducts = (() => {
     root.addEventListener('click', e => {
       const t = e.target;
       const act = t.closest('[data-act]');
-      if (act) { const a = act.dataset.act; if (a === 'add') openPage(); if (a === 'import') openImport(); if (a === 'discover') toast('Product sourcing is coming soon'); return; }
-      if (t.closest('#pm-add')) return openPage();
+      if (act) { const a = act.dataset.act; if (a === 'import') openImport(); if (a === 'discover') toast('Product sourcing is coming soon'); return; }
       if (t.closest('#pm-more')) return togglePop();
       if (t.closest('#pm-clear')) { picked.clear(); renderBody(); renderSel(); return; }
       if (t.closest('[data-plus]')) return toast('Saved views are coming soon');
@@ -245,10 +249,10 @@ window.StrapProducts = (() => {
         viewMode = viewMode === 'list' ? 'grid' : 'list'; try { sessionStorage.setItem('strap.pview', viewMode); } catch (er) {}
         renderChrome(); renderBody(); toast(viewMode === 'grid' ? 'Column view' : 'List view'); return;
       }
-      const it = t.closest('.pm-row[data-id], .pm-gc[data-id]');
-      if (it && !t.closest('.pm-ck')) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); else toast('This product could not be opened. Refresh the page and try again.'); }
     }, true);
-    root.addEventListener('keydown', e => { if (e.key === 'Enter') { const it = e.target.closest('.pm-row[data-id], .pm-gc[data-id]'); if (it) { const p = items.find(x => String(x.id) === String(it.dataset.id)); if (p) openPage(p); } } });
+    body.addEventListener('click', e => { const add = e.target.closest('[data-act="add"]'); if (add) { e.preventDefault(); openPage(); } });
+    const headerAdd = $('#pm-add', root);
+    if (headerAdd) headerAdd.addEventListener('click', e => { e.preventDefault(); openPage(); });
     body.addEventListener('change', e => { const c = e.target.closest('input[type=checkbox]'); if (!c) return; c.checked ? picked.add(c.dataset.id) : picked.delete(c.dataset.id); renderSel(); });
     $('#pm-q', root).addEventListener('input', e => { query = e.target.value.trim(); renderBody(); });
     $('#pm-sort', root).addEventListener('change', e => { sort = e.target.value; renderBody(); });
@@ -535,6 +539,7 @@ window.StrapProducts = (() => {
     let files = [], editing = null;
 
     function openPage(p) {
+      page.hidden = false; document.body.classList.add('pm-open'); page.scrollTop = 0; void page.offsetWidth; page.classList.add('on');
       resetForm(); editing = p || null; if (p) fillForm(p);
       $('#pm-ptitle', page).textContent = p ? 'Edit product' : 'Add product';
       $('[data-save]', page).textContent = p ? 'Save changes' : 'Save product';
@@ -550,7 +555,6 @@ window.StrapProducts = (() => {
         if (invBox) { invBox.insertAdjacentHTML('afterend', '<p class="pm-tl" data-inventory-lock hidden>Inventory changes require Premium. Your current stock is preserved.</p>'); lockNote = $('[data-inventory-lock]', page); }
       }
       if (lockNote) lockNote.hidden = !inventoryLocked;
-      page.hidden = false; document.body.classList.add('pm-open'); page.scrollTop = 0; void page.offsetWidth; page.classList.add('on');
     }
     function closePage() { page.classList.remove('on'); document.body.classList.remove('pm-open'); setTimeout(() => { if (!page.classList.contains('on')) page.hidden = true; }, 360); }
     function resetForm() {
