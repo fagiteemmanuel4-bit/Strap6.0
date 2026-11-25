@@ -77,13 +77,14 @@ module.exports = function createMcp(options) {
    return sales.filter(s=>{
     const ts=number(s.ts,Date.parse(s.ts||''));
     if(!Number.isFinite(ts)||ts<from||ts>to) return false;
-    if(!token.branch_ids.includes('*')&&token.branch_ids.length===1&&token.branch_ids[0]!=='b0') return String(s.branchId||s.branch||'')===token.branch_ids[0];
-    return true;
+    if(token.branch_ids.includes('*')) return true;
+    const saleBranch=String(s.branchId||s.branch||'');
+    return !!saleBranch && token.branch_ids.includes(saleBranch);
    }).slice(0,limit).map(s=>({id:String(s.id||s.no||''),receipt_number:safeText(s.no,80),date:s.ts?new Date(number(s.ts,Date.parse(s.ts))).toISOString():null,customer:safeText(s.customer,160),total:number(s.total),paid:number(s.paidNow,number(s.total)-number(s.due)),due:number(s.due),payment_method:safeText(s.method,40),items:Array.isArray(s.lines)?s.lines.length:0}));
   }
   if(name==='strap_search_customers') {
    const query=safeText(args.query,120).toLowerCase(), limit=Math.max(1,Math.min(100,Math.floor(number(args.limit,50)))), customers=Array.isArray(ctx.operations.customers)?ctx.operations.customers:[];
-   return customers.filter(c=>[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query))).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
+   return customers.filter(c=>(token.branch_ids.includes('*')||token.branch_ids.includes(String(c.branchId||c.branch||'')))&&[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(query))).slice(0,limit).map(c=>({id:String(c.id||''),name:safeText(c.name,120),email:safeText(c.email,160),phone:safeText(c.phone,60)}));
   }
   if(!token.scopes.includes('store:write')) throw new Error('This AI connection has read-only permission.');
   if(name==='strap_create_product'||name==='strap_update_product'||name==='strap_set_branch_stock') {
@@ -129,7 +130,7 @@ module.exports = function createMcp(options) {
   const match=/^Bearer\\s+(.+)$/i.exec(String(req.headers.authorization||''));
   if(!match||match[1].length<24) return null;
   const rows=await q('select t.id,t.user_id,t.scopes,t.branch_ids,t.name from strap_mcp_tokens t join app_users a on a.id=t.user_id where t.token_hash=$1 and t.revoked_at is null and a.deleted_at is null limit 1',[sha(match[1])]);
-  if(!rows[0]) return null;
+  if(!rows[0] || !await premiumActive(rows[0].user_id)) return null;
   await q('update strap_mcp_tokens set last_used_at=now() where id=$1',[rows[0].id]);
   return rows[0];
  }
@@ -157,7 +158,8 @@ module.exports = function createMcp(options) {
   if(!await premiumActive(user.id)) return json(res,403,{ok:false,message:'Strap MCP connections require Strap Premium.'});
   if(req.method==='GET') {
    const rows=await q('select id::text,name,token_prefix,scopes,branch_ids,created_at,last_used_at from strap_mcp_tokens where user_id=$1 and revoked_at is null order by created_at desc',[user.id]);
-   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows});
+   const activity=await q('select id,action,branch_id,resource_id,details,created_at from strap_mcp_audit_log where user_id=$1 order by created_at desc limit 50',[user.id]);
+   return json(res,200,{ok:true,endpoint:APP_URL+'/api/mcp',connections:rows,activity});
   }
   if(req.method==='POST') {
    const body=req.body||{}, name=safeText(body.name||'AI connection',80), scopes=Array.isArray(body.scopes)?body.scopes.filter(x=>['store:read','store:write'].includes(x)):['store:read'];
