@@ -13,10 +13,14 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;background:var(--lemon);font-family:"Sora","Helvetica Neue",Arial,sans-serif;font-weight:800;-webkit-font-smoothing:antialiased;overflow:hidden}
 .stage{position:relative;height:100%;background:var(--lemon);overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;--px:0;--py:0}
 .stage *{will-change:transform}
+
+/* shutter that opens the piece */
 .sh{position:absolute;top:0;bottom:0;width:25.2%;background:var(--black);z-index:20;transform-origin:top;pointer-events:none}
 .sh:nth-of-type(1){left:0}.sh:nth-of-type(2){left:25%}.sh:nth-of-type(3){left:50%}.sh:nth-of-type(4){left:75%}
 .go .sh{animation:open .9s cubic-bezier(.76,0,.18,1) forwards;animation-delay:calc(var(--i)*.09s)}
 @keyframes open{to{transform:scaleY(0)}}
+
+/* the sweeping disc: letters invert as it passes */
 .orb{position:absolute;left:50%;top:50%;width:62vmin;height:62vmin;margin:-31vmin 0 0 -31vmin;border-radius:50%;background:var(--black);transform:scale(0);z-index:1}
 .go .orb{animation:orbIn .8s cubic-bezier(.2,1.4,.3,1) .7s forwards,sweep 5.2s cubic-bezier(.65,0,.35,1) 1.5s infinite alternate}
 @keyframes orbIn{to{transform:scale(1)}}
@@ -27,6 +31,8 @@ html,body{height:100%;background:var(--lemon);font-family:"Sora","Helvetica Neue
 .go .w i{animation:rise .8s cubic-bezier(.2,1,.25,1) forwards,squash 2.4s ease-in-out infinite;animation-delay:calc(1s + var(--n)*.07s + var(--r)*.35s),calc(2.6s + var(--n)*.12s)}
 @keyframes rise{to{transform:none}}
 @keyframes squash{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.93) skewX(-5deg)}}
+
+/* crossing ribbons */
 .rib{position:absolute;left:-30%;width:160%;overflow:hidden;z-index:5;font-size:clamp(17px,4.6vw,30px);letter-spacing:-.02em;white-space:nowrap;padding:12px 0;transform:translateX(130%) rotate(var(--a))}
 .rib.a{--a:-11deg;top:10%;background:var(--black);color:var(--lemon)}
 .rib.b{--a:8deg;bottom:11%;background:#fff;color:var(--black);border-block:3px solid var(--black)}
@@ -41,6 +47,8 @@ html,body{height:100%;background:var(--lemon);font-family:"Sora","Helvetica Neue
 @keyframes badgeIn{to{transform:scale(1) rotate(0)}}
 .badge svg{width:100%;display:block;animation:spin 9s linear infinite;overflow:visible}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* badge + asterisk + ring */
 .ast{position:absolute;left:-14vmin;bottom:18%;width:42vmin;z-index:1;transform:translate(calc(var(--px)*24px),calc(var(--py)*18px))}
 .ast svg{width:100%;display:block;animation:spin 16s linear infinite,pulse 2.4s ease-in-out infinite}
 @keyframes pulse{50%{scale:1.12}}
@@ -91,6 +99,7 @@ html,body{height:100%;background:var(--lemon);font-family:"Sora","Helvetica Neue
   function move(x,y){st.style.setProperty('--px',(x/innerWidth-.5)*2);st.style.setProperty('--py',(y/innerHeight-.5)*2)}
   addEventListener('pointermove',function(e){move(e.clientX,e.clientY)});
   var ro=document.getElementById('reopen');
+  /* Close: fades the screen out, then tells your app via the 'premium:close' event (and window.onPremiumClose if you define it) */
   function close(){
     st.classList.add('closing');
     setTimeout(function(){
