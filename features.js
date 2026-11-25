@@ -56,11 +56,15 @@ window.StrapFeatures = (() => {
             callback: async payment => {
               if (finished) return;
               const transactionId = payment && (payment.transaction_id || payment.id);
-              if (payment && String(payment.status || '').toLowerCase() && String(payment.status).toLowerCase() !== 'successful') {
-                await StrapAPI.call('POST', 'billing/payment-failed', { tx_ref: r.tx_ref, reason: 'Flutterwave checkout returned ' + String(payment.status).slice(0, 40) }).catch(() => {});
-                finished = true; close(); resolve({ ok: false, msg: 'Payment was not completed.' }); toast('Payment was not completed. You can try again from Billing.'); return;
+              // Treat the inline callback as a transaction notification, not proof of failure.
+              // Flutterwave test/live callback status strings can differ; the server must
+              // verify the transaction with Flutterwave before activating or rejecting it.
+              if (!transactionId) {
+                const callbackStatus = String(payment && payment.status || 'unknown').toLowerCase();
+                await StrapAPI.call('POST', 'billing/payment-failed', { tx_ref: r.tx_ref, reason: 'Flutterwave callback had no transaction ID (status: ' + callbackStatus.slice(0, 32) + ')' }).catch(() => {});
+                finished = true; close(); resolve({ ok: false, msg: 'Flutterwave did not return a transaction ID.' });
+                toast('Flutterwave did not return a transaction ID. If you were charged, contact support before trying again.'); return;
               }
-              if (!transactionId) { toast('Flutterwave did not return a transaction ID.'); return; }
               try {
                 const verified = await StrapAPI.call('POST', 'premium/verify', { tx_ref: r.tx_ref, transaction_id: String(transactionId) });
                 if (!verified.ok || !verified.active) throw new Error(verified.msg || 'Payment verification is still pending.');
