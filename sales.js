@@ -214,14 +214,14 @@ window.StrapSales = (() => {
           S.save();
         }
         const sale = {
-          id: pendingSaleId, no: S.nextNo(), ts: Date.now(), lines: saleLines, subtotal, discount, total,
+          id: pendingSaleId, no: S.nextNo(), ts: Date.now(), branchId: P() && typeof P().activeBranchId === 'function' ? P().activeBranchId() : 'b0', lines: saleLines, subtotal, discount, total,
           giftCard: giftCard ? { id: giftCard.id, code: giftCard.code, type: giftCard.type, applied: discount } : null, method: draft.method,
           cashier: ctx.store.name || '', customer: credit ? { name: draft.name.trim(), phone: draft.phone.trim(), email: draft.email.trim() } : null,
           paidNow: credit ? deposit : total, due: credit ? draft.due : ''
         };
         saleLines.forEach(l => { const p = prod(l.id); if (p && p.tracked) P().setQty(p.id, p.qty - l.qty); });
         S.addSale(sale);
-        if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer(sale.customer);
+        if (sale.customer && typeof S.upsertCustomer === 'function') S.upsertCustomer({ ...sale.customer, branchId: sale.branchId });
         if (credit) { const c = S.addCredit({ saleId: sale.id, no: sale.no, customer: sale.customer, total, due: draft.due }); if (deposit > 0) S.payCredit(c.id, deposit); }
         else S.addPayment({ amount: total, saleId: sale.id, method: draft.method, type: 'sale' });
         const synced = await StrapAPI.flush();
