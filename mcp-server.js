@@ -140,6 +140,8 @@ module.exports = function createMcp(options) {
   return rows[0];
  }
  async function handle(req,res) {
+  const protocolHeader=req.headers['mcp-protocol-version'];
+  if(protocolHeader) res.setHeader('MCP-Protocol-Version',String(protocolHeader));
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id');
   res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');
