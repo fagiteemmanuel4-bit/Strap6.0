@@ -31,6 +31,7 @@ function fixture(scopes=['store:read'], branchIds=['b0']) {
       return {
         async query(sql, params=[]) {
           if (sql.includes('select blob from user_data where user_id=$1 for update')) return {rows:[{blob}]};
+          if (sql.includes('insert into media(user_id,name,mime,data)')) return {rows:[{id:'media-1'}]};
           if (sql.startsWith('update user_data set blob=')) {
             Object.assign(blob, JSON.parse(params[1]));
             return {rows:[]};
@@ -77,11 +78,14 @@ test('read-only token sees only its allowed branch and cannot write',async()=>{
 test('write permission exposes safe product tools and persists product creation',async()=>{
   const {send,blob}=fixture(['store:read','store:write'],['b0']);
   const list=await send({jsonrpc:'2.0',id:1,method:'tools/list'});
-  assert.equal(list.body.result.tools.length,10);
+  assert.equal(list.body.result.tools.length,11);
   const created=await send({jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'strap_create_product',arguments:{title:'New item',price:250,qty:5,branch_id:'b0'}}});
   assert.equal(created.body.result.structuredContent.ok,true);
   assert.equal(JSON.parse(blob['ls:strap.f1.items.b0']).length,2);
-  const invalid=await send({jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'strap_update_product',arguments:{product_id:'p1',tracked:'false'}}});
+  const image=await send({jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'strap_upload_product_image',arguments:{product_id:'p1',branch_id:'b0',mime_type:'image/png',file_name:'tiny.png',image_base64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/6WQAAAAASUVORK5CYII='}}});
+  assert.equal(image.body.result.structuredContent.image_url,'https://strap60.vercel.app/api/media?id=media-1');
+  assert.equal(JSON.parse(blob['ls:strap.f1.items.b0']).find(x=>x.id==='p1').image,'/api/media?id=media-1');
+  const invalid=await send({jsonrpc:'2.0',id:4,method:'tools/call',params:{name:'strap_update_product',arguments:{product_id:'p1',tracked:'false'}}});
   assert.equal(invalid.body.result.isError,true);
 });
 
