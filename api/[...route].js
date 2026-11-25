@@ -904,18 +904,29 @@ async function sendBillingEmail(userId,eventType,payload={},options={}) {
     if(log&&(log.status==='sent'||log.status==='sending')) return {ok:log.status==='sent',alreadySent:log.status==='sent',inProgress:log.status==='sending'};
     await q("update strap_billing_email_log set status='sending',provider_response=null where event_key=$1",[eventKey]);
   }
+  const paidAt=payload.paid_on?new Date(payload.paid_on):new Date();
+  const receiptNo=String(payload.receipt_no||('STR-'+String(payload.tx_ref||eventKey).replace(/[^a-zA-Z0-9]/g,'').slice(-14).toUpperCase()));
+  const expiry=payload.expires_at?new Date(payload.expires_at):null;
   const params={
-    to_email:user.email,to_name:name,subject:String(payload.subject||'A billing update from Strap'),
-    message:String(payload.message||''),event_type:eventType,amount:Number(payload.amount||0).toLocaleString('en-NG'),
-    currency:String(payload.currency||'NGN'),tx_ref:String(payload.tx_ref||''),
-    expires_at:payload.expires_at?new Date(payload.expires_at).toLocaleString('en-NG',{dateStyle:'medium'}):'',
+    to_email:user.email,to_name:name,user_name:name,subject:String(payload.subject||'A billing update from Strap'),
+    message:String(payload.message||''),event_type:eventType,amount:'₦'+Number(payload.amount||0).toLocaleString('en-NG'),
+    currency:String(payload.currency||'NGN'),tx_ref:String(payload.tx_ref||''),receipt_no:receiptNo,
+    paid_on:paidAt.toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}),
+    plan_name:'Strap Premium',next_billing_date:expiry?expiry.toLocaleDateString('en-NG',{dateStyle:'medium'}):'See your Billing overview',
+    receipt_filename:receiptNo+'.pdf',store_name:String(profile.bizname||'your business'),
+    support_email:String(E.SUPPORT_EMAIL||'support@strap60.vercel.app'),
+    dashboard_url:'https://strap60.vercel.app/#billing-overview',
+    expires_at:expiry?expiry.toLocaleString('en-NG',{dateStyle:'medium'}):'',
     business_name:String(profile.bizname||'Your Strap business'),
     action_url:'https://strap60.vercel.app/#billing-overview'
   };
+  const templateId=eventType==='payment_success'
+    ? String(E.EMAILJS_PREMIUM_RECEIPT_TEMPLATE_ID||E.EMAILJS_TEMPLATE_ID||'').trim()
+    : String(E.EMAILJS_TEMPLATE_ID||'').trim();
   try {
     const response=await fetch('https://api.emailjs.com/api/v1.0/email/send',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({service_id:String(E.EMAILJS_SERVICE_ID).trim(),template_id:String(E.EMAILJS_TEMPLATE_ID).trim(),user_id:String(E.EMAILJS_PUBLIC_KEY).trim(),template_params:params})
+      body:JSON.stringify({service_id:String(E.EMAILJS_SERVICE_ID).trim(),template_id:templateId,user_id:String(E.EMAILJS_PUBLIC_KEY).trim(),template_params:params})
     });
     const body=await response.text();
     await q('update strap_billing_email_log set status=$2,provider_response=$3 where event_key=$1',[eventKey,response.ok?'sent':'failed',body.slice(0,1200)]);
