@@ -350,7 +350,9 @@ async function ensurePremiumSchema() {
 }
 const flwMode=()=>String(E.FLW_MODE||'test').toLowerCase();
 const flwSecret=()=>String(E.FLW_SECRET_KEY||'').trim();
+const flwPublicKey=()=>String(E.FLW_PUBLIC_KEY||'').trim();
 const flwReady=()=>{const mode=flwMode(),key=flwSecret();return (mode==='live'&&key.startsWith('FLWSECK_LIVE-'))||(mode==='test'&&key.startsWith('FLWSECK_TEST-'));};
+const flwPublicReady=()=>{const mode=flwMode(),key=flwPublicKey();return (mode==='live'&&key.startsWith('FLWPUBK_LIVE-'))||(mode==='test'&&key.startsWith('FLWPUBK_TEST-'));};
 const premiumAmount=()=>{const n=Number(E.FLW_PREMIUM_AMOUNT_NGN);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:0;};
 const premiumStandardAmount=()=>{const n=Number(E.FLW_PREMIUM_STANDARD_AMOUNT_NGN||6000);return Number.isFinite(n)&&n>0?Math.round(n*100)/100:6000;};
 async function premiumCheckoutAmount(userId) {
@@ -787,43 +789,21 @@ H['premium/status'] = async (req,res,user) => {
   const active=!!(row&&row.status==='active'&&new Date(row.expires_at).getTime()>Date.now());
   if(row&&user.email) await syncMcpPremium(user.email,active?'active':'inactive',row.expires_at,row.tx_ref,Number(row.amount));
   const nextAmount=await premiumCheckoutAmount(user.id);
-  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
+  return [200,{ok:true,active,expiresAt:active?row.expires_at:null,checkoutReady:flwReady()&&flwPublicReady()&&nextAmount>0,amount:nextAmount,introductoryAmount:premiumAmount(),standardAmount:premiumStandardAmount(),mode:flwMode()}];
 };
 H['premium/checkout'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
-  if(!flwReady()) return [503,{ok:false,msg:'Flutterwave live credentials are not configured correctly. Check FLW_MODE and FLW_SECRET_KEY.'}];
+  if(!flwReady()||!flwPublicReady()) return [503,{ok:false,msg:'Flutterwave test credentials are incomplete. Check FLW_MODE, FLW_SECRET_KEY and FLW_PUBLIC_KEY.'}];
   await ensurePremiumSchema();
   const amount=await premiumCheckoutAmount(user.id);
   if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused. Set the introductory Premium amount when you are ready to charge.'}];
   const active=await premiumActive(user.id);
   if(active) return [409,{ok:false,msg:'Your Premium subscription is already active.'}];
   const txRef='STRAP-'+(flwMode()==='live'?'LIVE':'TEST')+'-'+crypto.randomBytes(12).toString('hex').toUpperCase();
-  await q("insert into strap_payments(tx_ref,user_id,amount,currency,status) values($1,$2,$3,'NGN','pending')",[txRef,user.id,amount]);
-  const payload={tx_ref:txRef,amount,currency:'NGN',redirect_url:origin(req)+'/dashboard.html?payment=flutterwave',
-    customer:{email:user.email,name:user.name||'Strap customer'},
-    customizations:{title:'Strap Premium',description:'Premium access for your Strap business'},
-    payment_options:'card',
-    configuration:{session_duration:30,max_retry_attempt:3}};
-  // Billing is renewed through a fresh verified checkout so the price can move from NGN 4,500 to NGN 6,000 after cycle three.
-  let response,body;
-  try {
-    response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
-    body=await response.json().catch(()=>({}));
-  } catch(error) {
-    await q("update strap_payments set status='failed' where tx_ref=$1",[txRef]);
-    console.error('[premium-checkout] Flutterwave request failed:',String(error&&error.message||error).slice(0,240));
-    return [502,{ok:false,msg:'Could not connect to Flutterwave. Please try again.'}];
-  }
-  const checkoutLink=String(body&&body.data&&body.data.link||'');
-  let checkoutHost='';
-  try { checkoutHost=checkoutLink?new URL(checkoutLink).host:''; } catch (_) {}
-  console.info('[premium-checkout] Flutterwave response:',JSON.stringify({httpStatus:response.status,apiStatus:body&&body.status||'',message:String(body&&body.message||'').slice(0,180),hasLink:!!checkoutLink,checkoutHost,mode:flwMode(),txRef}));
-  if(!response.ok||body.status!=='success'||!checkoutLink||!/^https:\/\//i.test(checkoutLink)) {
-    await q("update strap_payments set status='failed' where tx_ref=$1",[txRef]);
-    console.error('[premium-checkout] Link creation rejected:',JSON.stringify({httpStatus:response.status,apiStatus:body&&body.status||'',message:String(body&&body.message||'').slice(0,240)}));
-    return [502,{ok:false,msg:'Flutterwave could not start checkout. Please try again.'}];
-  }
-  return [200,{ok:true,link:checkoutLink,tx_ref:txRef,amount,currency:'NGN',mode:flwMode()}];
+  await q("insert into strap_payments (tx_ref,user_id,amount,currency,status) values ($1,$2,$3,'NGN','pending')",[txRef,user.id,amount]);
+  console.info('[premium-checkout] Inline session prepared:',JSON.stringify({mode:flwMode(),amount,currency:'NGN',txRef,publicKeyConfigured:flwPublicReady()}));
+  return [200,{ok:true,method:'inline',public_key:flwPublicKey(),tx_ref:txRef,amount,currency:'NGN',
+    customer:{email:user.email,name:user.name||'Strap customer'}}];
 };
 H['premium/verify'] = async (req,res,user) => {
   if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
