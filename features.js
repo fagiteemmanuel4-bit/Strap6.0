@@ -68,7 +68,7 @@ window.StrapFeatures = (() => {
                 await refreshPlan();
                 toast('Strap Premium is now active.');
                 close();
-                showPremiumActivationSuccess();
+                showPremiumActivationSuccess(verified.receipt||{});
                 resolve({ ok: true });
               } catch (error) {
                 toast(error.message || 'We could not verify this payment yet.');
@@ -90,7 +90,40 @@ window.StrapFeatures = (() => {
     async aiExtract({ text, file }) { await sleep(1400); return null; }       // return [{title,price,qty}] from Strap AI; null = use the built-in text reader
   };
 
-  function showPremiumActivationSuccess() {
+  function showPremiumActivationSuccess(receipt={}) {
+    const existing=document.getElementById('strap-premium-success');
+    if(existing) existing.remove();
+    const overlay=document.createElement('div');
+    overlay.id='strap-premium-success';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    const fallback='<div class="strap-premium-success-card"><div class="strap-premium-success-mark">✦</div><div class="strap-premium-success-eyebrow">PAYMENT CONFIRMED</div><div class="strap-premium-success-title">You are on<br><span>Strap Premium.</span></div><p>Your payment was verified. Premium features are now unlocked for your business.</p><div class="strap-premium-success-pill">✦ &nbsp; All Premium features unlocked</div><div class="strap-premium-success-progress"><i></i></div><small>Taking you back to your dashboard…</small></div>';
+    overlay.innerHTML='<div class="strap-premium-success-frame">'+fallback+'</div>';
+    document.body.appendChild(overlay);
+    const safe=v=>String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const date=receipt.next_billing_date?new Date(receipt.next_billing_date).toLocaleDateString('en-NG',{dateStyle:'medium'}):'See your Billing overview';
+    const values={
+      user_name:safe(receipt.user_name||'Thank you'),store_name:safe(receipt.store_name||'your business'),
+      plan_name:'Strap Premium',amount:'₦'+Number(receipt.amount||0).toLocaleString('en-NG'),
+      paid_on:safe(receipt.paid_on?new Date(receipt.paid_on).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}):new Date().toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})),
+      receipt_no:safe(receipt.receipt_no||'STRAP-PREMIUM'),next_billing_date:safe(date),
+      receipt_filename:safe((receipt.receipt_no||'STRAP-PREMIUM')+'.pdf'),
+      dashboard_url:'https://strap60.vercel.app/dashboard.html',support_email:'support@strap60.vercel.app',
+      to_email:safe(receipt.to_email||'your account email')
+    };
+    fetch('/emails/premium-payment-success.html',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('Receipt template unavailable');return r.text();}).then(source=>{
+      const rendered=source.replace(/{{\\s*([a-z_]+)\\s*}}/gi,(match,key)=>Object.prototype.hasOwnProperty.call(values,key)?values[key]: '');
+      const frame=document.createElement('iframe');
+      frame.title='Strap Premium payment confirmation';
+      frame.setAttribute('sandbox','allow-popups allow-popups-to-escape-sandbox');
+      frame.setAttribute('referrerpolicy','no-referrer');
+      frame.srcdoc=rendered;
+      const holder=overlay.querySelector('.strap-premium-success-frame');
+      holder.replaceChildren(frame);
+    }).catch(()=>{});
+    requestAnimationFrame(()=>overlay.classList.add('is-visible'));
+    window.setTimeout(()=>{overlay.classList.remove('is-visible');window.setTimeout(()=>{overlay.remove();location.reload();},380);},7000);
+  }
     const existing=document.getElementById('strap-premium-success');
     if(existing) existing.remove();
     const overlay=document.createElement('div');
@@ -539,7 +572,7 @@ window.StrapFeatures = (() => {
           }
           const id=p&&(p.transaction_id||p.id);if(!id)return;
           try{const v=await StrapAPI.call('POST','premium/verify',{tx_ref:r.tx_ref,transaction_id:String(id)});if(!v.ok||!v.active)throw new Error(v.msg||'Payment verification is pending.');
-            done=true;await refreshPlan();toast('Premium renewed successfully.');try{modal&&modal.close&&modal.close();}catch(e){}resolve();
+            done=true;await refreshPlan();toast('Premium renewed successfully.');try{modal&&modal.close&&modal.close();}catch(e){}showPremiumActivationSuccess(v.receipt||{});resolve();
             setTimeout(()=>location.reload(),500);
           }catch(e){done=true;try{modal&&modal.close&&modal.close();}catch(x){}reject(e);}
         },onclose:()=>{if(!done){done=true;resolve();}}
