@@ -54,8 +54,9 @@ module.exports = function createMcp(options) {
   if(!token.branch_ids.includes('*')&&!token.branch_ids.includes(requested)) throw new Error('This AI connection is not allowed to access that branch.');
   return branch;
  }
- async function audit(token, action, branchId, resourceId, details) {
-  await q('insert into strap_mcp_audit_log(user_id,token_id,action,branch_id,resource_id,details) values($1,$2,$3,$4,$5,$6::jsonb)',[token.user_id,token.id,action,branchId||null,resourceId||null,JSON.stringify(details||{})]);
+ async function audit(token, action, branchId, resourceId, details, runner) {
+  const execute=runner||((sql,params)=>q(sql,params));
+  await execute('insert into strap_mcp_audit_log(user_id,token_id,action,branch_id,resource_id,details) values($1,$2,$3,$4,$5,$6::jsonb)',[token.user_id,token.id,action,branchId||null,resourceId||null,JSON.stringify(details||{})]);
  }
  async function callTool(name,args,token) {
   const ctx=await ownerContext(token.user_id), profile=ctx.row.profile||{};
