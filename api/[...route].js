@@ -803,7 +803,7 @@ H['premium/checkout'] = async (req,res,user) => {
     customer:{email:user.email,name:user.name||'Strap customer'},
     customizations:{title:'Strap Premium',description:'Premium access for your Strap business'},
     payment_options:'card',
-    configuration:{session_duration:30,max_retry_attempt:3}};
+    configurations:{session_duration:30,max_retry_attempt:3}};
   // Billing is renewed through a fresh verified checkout so the price can move from NGN 4,500 to NGN 6,000 after cycle three.
   const response=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+flwSecret(),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
   const body=await response.json().catch(()=>({}));
