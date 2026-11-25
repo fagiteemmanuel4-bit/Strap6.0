@@ -395,26 +395,6 @@ async function flwVerify(id) {
   if(!response.ok || !body || body.status!=='success' || !body.data) throw new Error('Flutterwave could not verify this transaction.');
   return body.data;
 }
-async function syncMcpPremium(email,status,expiresAt,txRef,amount) {
-  const secret=String(E.STRAP_MCP_PREMIUM_SYNC_SECRET||'').trim();
-  if(!secret||!email) return false;
-  try {
-    const response=await fetch('https://lhizunrljottkhemdfei.supabase.co/functions/v1/premium-sync',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-strap-premium-sync':secret},
-      body:JSON.stringify({email,status,expires_at:expiresAt||null,tx_ref:txRef||'',amount:Number(amount)||0,currency:'NGN'})
-    });
-    const body=await response.json().catch(()=>({}));
-    if(!response.ok||!body.ok) {
-      console.error('MCP Premium sync failed:',response.status,String(body.message||'').slice(0,160));
-      return false;
-    }
-    return true;
-  } catch(e) {
-    console.error('MCP Premium sync failed:',e.message);
-    return false;
-  }
-}
 async function activatePremium(payment, tx) {
   const amount=Number(payment.amount), paid=Number(tx.amount);
   if(String(tx.tx_ref)!==String(payment.tx_ref) || String(tx.status).toLowerCase()!=='successful' ||
@@ -430,7 +410,6 @@ async function activatePremium(payment, tx) {
     updated_at=now(),cancel_at_period_end=false,cancelled_at=null`,
     [payment.user_id,payment.customer_email||'',amount,payment.tx_ref]);
   const subscription=(await q('select expires_at from strap_subscriptions where user_id=$1',[payment.user_id]))[0];
-  if(subscription&&payment.customer_email) await syncMcpPremium(payment.customer_email,'active',subscription.expires_at,payment.tx_ref,amount);
   await billingPrefs(payment.user_id).catch(e=>console.error('Billing preferences initialization failed:',e.message));
   if(payment.customer_email) await sendBillingEmail(payment.user_id,'payment_success',{
     subject:'Your Strap Premium payment was successful',
