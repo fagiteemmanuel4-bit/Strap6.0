@@ -13,6 +13,10 @@ Strap exposes a Streamable HTTP MCP server backed by the same Neon data used by 
 
 Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadata Documents are enabled and legacy dynamic client registration is disabled. The user must sign in and approve the connection.
 
+## Current rollout state
+
+The Neon OAuth provider settings and production grant tables are prepared, but OAuth is intentionally **disabled** until Vercel deploys the latest MCP auth proxy, consent page, protected-resource metadata rewrite, and JWT verification code. Do not enable OAuth or call the OAuth flow production-ready before those files are live and the end-to-end checks below pass. Existing bearer-token MCP access remains separate.
+
 ## Permissions
 
 There are two supported connection types:
