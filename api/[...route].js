@@ -345,6 +345,25 @@ async function ensurePremiumSchema() {
       verified_at timestamptz
     )`);
     await q('create index if not exists strap_payments_user_idx on strap_payments(user_id,created_at desc)');
+    await q("alter table strap_subscriptions add column if not exists cancel_at_period_end boolean not null default false");
+    await q("alter table strap_subscriptions add column if not exists cancelled_at timestamptz");
+    await q(`create table if not exists strap_billing_preferences (
+      user_id text primary key, email_enabled boolean not null default true,
+      payment_success boolean not null default true, payment_failed boolean not null default true,
+      renewal_reminders boolean not null default true, renewal_reminder_days integer[] not null default array[7,3,1],
+      updated_at timestamptz not null default now()
+    )`);
+    await q(`create table if not exists strap_billing_email_log (
+      id bigserial primary key, user_id text not null, event_key text not null unique,
+      event_type text not null, recipient text not null, status text not null,
+      provider_response text, created_at timestamptz not null default now()
+    )`);
+    await q(`create table if not exists strap_payment_reconciliation (
+      id bigserial primary key, user_id text not null, tx_ref text not null,
+      action text not null, outcome text not null, details jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now()
+    )`);
+    await q('create index if not exists strap_reconcile_user_idx on strap_payment_reconciliation(user_id,created_at desc)');
   })().catch(e=>{premiumSchemaReady=null;throw e;});
   return premiumSchemaReady;
 }
@@ -398,14 +417,21 @@ async function activatePremium(payment, tx) {
      String(tx.currency).toUpperCase()!=='NGN' || String(payment.currency).toUpperCase()!=='NGN' ||
      !Number.isFinite(paid) || paid<amount) throw new Error('Payment details did not match the expected transaction.');
   await q("update strap_payments set status='successful',transaction_id=$2,verified_at=now() where tx_ref=$1",[payment.tx_ref,String(tx.id)]);
-  await q(`insert into strap_subscriptions(user_id,status,customer_email,amount,currency,tx_ref,started_at,expires_at,updated_at)
-    values($1,'active',$2,$3,'NGN',$4,now(),now()+interval '30 days',now())
+  await q(`insert into strap_subscriptions(user_id,status,customer_email,amount,currency,tx_ref,started_at,expires_at,updated_at,cancel_at_period_end,cancelled_at)
+    values($1,'active',$2,$3,'NGN',$4,now(),now()+interval '30 days',now(),false,null)
     on conflict(user_id) do update set status='active',customer_email=excluded.customer_email,amount=excluded.amount,
-    currency='NGN',tx_ref=excluded.tx_ref,started_at=case when strap_subscriptions.status='active' and strap_subscriptions.expires_at>now() then strap_subscriptions.started_at else now() end,
-    expires_at=now()+interval '30 days',updated_at=now()`,
+    currency='NGN',tx_ref=excluded.tx_ref,
+    started_at=case when strap_subscriptions.status='active' and strap_subscriptions.expires_at>now() then strap_subscriptions.started_at else now() end,
+    expires_at=greatest(coalesce(strap_subscriptions.expires_at,now()),now())+interval '30 days',
+    updated_at=now(),cancel_at_period_end=false,cancelled_at=null`,
     [payment.user_id,payment.customer_email||'',amount,payment.tx_ref]);
   const subscription=(await q('select expires_at from strap_subscriptions where user_id=$1',[payment.user_id]))[0];
   if(subscription&&payment.customer_email) await syncMcpPremium(payment.customer_email,'active',subscription.expires_at,payment.tx_ref,amount);
+  if(payment.customer_email) await sendBillingEmail(payment.user_id,'payment_success',{
+    subject:'Your Strap Premium payment was successful',
+    message:'Your Premium payment has been verified and your subscription is active.',
+    amount,currency:'NGN',tx_ref:payment.tx_ref,expires_at:subscription&&subscription.expires_at
+  }).catch(e=>console.error('Billing confirmation email failed:',e.message));
 }
 
 H['health'] = async (req) => {
@@ -846,6 +872,181 @@ H['flutterwave/webhook'] = async (req,res) => {
     }
     return [200,{ok:true}];
   } catch(e) { console.error('Flutterwave webhook processing failed:',e.message); return [500,{ok:false}]; }
+};
+
+
+/* ---- Billing, receipts, subscription management and EmailJS notifications ---- */
+async function billingPrefs(userId) {
+  await ensurePremiumSchema();
+  const rows=await q('select * from strap_billing_preferences where user_id=$1',[userId]);
+  if(rows[0]) return rows[0];
+  return (await q(`insert into strap_billing_preferences(user_id) values($1)
+    on conflict(user_id) do update set user_id=excluded.user_id returning *`,[userId]))[0];
+}
+function emailJsReady() {
+  return !!(String(E.EMAILJS_SERVICE_ID||'').trim() && String(E.EMAILJS_TEMPLATE_ID||'').trim() && String(E.EMAILJS_PUBLIC_KEY||'').trim());
+}
+async function sendBillingEmail(userId,eventType,payload={},options={}) {
+  if(!emailJsReady()) return {ok:false,skipped:true,reason:'EmailJS is not configured'};
+  const prefs=await billingPrefs(userId);
+  if(!options.force && !prefs.email_enabled) return {ok:false,skipped:true,reason:'Email notifications are disabled'};
+  if(!options.force && eventType==='payment_success' && !prefs.payment_success) return {ok:false,skipped:true,reason:'Payment confirmations are disabled'};
+  if(!options.force && eventType==='payment_failed' && !prefs.payment_failed) return {ok:false,skipped:true,reason:'Payment failure alerts are disabled'};
+  const user=(await q('select email,profile from app_users where id=$1 and deleted_at is null',[userId]))[0];
+  if(!user||!user.email) return {ok:false,skipped:true,reason:'No account email'};
+  const profile=user.profile||{}, name=String(profile.name||profile.full_name||'Strap customer');
+  const eventKey=String(options.eventKey||eventType+':'+(payload.tx_ref||payload.expires_at||Date.now()));
+  await q(`insert into strap_billing_email_log(user_id,event_key,event_type,recipient,status)
+    values($1,$2,$3,$4,'sending') on conflict(event_key) do nothing`,[userId,eventKey,eventType,user.email]);
+  const log=(await q('select status from strap_billing_email_log where event_key=$1',[eventKey]))[0];
+  if(log&&log.status==='sent') return {ok:true,alreadySent:true};
+  const params={
+    to_email:user.email,to_name:name,subject:String(payload.subject||'A billing update from Strap'),
+    message:String(payload.message||''),event_type:eventType,amount:Number(payload.amount||0).toLocaleString('en-NG'),
+    currency:String(payload.currency||'NGN'),tx_ref:String(payload.tx_ref||''),
+    expires_at:payload.expires_at?new Date(payload.expires_at).toLocaleString('en-NG',{dateStyle:'medium'}):'',
+    business_name:String(profile.bizname||'Your Strap business'),
+    action_url:'https://strap60.vercel.app/#billing-overview'
+  };
+  try {
+    const response=await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({service_id:String(E.EMAILJS_SERVICE_ID).trim(),template_id:String(E.EMAILJS_TEMPLATE_ID).trim(),user_id:String(E.EMAILJS_PUBLIC_KEY).trim(),template_params:params})
+    });
+    const body=await response.text();
+    await q('update strap_billing_email_log set status=$2,provider_response=$3 where event_key=$1',[eventKey,response.ok?'sent':'failed',body.slice(0,1200)]);
+    if(!response.ok) throw new Error('EmailJS rejected the email ('+response.status+').');
+    return {ok:true};
+  } catch(error) {
+    await q('update strap_billing_email_log set status=\'failed\',provider_response=$2 where event_key=$1',[eventKey,String(error.message||error).slice(0,1200)]).catch(()=>[]);
+    throw error;
+  }
+}
+function paymentRow(row) {
+  return {tx_ref:row.tx_ref,amount:Number(row.amount),currency:row.currency,status:row.status,transaction_id:row.transaction_id||null,created_at:row.created_at,verified_at:row.verified_at||null};
+}
+H['billing/overview'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  const sub=(await q('select status,amount,currency,tx_ref,started_at,expires_at,cancel_at_period_end,cancelled_at from strap_subscriptions where user_id=$1',[user.id]))[0]||null;
+  const totals=(await q(`select count(*)::int as total,
+    count(*) filter(where status='successful')::int as successful,
+    count(*) filter(where status='pending')::int as pending,
+    count(*) filter(where status='failed')::int as failed,
+    coalesce(sum(amount) filter(where status='successful'),0)::numeric as paid
+    from strap_payments where user_id=$1`,[user.id]))[0]||{};
+  const next=await premiumCheckoutAmount(user.id),prefs=await billingPrefs(user.id);
+  return [200,{ok:true,subscription:sub,totals:{total:Number(totals.total||0),successful:Number(totals.successful||0),pending:Number(totals.pending||0),failed:Number(totals.failed||0),paid:Number(totals.paid||0)},nextAmount:next,emailConfigured:emailJsReady(),preferences:{email_enabled:prefs.email_enabled,renewal_reminders:prefs.renewal_reminders,renewal_reminder_days:prefs.renewal_reminder_days}}];
+};
+H['billing/payments'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  const status=String(req.query.status||'').toLowerCase(),limit=Math.min(100,Math.max(1,Number(req.query.limit)||50));
+  const rows=await q(`select tx_ref,amount,currency,status,transaction_id,created_at,verified_at
+    from strap_payments where user_id=$1 and ($2='' or status=$2)
+    order by created_at desc limit $3`,[user.id,status,limit]);
+  return [200,{ok:true,payments:rows.map(paymentRow)}];
+};
+H['billing/payment'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  const ref=String(req.query.tx_ref||req.body.tx_ref||'').trim();
+  if(!ref) return [400,{ok:false,msg:'Payment reference is required.'}];
+  const row=(await q('select tx_ref,amount,currency,status,transaction_id,created_at,verified_at from strap_payments where user_id=$1 and tx_ref=$2',[user.id,ref]))[0];
+  if(!row) return [404,{ok:false,msg:'Payment receipt not found.'}];
+  return [200,{ok:true,payment:paymentRow(row)}];
+};
+H['billing/subscription'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  if(req.method==='PUT') {
+    const cancel=!!req.body.cancel_at_period_end;
+    const row=(await q(`update strap_subscriptions set cancel_at_period_end=$2,
+      cancelled_at=case when $2 then coalesce(cancelled_at,now()) else null end,updated_at=now()
+      where user_id=$1 returning status,amount,currency,tx_ref,started_at,expires_at,cancel_at_period_end,cancelled_at`,[user.id,cancel]))[0];
+    if(!row) return [404,{ok:false,msg:'No Premium subscription was found.'}];
+    return [200,{ok:true,subscription:row}];
+  }
+  const row=(await q('select status,amount,currency,tx_ref,started_at,expires_at,cancel_at_period_end,cancelled_at from strap_subscriptions where user_id=$1',[user.id]))[0]||null;
+  return [200,{ok:true,subscription:row,renewal:'manual'}];
+};
+H['billing/renew'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Please sign in again.'}];
+  if(!flwReady()||!flwPublicReady()) return [503,{ok:false,msg:'Secure payment is unavailable. Check Flutterwave test credentials.'}];
+  await ensurePremiumSchema();
+  const amount=await premiumCheckoutAmount(user.id);
+  if(!amount) return [503,{ok:false,msg:'Premium pricing is currently paused.'}];
+  const txRef='STRAP-'+(flwMode()==='live'?'LIVE':'TEST')+'-RENEW-'+crypto.randomBytes(10).toString('hex').toUpperCase();
+  await q("insert into strap_payments(tx_ref,user_id,amount,currency,status) values($1,$2,$3,'NGN','pending')",[txRef,user.id,amount]);
+  return [200,{ok:true,method:'inline',public_key:flwPublicKey(),tx_ref:txRef,amount,currency:'NGN',customer:{email:user.email,name:user.name||'Strap customer'}}];
+};
+H['billing/notifications'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  const prefs=await billingPrefs(user.id);
+  if(req.method==='PUT') {
+    const days=Array.isArray(req.body.renewal_reminder_days)?[...new Set(req.body.renewal_reminder_days.map(Number).filter(n=>[1,3,7,14].includes(n)))]:prefs.renewal_reminder_days;
+    const row=(await q(`insert into strap_billing_preferences(user_id,email_enabled,payment_success,payment_failed,renewal_reminders,renewal_reminder_days,updated_at)
+      values($1,$2,$3,$4,$5,$6,now()) on conflict(user_id) do update set
+      email_enabled=excluded.email_enabled,payment_success=excluded.payment_success,payment_failed=excluded.payment_failed,
+      renewal_reminders=excluded.renewal_reminders,renewal_reminder_days=excluded.renewal_reminder_days,updated_at=now() returning *`,
+      [user.id,req.body.email_enabled!==false,req.body.payment_success!==false,req.body.payment_failed!==false,req.body.renewal_reminders!==false,days]))[0];
+    return [200,{ok:true,preferences:row,emailConfigured:emailJsReady()}];
+  }
+  return [200,{ok:true,preferences:prefs,emailConfigured:emailJsReady()}];
+};
+H['billing/email-test'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  if(!emailJsReady()) return [503,{ok:false,msg:'EmailJS is not configured. Add the EmailJS service, template and public key in Vercel.'}];
+  try { await sendBillingEmail(user.id,'test',{subject:'Your Strap billing email is ready',message:'This is a test of your Strap billing email notifications.'},{force:true,eventKey:'test:'+user.id+':'+Date.now()}); return [200,{ok:true,msg:'Test email sent. Check your inbox.'}]; }
+  catch(e) { return [502,{ok:false,msg:e.message||'EmailJS could not send the test email.'}]; }
+};
+H['billing/reconcile'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  await ensurePremiumSchema();
+  if(req.method==='POST') {
+    const ref=String(req.body.tx_ref||'').trim(),id=String(req.body.transaction_id||'').trim();
+    if(!ref||!/^[0-9]+$/.test(id)) return [400,{ok:false,msg:'Enter the payment reference and Flutterwave transaction ID.'}];
+    const payment=(await q('select tx_ref,user_id,amount,currency,status from strap_payments where tx_ref=$1 and user_id=$2',[ref,user.id]))[0];
+    if(!payment) return [404,{ok:false,msg:'Payment reference was not found in your account.'}];
+    if(payment.status==='successful') return [200,{ok:true,msg:'This payment is already verified.'}];
+    try {
+      const tx=await flwVerify(id);
+      await activatePremium({...payment,customer_email:user.email},tx);
+      await q("insert into strap_payment_reconciliation(user_id,tx_ref,action,outcome,details) values($1,$2,'manual_verify','successful',$3::jsonb)",[user.id,ref,JSON.stringify({transaction_id:id})]);
+      return [200,{ok:true,msg:'Payment verified successfully. Your Premium access has been updated.'}];
+    } catch(e) {
+      await q("insert into strap_payment_reconciliation(user_id,tx_ref,action,outcome,details) values($1,$2,'manual_verify','not_verified',$3::jsonb)",[user.id,ref,JSON.stringify({transaction_id:id,reason:String(e.message||e).slice(0,200)})]);
+      return [402,{ok:false,msg:'Flutterwave could not confirm this transaction. Check the ID and try again.'}];
+    }
+  }
+  const rows=await q(`select tx_ref,amount,currency,status,transaction_id,created_at,verified_at
+    from strap_payments where user_id=$1 order by created_at desc limit 100`,[user.id]);
+  const audits=await q('select tx_ref,action,outcome,created_at from strap_payment_reconciliation where user_id=$1 order by created_at desc limit 30',[user.id]);
+  return [200,{ok:true,payments:rows.map(paymentRow),events:audits}];
+};
+H['billing/cron'] = async (req,res) => {
+  const secret=String(E.CRON_SECRET||'').trim(),auth=String(req.headers.authorization||'');
+  if(!secret||auth!=='Bearer '+secret) return [401,{ok:false}];
+  if(!emailJsReady()) return [503,{ok:false,msg:'EmailJS is not configured.'}];
+  await ensurePremiumSchema();
+  const due=await q(`select s.user_id,s.customer_email,s.amount,s.currency,s.tx_ref,s.expires_at,
+    p.renewal_reminder_days,p.renewal_reminders,p.email_enabled
+    from strap_subscriptions s join strap_billing_preferences p on p.user_id=s.user_id
+    where s.status='active' and s.expires_at::date between current_date and current_date+14
+      and p.email_enabled=true and p.renewal_reminders=true
+      and (s.expires_at::date-current_date)=any(p.renewal_reminder_days)`);
+  let sent=0,failed=0;
+  for(const row of due) {
+    try {
+      const days=Math.max(0,Math.ceil((new Date(row.expires_at).getTime()-Date.now())/86400000));
+      await sendBillingEmail(row.user_id,'renewal_reminder',{subject:days?'Your Strap Premium renews soon':'Your Strap Premium expires today',
+        message:days?'Your Premium access expires in '+days+' day(s). Renew before expiry to keep using all Premium tools.':'Your Strap Premium access expires today. Renew to keep your Premium tools available.',
+        amount:Number(row.amount),currency:row.currency,tx_ref:row.tx_ref,expires_at:row.expires_at},
+        {eventKey:'renewal:'+row.user_id+':'+new Date(row.expires_at).toISOString().slice(0,10)});
+      sent++;
+    } catch(e) { failed++; console.error('Billing reminder failed:',row.user_id,e.message); }
+  }
+  return [200,{ok:true,matched:due.length,sent,failed}];
 };
 
 H['data'] = async (req, res, user, staff) => {
