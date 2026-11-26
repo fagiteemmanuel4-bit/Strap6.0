@@ -354,7 +354,22 @@ H['neon-auth'] = async (req, res) => {
     res.statusCode=upstream.status;
     res.setHeader('Cache-Control','no-store');
     res.setHeader('Content-Type',upstream.headers.get('content-type')||'application/json; charset=utf-8');
-    const location=upstream.headers.get('location');if(location)res.setHeader('Location',location);
+    const location=upstream.headers.get('location');
+    if(location){
+      let target=location;
+      try{
+        if(location.startsWith('//')) target=new URL(base).protocol+location;
+        else if(/^https?:\/\//i.test(location)) target=new URL(location).toString();
+        else {
+          const authBase=new URL(base), basePath=authBase.pathname.replace(/\/+$/,'');
+          if(location.startsWith('/')){
+            target=authBase.origin+(basePath&&(location===basePath||location.startsWith(basePath+'/'))?location:basePath+location);
+          } else if(location.startsWith('?')||location.startsWith('#')) target=base+location;
+          else target=base.replace(/\/+$/,'')+'/'+location.replace(/^\/+/, '');
+        }
+      }catch(_){}
+      res.setHeader('Location',target);
+    }
     res.end(raw);
   } catch(error) { console.error('Neon Auth OAuth proxy failed:',error.message);res.statusCode=502;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({message:'Could not reach Strap authentication.'})); }
 };
