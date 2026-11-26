@@ -216,7 +216,7 @@ module.exports = function createMcp(options) {
   await ensureSchema();
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return json(res,405,{error:'Use POST for the Strap MCP Streamable HTTP endpoint.'}); }
   const token=await authenticate(req);
-  if(!token) { res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://strap60.vercel.app/api/mcp/resource-metadata"'); return json(res,401,{error:'Unauthorized',message:'Connect using Strap OAuth or a valid Strap access token.'}); }
+  if(!token) { res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://strap60.vercel.app/.well-known/oauth-protected-resource/api/mcp"'); return json(res,401,{error:'Unauthorized',message:'Connect using Strap OAuth or a valid Strap access token.'}); }
   const body=req.body&&typeof req.body==='object'?req.body:{};
   if(body.jsonrpc!=='2.0'||typeof body.method!=='string') return json(res,400,rpcError(body.id,-32600,'Invalid JSON-RPC request.'));
   if(body.method==='notifications/initialized'||body.method==='notifications/cancelled') { res.statusCode=202; return res.end(); }
