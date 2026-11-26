@@ -231,8 +231,13 @@
         <aside class="dr-panel" role="dialog" aria-label="Menu">
           <div class="dr-top"><div class="who"><div class="av">${av}</div><span class="sn">${esc(store)}</span></div><button type="button" class="pm-x" id="dr-x" aria-label="Close menu">${uic('close', 20, 2.2)}</button></div>
           <button type="button" class="ds-open" data-go="new-sale"><span>Open sale</span><i>${uic('arrow', 22, 2.4)}</i></button>
-
-          <nav class="ds-nav">${menuHtml}</nav>
+          <label class="ds-search" for="ds-page-search">
+            <span class="ds-search-icon">${uic('search', 19, 1.9)}</span>
+            <input id="ds-page-search" type="search" placeholder="Find a page" autocomplete="off" spellcheck="false" aria-label="Find a page in the menu">
+            <kbd aria-hidden="true">/</kbd>
+          </label>
+          <p class="ds-search-empty" role="status" aria-live="polite" hidden>No pages found. Try another search.</p>
+          <nav class="ds-nav" aria-label="Workspace pages">${menuHtml}</nav>
           ${STAFF ? `<div class="staff-drawer-foot"><button type="button" data-staff-messages>Messages <em>Coming soon</em></button><button type="button" data-staff-logout>${uic('out',20,2)}<span>Log out</span></button></div>` : ''}
         </aside>
       </div>`;
@@ -320,8 +325,58 @@
     const staffMessages=$('[data-staff-messages]',drawer); if(staffMessages) staffMessages.addEventListener('click',()=>toast('Staff messages are coming soon.'));
 
     if(STAFF) { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
-    function openDrawer() { drawer.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); document.body.classList.add('pm-open'); }
-    function closeDrawer() { if (!drawer.classList.contains('on')) return; drawer.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pm-open'); }
+    const pageSearch = $('#ds-page-search', drawer);
+    const searchEmpty = $('.ds-search-empty', drawer);
+    const groupOpenBeforeSearch = new Map($('.ds-grp', drawer).map(group => [group, group.classList.contains('open')]));
+    function filterMenu(query) {
+      const q = String(query || '').trim().toLocaleLowerCase();
+      let visible = 0;
+      Array.from($('.ds-nav', drawer).children).forEach(item => {
+        if (item.classList.contains('ds-grp')) {
+          const heading = $('.ds-i', item);
+          const children = $('.ds-s', item);
+          const headingMatch = !q || heading.textContent.toLocaleLowerCase().includes(q);
+          let childMatches = 0;
+          children.forEach(child => {
+            const match = !q || headingMatch || child.textContent.toLocaleLowerCase().includes(q);
+            child.hidden = !match;
+            if (match) childMatches++;
+          });
+          item.hidden = !!q && !headingMatch && childMatches === 0;
+          if (q && childMatches > 0) {
+            item.classList.add('open');
+            heading.setAttribute('aria-expanded', 'true');
+          } else if (!q) {
+            const wasOpen = groupOpenBeforeSearch.get(item) === true;
+            item.classList.toggle('open', wasOpen);
+            heading.setAttribute('aria-expanded', wasOpen ? 'true' : 'false');
+          }
+        } else if (item.matches('[data-go]')) {
+          item.hidden = !!q && !item.textContent.toLocaleLowerCase().includes(q);
+        } else {
+          item.hidden = !!q;
+        }
+        if (!item.hidden) visible++;
+      });
+      if (searchEmpty) searchEmpty.hidden = !q || visible > 0;
+    }
+    function openDrawer(focusSearch = false) {
+      drawer.classList.add('on');
+      drawer.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('pm-open');
+      if (focusSearch && pageSearch) requestAnimationFrame(() => pageSearch.focus());
+    }
+    function closeDrawer() {
+      if (!drawer.classList.contains('on')) return;
+      drawer.classList.remove('on');
+      drawer.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('pm-open');
+      if (pageSearch && pageSearch.value) {
+        pageSearch.value = '';
+        filterMenu('');
+      }
+    }
+    if (pageSearch) pageSearch.addEventListener('input', () => filterMenu(pageSearch.value));
 
     tabs.forEach(t => t.addEventListener('click', () => {
       const i = +t.dataset.i;
@@ -335,7 +390,25 @@
       if (grp) { const open = grp.getAttribute('aria-expanded') !== 'true'; grp.setAttribute('aria-expanded', open); grp.parentNode.classList.toggle('open', open); }
     });
     $('.dr-scrim', drawer).addEventListener('click', closeDrawer); $('#dr-x', drawer).addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (drawer.classList.contains('on') && pageSearch && pageSearch.value) {
+          pageSearch.value = '';
+          filterMenu('');
+          pageSearch.focus();
+          return;
+        }
+        closeDrawer();
+        return;
+      }
+      const target = e.target;
+      const typing = target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+      const shortcut = (e.key === '/' && !typing) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k');
+      if (shortcut) {
+        e.preventDefault();
+        openDrawer(true);
+      }
+    });
     // swipe the menu back to the left to close it
     let sx = null; const panel = $('.dr-panel', drawer);
     panel.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
