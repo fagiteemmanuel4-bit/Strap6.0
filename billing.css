@@ -287,3 +287,62 @@
  .bill-workspace .bill-field{font-size:13px}
 }
 @media(prefers-reduced-motion:reduce){.bill-workspace *{scroll-behavior:auto!important}}
+
+
+/* Billing interaction and responsive refinements — keep the established Strap surfaces. */
+.bill-workspace,.bill-workspace *{box-sizing:border-box}
+.bill-workspace{min-width:0;max-width:100%;padding-bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+.bill-workspace :is(.bill-hero,.bill-card,.bill-price-card,.bill-receipt,.bill-list,.bill-result,.bill-payment){min-width:0}
+.bill-workspace :is(.bill-hero-foot b,.bill-metrics b,.bill-kv b,.bill-payment-main>b,.bill-result>div>b,.bill-receipt-total>b,.bill-price,.bill-usage-line>b){font-variant-numeric:tabular-nums lining-nums}
+.bill-workspace .bill-primary,.bill-workspace .bill-secondary{min-height:48px;padding:0 20px;border-radius:13px;font-weight:750;letter-spacing:-.01em;transition:background-color .16s,border-color .16s,color .16s,transform .16s,box-shadow .16s}
+.bill-workspace .bill-primary{background:#0a0a0a;color:#e6f53a;border-color:#0a0a0a;box-shadow:0 5px 0 rgba(10,10,10,.08)}
+.bill-workspace .bill-primary:hover:not(:disabled){background:#242424;box-shadow:0 7px 16px rgba(10,10,10,.14)}
+.bill-workspace .bill-secondary:hover:not(:disabled){border-color:#0a0a0a;background:#f7f7f0}
+.bill-workspace .bill-primary:active:not(:disabled),.bill-workspace .bill-secondary:active:not(:disabled){transform:translateY(1px) scale(.99)}
+.bill-workspace button:disabled{opacity:.48;filter:saturate(.55);cursor:not-allowed;box-shadow:none}
+.bill-workspace button[aria-busy="true"]{cursor:progress}
+.bill-workspace .bill-kv b,.bill-workspace .bill-payment-main small,.bill-workspace .bill-ref{overflow-wrap:anywhere;word-break:break-word}
+.bill-workspace .bill-loading{min-height:150px;height:auto}
+.bill-workspace .bill-loading:before,.bill-workspace .bill-loading:after{animation:billShimmer 1.35s linear infinite}
+.bill-workspace .bill-price-card .bill-price{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bill-workspace .bill-actions>*{flex:1 1 180px}
+.bill-workspace .bill-links>button{min-width:0;min-height:60px}
+.bill-workspace .bill-payment{min-width:0}
+.bill-workspace .bill-payment>.bill-status{flex:0 0 auto}
+.bill-workspace .bill-result{min-width:0}
+.bill-workspace .bill-receipt-total>b{overflow-wrap:anywhere}
+@media(max-width:600px){
+ .fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field) .fx-in{width:auto;max-width:none;padding:0 14px calc(42px + env(safe-area-inset-bottom,0px))}
+ .bill-workspace .pm-head{margin:0 -14px 16px;padding:12px 14px}
+ .bill-workspace .bill-hero{padding:20px 18px;border-radius:20px}
+ .bill-workspace .bill-hero h2{font-size:clamp(27px,8vw,36px);overflow-wrap:anywhere}
+ .bill-workspace .bill-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .bill-workspace .bill-metrics article{padding:12px 9px}
+ .bill-workspace .bill-metrics b{font-size:clamp(14px,4vw,18px)}
+ .bill-workspace .bill-links{grid-template-columns:minmax(0,1fr)}
+ .bill-workspace .bill-links>button{min-height:54px}
+ .bill-workspace .bill-price-grid{grid-template-columns:minmax(0,1fr)}
+ .bill-workspace .bill-price-card{padding:17px}
+ .bill-workspace .bill-price-card .bill-price{font-size:28px}
+ .bill-workspace .bill-kv{gap:10px}
+ .bill-workspace .bill-kv span{flex:1 1 42%}
+ .bill-workspace .bill-kv b{flex:1 1 58%;min-width:0}
+ .bill-workspace .bill-actions{display:grid;grid-template-columns:minmax(0,1fr)}
+ .bill-workspace .bill-actions>*{width:100%}
+ .bill-workspace .bill-payment{gap:8px;padding:12px}
+ .bill-workspace .bill-payment-icon{width:34px;height:34px;flex-basis:34px}
+ .bill-workspace .bill-payment>.bill-status{font-size:9px;padding:5px 7px}
+ .bill-workspace .bill-result{grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;padding:13px}
+ .bill-workspace .bill-toggle-row{align-items:flex-start;flex-direction:column}
+ .bill-workspace .bill-toggle-row .bill-secondary{width:100%}
+ .bill-workspace .bill-primary,.bill-workspace .bill-secondary{width:100%;min-height:49px}
+}
+@media(max-width:360px){
+ .bill-workspace .bill-metrics{grid-template-columns:minmax(0,1fr)}
+ .bill-workspace .bill-metrics article{padding:13px}
+ .bill-workspace .bill-payment-main>b{font-size:12px}
+ .bill-workspace .bill-payment>.bill-status{white-space:normal;text-align:center}
+}
+@media(prefers-reduced-motion:reduce){
+ .bill-workspace *, .bill-workspace *:before,.bill-workspace *:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
