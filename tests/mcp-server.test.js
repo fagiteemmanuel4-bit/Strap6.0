@@ -93,7 +93,7 @@ test('unauthorized requests return the protected-resource challenge',async()=>{
   const {send}=fixture();
   const r=await send({jsonrpc:'2.0',id:1,method:'initialize'},'POST','');
   assert.equal(r.status,401);
-  assert.match(r.headers['WWW-Authenticate'],/oauth-protected-resource/);
+  assert.match(r.headers['WWW-Authenticate'],/resource-metadata/);
 });
 
 test('CORS preflight is answered without authentication',async()=>{
