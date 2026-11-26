@@ -1317,7 +1317,27 @@ module.exports = async (req, res) => {
     req.body = req.body || {};
     const user=await me(req), staff=user?null:await staffSession(req);
     const out = await h(req, res, user, staff);
-    if (out === null) return;
-    res.statusCode = out[0]; res.setHeader('Cache-Control', 'no-store'); res.json(out[1]);
-  } catch (e) { console.error(e); res.statusCode = 500; res.json({ ok: false, msg: 'Server error. Try again.' }); }
+    // Some streaming/binary handlers write directly to the response and return null.
+    // Never attempt a second response after headers/body have already been sent.
+    if (out === null || res.writableEnded || res.finished) return;
+    // Every JSON handler must return [status, body]. Treat accidental undefined or
+    // malformed results as a controlled server error instead of throwing at out[0].
+    if (!Array.isArray(out) || out.length < 2 || !Number.isInteger(out[0])) {
+      console.error('[Strap API] Invalid handler response:', route, out);
+      if (res.headersSent) return;
+      res.statusCode = 500;
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({ ok: false, msg: 'This request could not be completed. Please try again.' });
+    }
+    res.statusCode = out[0];
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(out[1]);
+  } catch (e) {
+    console.error('[Strap API]', req.__strap_route || 'unknown route', e);
+    // A media/download/stream handler may already have started its response.
+    if (res.headersSent || res.writableEnded || res.finished) return;
+    res.statusCode = 500;
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: false, msg: 'Server error. Try again.' });
+  }
 };
