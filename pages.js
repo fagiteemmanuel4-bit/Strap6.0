@@ -245,7 +245,7 @@ window.StrapPages = (() => {
 
   function growth(root, ctx) {
     const draw = () => {
-      const sales = S.sales();
+      const sales = StrapStore.sales();
       const now = new Date();
       const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
       const recent = sales.filter(x => Number(x.ts) >= start.getTime());
@@ -263,7 +263,7 @@ window.StrapPages = (() => {
       const top = [...products.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
       const days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(start); date.setDate(start.getDate() + i);
-        const key = S.dayKey(date.getTime());
+        const key = StrapStore.dayKey(date.getTime());
         const rows = recent.filter(s => S.dayKey(Number(s.ts)) === key);
         return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), value: rows.reduce((sum, x) => sum + (Number(x.total) || 0), 0), count: rows.length };
       });
