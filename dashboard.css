@@ -1,12 +1,8 @@
 /* Strap dashboard page: base + dashboard styles (loader styles are in loader.css) */
 :root{
-  --lemon:#e6f53a;--black:#0a0a0a;--ink:#141414;--edge:#2b2b2b;--mute:#8d8d86;
-  --bg-canvas:#f6f6f0;--bg-surface:#fff;--bg-elevated:#fff;
-  --ink-primary:#0a0a0a;--ink-muted:#74746d;--border-subtle:#e8e8e3;--accent-primary:#e6f53a;
-  --font-display:"DM Serif Display",Georgia,serif;--font-ui:"Sora","Helvetica Neue",Arial,sans-serif;
-  --font-reading:"Inter","Helvetica Neue",Arial,sans-serif;--font-mono:"Space Mono",ui-monospace,monospace;
-  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
-  --motion-feedback:160ms;--motion-panel:300ms
+  /* Legacy dashboard names resolve to the canonical tokens in tokens.css. */
+  --motion-feedback:var(--motion-fast);
+  --motion-panel:var(--motion-panel);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -158,3 +154,20 @@ body.is-dash{background:var(--black)}
 .dash.go .dsheet{animation:sheetUp .32s cubic-bezier(.2,.8,.2,1) .04s backwards}
 .dash.go .in{animation:cardIn .28s cubic-bezier(.2,.9,.2,1) backwards;animation-delay:calc(min(var(--i,0),4)*40ms + 80ms)}
 .dash.go .tabs{animation:navUp .35s cubic-bezier(.2,.8,.2,1) .18s backwards}
+
+/* Shared shell refinements: compact, readable and touch-first. */
+.dash{overflow-x:clip}
+.dsheet{width:100%;background:var(--bg-surface);color:var(--ink-primary)}
+.dh,.sec,.rev,.sc,.sl-card{min-width:0}
+.dnav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.tabs{max-width:400px;min-width:0}
+.tab{min-width:0;min-height:58px}
+@media(max-width:380px){
+  .dsheet{padding-left:16px;padding-right:16px}
+  .tabs{padding:6px}
+  .bub{top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/4)}
+  .tab{height:54px}
+}
+@media(prefers-reduced-motion:reduce){
+  .dash.go .dsheet,.dash.go .in,.dash.go .tabs,.dash.go .ln>span{animation:none!important}
+}
