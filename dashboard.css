@@ -1,8 +1,16 @@
 /* Strap dashboard page: base + dashboard styles (loader styles are in loader.css) */
-:root{--lemon:#e6f53a;--black:#0a0a0a;--ink:#141414;--edge:#2b2b2b;--mute:#8d8d86}
+:root{
+  --lemon:#e6f53a;--black:#0a0a0a;--ink:#141414;--edge:#2b2b2b;--mute:#8d8d86;
+  --bg-canvas:#f6f6f0;--bg-surface:#fff;--bg-elevated:#fff;
+  --ink-primary:#0a0a0a;--ink-muted:#74746d;--border-subtle:#e8e8e3;--accent-primary:#e6f53a;
+  --font-display:"DM Serif Display",Georgia,serif;--font-ui:"Sora","Helvetica Neue",Arial,sans-serif;
+  --font-reading:"Inter","Helvetica Neue",Arial,sans-serif;--font-mono:"Space Mono",ui-monospace,monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
+  --motion-feedback:160ms;--motion-panel:300ms
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{font-family:"Sora","Helvetica Neue",Arial,sans-serif;background:var(--lemon);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-ui);background:var(--lemon);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased}
 [hidden]{display:none!important}
 button{font-family:inherit}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -38,7 +46,7 @@ body.is-dash{background:var(--black)}
 @keyframes ring{15%{transform:rotate(16deg)}35%{transform:rotate(-13deg)}55%{transform:rotate(9deg)}75%{transform:rotate(-5deg)}100%{transform:none}}
 
 /* greeting: lines slide up out of a mask */
-.hi{margin-top:clamp(30px,6vh,48px);font-size:clamp(32px,9.4vw,42px);line-height:1.12;font-weight:600;letter-spacing:-.045em}
+.hi{margin-top:clamp(30px,6vh,48px);font:400 clamp(32px,9.4vw,42px)/1.12 var(--font-display);letter-spacing:-.025em}
 .ln{display:block;overflow:hidden;padding-bottom:9px;margin-bottom:-9px}
 .ln>span{display:inline-block}
 .dash:not(.go) .ln>span{transform:translateY(115%)}
@@ -92,7 +100,7 @@ body.is-dash{background:var(--black)}
 /* other tabs */
 .pane:not([hidden]){animation:paneIn .4s cubic-bezier(.2,.9,.2,1)}
 @keyframes paneIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.pt{margin-top:34px;font-size:clamp(32px,9vw,40px);font-weight:600;letter-spacing:-.045em}
+.pt{margin-top:34px;font:400 clamp(32px,9vw,40px)/1.12 var(--font-display);letter-spacing:-.025em}
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:clamp(60px,14vh,120px) 12px 0}
 .empty .ic{width:76px;height:76px;border-radius:26px;background:#f3f3ee;display:grid;place-items:center;margin-bottom:20px;animation:float 3.4s ease-in-out infinite}
 .empty h2{font-size:22px;font-weight:600;letter-spacing:-.03em}
@@ -142,3 +150,11 @@ body.is-dash{background:var(--black)}
 .staff-drawer-foot button[data-staff-logout]{background:#101010;color:#e6f53a}
 .staff-drawer-foot em{margin-left:auto;font-size:10px;font-style:normal;color:#888}
 .dr-panel{display:flex;flex-direction:column}
+
+/* Shared Strap rhythm and restrained navigation motion. */
+.sec small,.sb,.ds-h,.ds-b{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.tab{transition:color var(--motion-feedback) ease,transform var(--motion-feedback) ease}
+.bub{transition:transform var(--motion-panel) cubic-bezier(.2,.8,.2,1)}
+.dash.go .dsheet{animation:sheetUp .32s cubic-bezier(.2,.8,.2,1) .04s backwards}
+.dash.go .in{animation:cardIn .28s cubic-bezier(.2,.9,.2,1) backwards;animation-delay:calc(min(var(--i,0),4)*40ms + 80ms)}
+.dash.go .tabs{animation:navUp .35s cubic-bezier(.2,.8,.2,1) .18s backwards}
