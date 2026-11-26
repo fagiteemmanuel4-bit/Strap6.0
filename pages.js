@@ -313,13 +313,13 @@ window.StrapPages = (() => {
         <section class="growth-panel growth-milestone-panel">
           <div class="growth-panel-head"><div><h3>Business milestones</h3><p>${completed} of ${milestones.length} milestones reached</p></div><b class="growth-progress-count">${Math.round(completed / milestones.length * 100)}%</b></div>
           <div class="growth-progress"><i style="width:${completed / milestones.length * 100}%"></i></div>
-          <div class="growth-milestones">${milestones.map(m => `<div class="growth-milestone ${m.done ? 'done' : ''}"><span>${m.done ? ic('check', 16, 2.5) : ic('circle', 16, 1.8)}</span><div><b>${m.label}</b><small>${m.detail}</small></div><em>${m.done ? 'Reached' : 'In progress'}</em></div>`).join('')}</div>
+          <div class="growth-milestones">${milestones.map(m => `<div class="growth-milestone ${m.done ? 'done' : ''}"><span>${m.done ? ic('check', 16, 2.5) : ic('clock', 16, 1.8)}</span><div><b>${m.label}</b><small>${m.detail}</small></div><em>${m.done ? 'Reached' : 'In progress'}</em></div>`).join('')}</div>
           ${nextMilestone ? `<p class="growth-next">Next up: <b>${nextMilestone.label}</b></p>` : '<p class="growth-next">Every milestone reached. Keep going.</p>'}
         </section>
         <p class="growth-disclaimer">Growth figures use sales recorded in this Strap workspace on this device. Store visits and conversion rates are not included until online-store analytics are connected.</p>
       ` : `
         <section class="growth-empty">
-          <span>${ic('chart-no-axes-combined', 30, 1.8)}</span><h2>Your growth starts with a sale</h2>
+          <span>${ic('growth', 30, 1.8)}</span><h2>Your growth starts with a sale</h2>
           <p>Once you record sales, this page will show revenue trends, product performance and business milestones.</p>
           <div class="growth-empty-steps"><div><b>01</b><span>Add your products</span></div><div><b>02</b><span>Record your first sale</span></div><div><b>03</b><span>Track your progress here</span></div></div>
         </section>`);
