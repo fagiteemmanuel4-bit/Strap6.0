@@ -137,3 +137,93 @@
 @keyframes billSpin{to{transform:rotate(360deg)}}
 
 .bill-workspace .bill-payment-main small,.bill-workspace .bill-result>small{font-variant-numeric:tabular-nums}
+
+
+/* Billing workspace refinement: shared rhythm, explicit actions and resilient small-screen layouts. */
+.bill-workspace{--bill-space:14px}
+.bill-workspace .pm-head{background:#f7f7f3;border-color:#e6e6df;padding:14px 0;margin-bottom:20px}
+.bill-workspace .pm-title{font-weight:700;line-height:1.15}
+.bill-workspace .bill-hero{border-radius:22px;box-shadow:none;padding:clamp(20px,3vw,28px)}
+.bill-workspace .bill-hero h2{font-weight:700}
+.bill-workspace .bill-card,.bill-workspace .bill-metrics article,.bill-workspace .bill-price-card{box-shadow:none;border-radius:16px}
+.bill-workspace .bill-card-head{min-height:28px}
+.bill-workspace .bill-card-head>b,.bill-workspace .bill-card>b{font-size:14px;font-weight:700}
+.bill-workspace .bill-kv{padding:14px 0;gap:14px}
+.bill-workspace .bill-kv b{max-width:62%;font-variant-numeric:tabular-nums}
+.bill-workspace .bill-primary,.bill-workspace .bill-secondary{min-height:48px;padding:0 19px;font-size:12px;font-weight:700;letter-spacing:-.01em}
+.bill-workspace .bill-primary{box-shadow:0 5px 0 rgba(10,10,10,.13);transition:transform .16s,box-shadow .16s,background .16s}
+.bill-workspace .bill-primary:hover:not(:disabled){background:#222;transform:translateY(-1px);box-shadow:0 7px 0 rgba(10,10,10,.13)}
+.bill-workspace .bill-primary:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 rgba(10,10,10,.13)}
+.bill-workspace .bill-secondary{border-width:1.5px;border-color:#d9d9d0;font-weight:600}
+.bill-workspace .bill-secondary:hover:not(:disabled){background:#f6f6f2;border-color:#bdbdb2}
+.bill-workspace button:focus-visible,.bill-workspace input:focus-visible{outline:3px solid #0a0a0a;outline-offset:3px;box-shadow:0 0 0 5px rgba(230,245,58,.75)}
+.bill-workspace .bill-links{gap:9px}
+.bill-workspace .bill-links>button{min-height:62px;border-radius:13px;padding:13px 14px;font-size:11px;line-height:1.4;transition:background .16s,border-color .16s,transform .16s}
+.bill-workspace .bill-links>button:hover{background:#f8f8f4;border-color:#d5d5cc}
+.bill-workspace .bill-links>button:active{transform:scale(.99)}
+.bill-workspace .bill-filter button{min-height:38px;padding:0 15px;font-size:11px;font-weight:700}
+.bill-workspace .bill-payment{min-height:72px;border-radius:13px;transition:border-color .15s,background .15s}
+.bill-workspace .bill-payment:hover{background:#fafaf7;border-color:#d5d5cc}
+.bill-workspace .bill-payment-main>b{font-size:14px;letter-spacing:-.02em}
+.bill-workspace .bill-result{border-radius:13px;padding:16px}
+.bill-workspace .bill-receipt{box-shadow:none;border-radius:16px}
+.bill-workspace .bill-empty{min-height:180px;align-content:center}
+.bill-workspace .bill-retry{display:flex;justify-content:center;width:100%;margin:10px 0 16px}
+.bill-workspace .bill-loading{height:140px;gap:13px;padding:20px}
+.bill-workspace .bill-loading:before{height:15px;width:46%}
+.bill-workspace .bill-loading:after{height:11px;width:82%}
+.bill-workspace .bill-field{font-size:12px;gap:8px}
+.bill-workspace .bill-field input{min-height:49px;border-radius:11px}
+.bill-workspace .bill-price-card{padding:20px}
+.bill-workspace .bill-price-card h3{font-size:16px}
+.bill-workspace .bill-price-card .bill-price{font-size:28px;font-variant-numeric:tabular-nums}
+.bill-workspace .bill-note{border-radius:13px;line-height:1.75}
+.bill-workspace .bill-alert{border-radius:13px}
+.bill-workspace .bill-alert .bill-secondary{min-height:40px}
+.bill-workspace .bill-usage-track{height:9px}
+.bill-workspace .bill-status{font-size:9px;letter-spacing:.015em}
+.bill-workspace .bill-numeric,.bill-workspace .bill-price,.bill-workspace .bill-metrics b,.bill-workspace .bill-hero-foot b{font-variant-numeric:tabular-nums}
+@media(min-width:760px){
+ .fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field) .fx-in{padding-bottom:48px}
+ .bill-workspace .bill-overview-grid{grid-template-columns:minmax(0,1.35fr) minmax(300px,.8fr)}
+ .bill-workspace .bill-actions{gap:12px}
+}
+@media(max-width:600px){
+ .bill-workspace .pm-head{margin:0 -16px 16px;padding:12px 16px}
+ .bill-workspace .bill-hero{padding:19px;border-radius:17px}
+ .bill-workspace .bill-hero h2{font-size:29px}
+ .bill-workspace .bill-hero-foot{align-items:flex-end}
+ .bill-workspace .bill-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .bill-workspace .bill-metrics article{min-height:84px;padding:11px 9px}
+ .bill-workspace .bill-metrics b{font-size:15px;overflow-wrap:anywhere}
+ .bill-workspace .bill-metrics small{font-size:9px;line-height:1.35}
+ .bill-workspace .bill-actions{display:grid;grid-template-columns:1fr;gap:9px}
+ .bill-workspace .bill-actions button,.bill-workspace .bill-primary,.bill-workspace .bill-secondary{width:100%;min-height:49px}
+ .bill-workspace .bill-links{grid-template-columns:1fr}
+ .bill-workspace .bill-links>button{min-height:56px}
+ .bill-workspace .bill-payment{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:9px}
+ .bill-workspace .bill-payment>.bill-status{grid-column:3;grid-row:1;align-self:center}
+ .bill-workspace .bill-payment>svg:last-child{display:none}
+ .bill-workspace .bill-payment-main{grid-column:2;grid-row:1}
+ .bill-workspace .bill-payment-main small{white-space:normal;overflow-wrap:anywhere}
+ .bill-workspace .bill-kv{align-items:flex-start}
+ .bill-workspace .bill-kv b{max-width:60%;text-align:right;overflow-wrap:anywhere}
+ .bill-workspace .bill-result{grid-template-columns:minmax(0,1fr);gap:8px}
+ .bill-workspace .bill-result>.bill-ref{grid-column:1}
+ .bill-workspace .bill-result>small{overflow-wrap:anywhere}
+ .bill-workspace .bill-toggle-row{flex-direction:row;align-items:center}
+ .bill-workspace .bill-toggle-row .bill-secondary{width:auto;flex:none}
+ .bill-workspace .bill-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .bill-workspace .bill-price-grid{grid-template-columns:1fr}
+ .bill-workspace .bill-price-card{padding:17px}
+ .bill-workspace .bill-receipt-total>b{font-size:29px}
+}
+@media(max-width:360px){
+ .bill-workspace .bill-metrics article{padding:10px 7px}
+ .bill-workspace .bill-metrics b{font-size:13px}
+ .bill-workspace .bill-status{font-size:8px;padding:5px 7px}
+ .bill-workspace .bill-payment{grid-template-columns:32px minmax(0,1fr);gap:8px}
+ .bill-workspace .bill-payment>.bill-status{grid-column:2;grid-row:2;justify-self:start;margin:0}
+ .bill-workspace .bill-payment-main{grid-column:2;grid-row:1}
+}
+@media(prefers-reduced-motion:reduce){.bill-workspace .bill-primary,.bill-workspace .bill-links>button,.bill-workspace .bill-payment{transition:none}}
