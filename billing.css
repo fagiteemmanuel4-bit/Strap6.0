@@ -132,3 +132,6 @@
 
 .bill-workspace .bill-alert .bill-secondary{margin-top:8px}
 .bill-workspace .bill-price-period{font:500 11px "Inter",sans-serif;color:#d2d2c8}
+
+.bill-workspace .bill-primary[aria-busy="true"]::before,.bill-workspace .bill-secondary[aria-busy="true"]::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:billSpin .7s linear infinite}
+@keyframes billSpin{to{transform:rotate(360deg)}}
