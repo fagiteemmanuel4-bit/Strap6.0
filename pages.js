@@ -74,6 +74,7 @@ window.StrapPages = (() => {
         }).join('')}</ul>`
           : empty(c.ill, c.h, c.p, cta));
     }
+    root.addEventListener('change', e => { if (e.target.matches('.growth-period')) { rangeDays = [7,30,90].includes(Number(e.target.value)) ? Number(e.target.value) : 7; draw(); } });
     root.addEventListener('click', e => {
       if (e.target.closest('[data-add]')) add();
       const view = e.target.closest('[data-view]'); if (view) { const card = rows.find(x => x.id === view.dataset.view); if (card) giftSlip(card, ctxRef); }
@@ -244,12 +245,13 @@ window.StrapPages = (() => {
   }
 
   function growth(root, ctx) {
+    let rangeDays = 7;
     const draw = () => {
       const sales = StrapStore.sales().filter(x => Number.isFinite(Number(x.ts)) && Number(x.ts) > 0);
       const now = new Date();
       const today = new Date(now); today.setHours(0, 0, 0, 0);
-      const start = new Date(today); start.setDate(start.getDate() - 6);
-      const previousStart = new Date(start); previousStart.setDate(previousStart.getDate() - 7);
+      const start = new Date(today); start.setDate(start.getDate() - (rangeDays - 1));
+      const previousStart = new Date(start); previousStart.setDate(previousStart.getDate() - rangeDays);
       const previousEnd = start.getTime();
       const inRange = (rows, from, to) => rows.filter(x => Number(x.ts) >= from && Number(x.ts) < to);
       const recent = inRange(sales, start.getTime(), now.getTime() + 1);
@@ -270,10 +272,14 @@ window.StrapPages = (() => {
       }));
       const top = [...products.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
       const days = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date(start); date.setDate(start.getDate() + i);
-        const next = new Date(date); next.setDate(date.getDate() + 1);
+        const date = new Date(start); date.setDate(start.getDate() + Math.floor(i * rangeDays / 7));
+        const next = new Date(start); next.setDate(start.getDate() + Math.floor((i + 1) * rangeDays / 7));
+        if (next <= date) next.setDate(date.getDate() + 1);
         const rows = inRange(sales, date.getTime(), next.getTime());
-        return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), date: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }), value: sumRevenue(rows), count: rows.length };
+        const label = rangeDays === 7 ? date.toLocaleDateString('en-NG', { weekday: 'short' }) : date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+        const end = new Date(next.getTime() - 1);
+        const dateLabel = rangeDays === 7 ? date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : date.toLocaleDateString('en-NG', { day: 'numeric' }) + '–' + end.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+        return { label, date: dateLabel, value: sumRevenue(rows), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
       const chartPoints = days.map((day, i) => ({ ...day, x: 20 + i * 110, y: Math.max(28, Math.min(205, 205 - (day.value / max) * 160)) }));
@@ -301,13 +307,13 @@ window.StrapPages = (() => {
       const growthLabel = change === null ? 'No previous-week baseline' : (change > 0 ? '+' : '') + change.toFixed(1) + '% vs previous 7 days';
       root.innerHTML = head('growth', 'Growth') + (sales.length ? `
         <section class="growth-hero">
-          <div class="growth-hero-top"><span>Sales performance</span><span class="growth-period">Last 7 days</span></div>
+          <div class="growth-hero-top"><span>Sales performance</span><label class="growth-period-wrap"><select class="growth-period" aria-label="Sales timeframe"><option value="7" ${rangeDays===7?'selected':''}>Last 7 days</option><option value="30" ${rangeDays===30?'selected':''}>Last 30 days</option><option value="90" ${rangeDays===90?'selected':''}>Last 90 days</option></select><span aria-hidden="true">⌄</span></label></div>
           <b class="growth-revenue">${ctx.money(recentRevenue)}</b>
           <div class="growth-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}">${esc(growthLabel)}</div>
           <div class="growth-hero-foot"><span><b>${recent.length.toLocaleString('en-NG')}</b><small>sales</small></span><span><b>${recentUnits.toLocaleString('en-NG')}</b><small>items sold</small></span><span><b>${ctx.money(average)}</b><small>avg. sale</small></span></div>
         </section>
         <section class="growth-chart-panel">
-          <div class="growth-panel-head"><h3>Daily sales trend</h3><span class="growth-peak">Peak: ${esc(peak.label)}</span></div>
+          <div class="growth-panel-head"><h3>${rangeDays===7?'Daily sales trend':'Sales trend'}</h3><span class="growth-peak">Peak: ${esc(peak.label)}</span></div>
           <div class="growth-chart-visual">
             <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
             <div class="growth-chart-stage"><div class="growth-tooltip" aria-live="polite">${esc(peak.label)} ${esc(peak.date)} · ${ctx.money(peak.value)}</div>
@@ -350,9 +356,10 @@ window.StrapPages = (() => {
         const i = Number(point.dataset.growthPoint);
         const sales = StrapStore.sales().filter(x => Number.isFinite(Number(x.ts)) && Number(x.ts) > 0);
         const now = new Date(), today = new Date(now); today.setHours(0,0,0,0);
-        const start = new Date(today); start.setDate(start.getDate()-6);
-        const date = new Date(start); date.setDate(start.getDate()+i);
-        const next = new Date(date); next.setDate(date.getDate()+1);
+        const start = new Date(today); start.setDate(start.getDate()-(rangeDays-1));
+        const date = new Date(start); date.setDate(start.getDate()+Math.floor(i*rangeDays/7));
+        const next = new Date(start); next.setDate(start.getDate()+Math.floor((i+1)*rangeDays/7));
+        if(next<=date) next.setDate(date.getDate()+1);
         const rows = sales.filter(x => Number(x.ts)>=date.getTime() && Number(x.ts)<next.getTime());
         const value = rows.reduce((sum,x)=>sum+(Number(x.total)||0),0);
         const label = date.toLocaleDateString('en-NG',{weekday:'short'})+' '+date.toLocaleDateString('en-NG',{day:'numeric',month:'short'})+' · '+ctx.money(value);
