@@ -557,7 +557,7 @@ window.StrapFeatures = (() => {
     const pct = Math.min(100, Math.round(count / 30 * 100));
     return '<section class="bill-card"><div class="bill-card-head"><b>Product allowance</b><span>' + (premium ? 'Premium' : 'Free plan') + '</span></div>' +
       '<div class="bill-usage-line"><b>' + Number(count).toLocaleString('en-NG') + (premium ? ' products' : ' of 30 products') + '</b><span>' + (premium ? 'No product cap' : pct + '% used') + '</span></div>' +
-      (premium ? '' : '<div class="bill-usage-track" role="progressbar" aria-label="Free product allowance" aria-valuemin="0" aria-valuemax="30" aria-valuenow="' + count + '"><i class="' + (pct >= 80 ? 'near-limit' : '') + '" style="width:' + pct + '%"></i></div>') +
+      (premium ? '' : '<div class="bill-usage-track" role="progressbar" aria-label="Free product allowance" aria-valuemin="0" aria-valuemax="30" aria-valuenow="' + Math.min(30, count) + '"><i class="' + (pct >= 80 ? 'near-limit' : '') + '" style="width:' + pct + '%"></i></div>') +
       '<p class="bill-help">' + (premium ? 'Premium removes the Free plan product cap.' : 'The Free plan includes up to 30 products. Upgrade before reaching the limit.') + '</p></section>';
   };
   const billFailedAlert = count => Number(count) > 0
@@ -594,7 +594,7 @@ window.StrapFeatures = (() => {
   PAGES['billing-overview'] = s => {
     const draw=async()=>{s.set(head('Billing overview')+'<div class="bill-loading">Loading your billing details…</div>');
       try{const r=await billGet('billing/overview');if(!r.ok)throw new Error(r.msg||'Could not load billing details.');
-        const sub=r.subscription||{},t=r.totals||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date(),planStatus=active?'active':(sub.cancel_at_period_end?'ending at expiry':(sub?'expired':'free')),productCount=items().length;
+        const sub=r.subscription||{},t=r.totals||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date(),planStatus=active?'active':(sub.cancel_at_period_end?'ending_at_expiry':(r.subscription?'expired':'free')),productCount=items().length;
         s.set(head('Billing overview')+`
           <section class="bill-hero"><div class="bill-hero-top"><span>Current plan</span>${billStatus(planStatus)}</div><h2>${active?'Strap Premium':'Free plan'}</h2><p>${active?'Your Premium tools are available until '+billDate(sub.expires_at):'Upgrade whenever you are ready to unlock Premium.'}</p><div class="bill-hero-foot"><b>${active?billMoney(sub.amount):'₦0'}</b><small>${active?'per 30-day billing period':'No active subscription'}</small></div></section>
           ${billFailedAlert(t.failed)}
