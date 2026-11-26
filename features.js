@@ -644,39 +644,48 @@ window.StrapFeatures = (() => {
     };draw();s.el.addEventListener('click',async e=>{const fill=e.target.closest('[data-fill]');if(fill){$('#bill-ref',s.el).value=fill.dataset.fill;$('#bill-txid',s.el).focus();return;}if(e.target.closest('[data-reconcile]')){const b=e.target.closest('[data-reconcile]'),ref=$('#bill-ref',s.el).value.trim(),id=$('#bill-txid',s.el).value.trim();if(!ref||!id){toast('Enter both payment reference and transaction ID.');return;}b.disabled=true;b.textContent='Verifying with Flutterwave…';const r=await StrapAPI.call('POST','billing/reconcile',{tx_ref:ref,transaction_id:id});toast(r.msg|| (r.ok?'Payment verified.':'Verification failed.'));if(r.ok){await refreshPlan();draw();}else{b.disabled=false;b.textContent='Verify payment';}}});
   };
 
-  /* --- Premium subscription --- */
-  PAGES.premium = (s) => {
+  /* --- Premium plan comparison and checkout --- */
+  PAGES.premium = s => {
     const perks = [
       'Unlimited product uploads and imports',
       'Point of sale, sales history and revenue reports',
-      'Gift cards and collections',
-      'Inventory, expenses and purchase tools',
+      'Gift cards, collections and inventory tools',
+      'Expenses, purchase tools and advanced reporting',
       'Online store and customer orders',
       'MCP connections and AI agent access',
       'Branches and advanced business tools'
     ];
     const draw = () => {
       const prem = S.plan === 'premium';
-      s.set(head('Premium') + `
-        <section class="pr-hero ${prem ? 'on' : ''}">${U.illus('premium')}<span class="fx-tag pr-st">${prem ? '<i></i>Active' : 'Free plan'}</span>
-          <h2>${prem ? 'You’re on Premium' : 'Unlock the full Strap experience'}</h2>
-          <p>${prem ? 'Your Premium access is active. Thank you for supporting Strap.' : 'Premium unlocks the tools you need to run your business. Your existing data stays safe if access expires.'}</p></section>
-        <h2 class="pm-h">${prem ? 'Your Premium features' : 'Included with Premium'}</h2>
-        <div class="fx-card"><ul class="pr-ul">${perks.map((x, i) => `<li style="--i:${i}"><i>${ic('check', 14, 3)}</i><span>${x}</span></li>`).join('')}</ul></div>
-        <div class="fx-card"><div class="fx-row" style="padding:0;border:0"><span class="st-ri">${ic('tag',22,1.8)}</span><div><b>One simple Premium plan</b><small>₦4,500/month for your first 3 successful monthly payments, then ₦6,000/month. Free accounts can keep up to 30 products.</small></div></div></div>
-        ${prem ? '<p class="fx-p pr-note">Premium is active. Renewal is currently manual; your business data stays safe if access expires.</p>' :
-          (S.checkoutReady ? `<section class="paycard" aria-label="Secure card payment"><div class="cardh"><span>Pay securely with your card</span><span class="brands" data-b="card"><i class="bd visa on">VISA</i><i class="bd mc on"><i></i><i></i></i><i class="bd verve on">VERVE</i></span></div><div class="cbox"><div class="crow"><div class="ci" style="font-size:14px;line-height:1.5">Your card details are entered on Flutterwave’s secure payment page. Strap never receives or stores your card number or CVV.</div></div><div class="crow two"><div class="ci" style="font-size:13px">Amount<strong style="display:block;font-size:20px;margin-top:4px">₦${Number(S.checkoutAmount||4500).toLocaleString('en-NG')}</strong></div><div class="ci" style="font-size:13px">Billing<strong style="display:block;font-size:16px;margin-top:4px">Monthly</strong></div></div></div><p class="note">Payments are processed securely by Flutterwave. Your Premium access is activated only after payment verification.</p><button type="button" class="fx-btn" data-up>${ic('flash',20,2)} Continue to secure payment</button></section>` :
-          '<p class="fx-p pr-note">Secure payment is temporarily unavailable. Please try again shortly.</p>')}`);
+      const price = billMoney(S.checkoutAmount || 4500);
+      const expiry = S.sub && S.sub.expiresAt ? billDate(S.sub.expiresAt) : 'your paid expiry date';
+      s.set(head('Plans & billing') +
+        '<div class="bill-intro">Choose the Strap plan that fits your business. Your account data stays yours if Premium access expires.</div>' +
+        '<section class="bill-hero"><div class="bill-hero-top"><span>Your current plan</span>' + billStatus(prem ? 'active' : 'free') + '</div>' +
+        '<h2>' + (prem ? 'Strap Premium is active' : 'Start with the essentials') + '</h2>' +
+        '<p>' + (prem ? 'Your Premium access is verified by Strap and remains available until ' + esc(expiry) + '.' : 'You are currently using the Free plan. Upgrade when you are ready for the full Strap toolkit.') + '</p>' +
+        '<div class="bill-hero-foot"><b>' + (prem ? 'Premium' : 'Free') + '</b><small>' + (prem ? 'Manual renewal · 30-day access' : 'No subscription required') + '</small></div></section>' +
+        '<div class="bill-price-grid"><article class="bill-price-card"><h3>Free</h3><div class="bill-price">₦0</div><p>For getting started and managing a small catalogue.</p><ul><li>Up to 30 products</li><li>Core store workspace</li><li>Basic product management</li><li>No recurring charge</li></ul>' +
+        (!prem ? '<button class="bill-secondary" type="button" disabled>Current plan</button>' : '') + '</article>' +
+        '<article class="bill-price-card featured"><h3>Strap Premium</h3><div class="bill-price">' + price + '<small style="font:500 11px Inter,sans-serif;color:#d2d2c8"> / 30 days</small></div><p>Full business tools with secure payment through Flutterwave.</p><ul>' +
+        perks.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' +
+        (prem ? '<button class="bill-primary" type="button" data-fx="billing-subscription">Manage subscription</button>' : (S.checkoutReady ? '<button class="bill-primary" type="button" data-up>Continue to secure payment</button>' : '<button class="bill-primary" type="button" disabled>Checkout temporarily unavailable</button>')) +
+        '</article></div>' +
+        '<div class="bill-note"><b>Clear billing terms.</b> Premium is currently one 30-day plan with manual renewal. The introductory price applies to the first three successful payments; the standard price applies afterwards. Strap does not automatically charge your card or store your card number or CVV. Annual billing, prorated plan changes and saved-card management are not currently offered.</div>' +
+        (prem ? '<div class="bill-actions"><button class="bill-secondary" data-fx="billing-overview">Open billing overview</button><button class="bill-primary" data-fx="billing-renew">Renew Premium</button></div>' : '<p class="bill-help">You will complete payment on Flutterwave’s secure checkout. Premium access is activated only after Strap verifies the transaction.</p>'));
     };
     draw();
-    // Refresh server-authoritative payment readiness after the page is mounted.
-    // The initial auth/bootstrap request may still be in flight when the user opens Premium.
     refreshPlan().then(draw);
     s.el.addEventListener('click', async e => {
-      if (!e.target.closest('[data-up]')) return;
-      const b=e.target.closest('[data-up]'); b.disabled=true; b.textContent='Opening secure payment…';
-      const result=await api.checkout();
-      if(!result.ok){b.disabled=false;b.textContent='Try again';}
+      const b = e.target.closest('[data-up]');
+      if (!b) return;
+      b.disabled = true;
+      b.textContent = 'Opening secure checkout…';
+      const result = await api.checkout();
+      if (!result || !result.ok) {
+        b.disabled = false;
+        b.textContent = 'Try again';
+      }
     });
   };
 
