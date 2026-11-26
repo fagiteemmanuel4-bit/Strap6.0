@@ -414,7 +414,7 @@
     panel.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
     panel.addEventListener('touchend', e => { if (sx !== null && e.changedTouches[0].clientX - sx < -70) closeDrawer(); sx = null; });
     // the products group starts expanded
-    const pg = $('[data-grp=products]', drawer); pg.setAttribute('aria-expanded', 'true'); pg.parentNode.classList.add('open');
+    const pg = $('[data-grp=products]', drawer); pg.setAttribute('aria-expanded', 'true'); pg.parentNode.classList.add('open'); groupOpenBeforeSearch.set(pg.parentNode, true);
 
     // Optional dashboard modules must never prevent the signed-in workspace from opening.
     try { ensure('products'); } catch (err) {
