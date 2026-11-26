@@ -688,15 +688,17 @@ window.StrapFeatures = (() => {
         '<div class="bill-note"><b>Clear billing terms.</b> Premium is currently one 30-day plan with manual renewal. The introductory price applies to the first three successful payments; the standard price applies afterwards. Strap does not automatically charge your card or store your card number or CVV. Annual billing, prorated plan changes and saved-card management are not currently offered.</div>' +
         (prem ? '<div class="bill-actions"><button class="bill-secondary" data-fx="billing-overview">Open billing overview</button><button class="bill-primary" data-fx="billing-renew">Renew Premium</button></div>' : '<p class="bill-help">You will complete payment on Flutterwave’s secure checkout. Premium access is activated only after Strap verifies the transaction.</p>'));
     };
-    s.set(head('Plans & billing') + '<div class="bill-loading">Verifying your current plan…</div>');
-    refreshPlan().then(result => {
+    const checkPlan = () => refreshPlan().then(result => {
       if (!result.verified) {
-        s.retry = () => refreshPlan().then(draw);
+        s.retry = checkPlan;
         s.set(head('Plans & billing') + billError('Plan status unavailable', 'Strap could not verify your current plan. Your access has not been changed. Check your connection and try again.'));
         return;
       }
+      s.retry = null;
       draw();
     });
+    s.set(head('Plans & billing') + '<div class="bill-loading">Verifying your current plan…</div>');
+    checkPlan();
     s.el.addEventListener('click', async e => {
       const b = e.target.closest('[data-up]');
       if (!b || b.disabled) return;
