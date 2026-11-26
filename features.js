@@ -553,6 +553,16 @@ window.StrapFeatures = (() => {
   const billDate = v => v ? new Date(v).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'}) : '—';
   const billStatus = v => '<span class="bill-status '+esc(String(v||'pending').toLowerCase())+'">'+esc(String(v||'pending').replace(/_/g,' '))+'</span>';
   const billEmpty = (title,body) => '<div class="bill-empty"><span>'+ic('receipt',25,1.8)+'</span><b>'+title+'</b><p>'+body+'</p></div>';
+  const billUsage = (count, premium) => {
+    const pct = Math.min(100, Math.round(count / 30 * 100));
+    return '<section class="bill-card"><div class="bill-card-head"><b>Product allowance</b><span>' + (premium ? 'Premium' : 'Free plan') + '</span></div>' +
+      '<div class="bill-usage-line"><b>' + Number(count).toLocaleString('en-NG') + (premium ? ' products' : ' of 30 products') + '</b><span>' + (premium ? 'No product cap' : pct + '% used') + '</span></div>' +
+      (premium ? '' : '<div class="bill-usage-track" role="progressbar" aria-label="Free product allowance" aria-valuemin="0" aria-valuemax="30" aria-valuenow="' + count + '"><i class="' + (pct >= 80 ? 'near-limit' : '') + '" style="width:' + pct + '%"></i></div>') +
+      '<p class="bill-help">' + (premium ? 'Premium removes the Free plan product cap.' : 'The Free plan includes up to 30 products. Upgrade before reaching the limit.') + '</p></section>';
+  };
+  const billFailedAlert = count => Number(count) > 0
+    ? '<div class="bill-alert"><strong>' + Number(count).toLocaleString('en-NG') + ' failed payment' + (Number(count) === 1 ? '' : 's') + '</strong>A previous checkout did not complete. You can safely start a new secure payment when you are ready.<br><button class="bill-secondary" style="margin-top:10px" data-fx="billing-renew">Retry payment</button></div>'
+    : '';
   async function billGet(path) { return StrapAPI.call('GET',path); }
   async function billLaunchRenew() {
     const r=await StrapAPI.call('POST','billing/renew',{});
@@ -584,9 +594,11 @@ window.StrapFeatures = (() => {
   PAGES['billing-overview'] = s => {
     const draw=async()=>{s.set(head('Billing overview')+'<div class="bill-loading">Loading your billing details…</div>');
       try{const r=await billGet('billing/overview');if(!r.ok)throw new Error(r.msg||'Could not load billing details.');
-        const sub=r.subscription||{},t=r.totals||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date();
+        const sub=r.subscription||{},t=r.totals||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date(),planStatus=active?'active':(sub.cancel_at_period_end?'ending at expiry':(sub?'expired':'free')),productCount=items().length;
         s.set(head('Billing overview')+`
-          <section class="bill-hero"><div class="bill-hero-top"><span>Current plan</span>${billStatus(active?'active':'free')}</div><h2>${active?'Strap Premium':'Free plan'}</h2><p>${active?'Your Premium tools are available until '+billDate(sub.expires_at):'Upgrade whenever you are ready to unlock Premium.'}</p><div class="bill-hero-foot"><b>${active?billMoney(sub.amount):'₦0'}</b><small>${active?'per 30-day billing period':'No active subscription'}</small></div></section>
+          <section class="bill-hero"><div class="bill-hero-top"><span>Current plan</span>${billStatus(planStatus)}</div><h2>${active?'Strap Premium':'Free plan'}</h2><p>${active?'Your Premium tools are available until '+billDate(sub.expires_at):'Upgrade whenever you are ready to unlock Premium.'}</p><div class="bill-hero-foot"><b>${active?billMoney(sub.amount):'₦0'}</b><small>${active?'per 30-day billing period':'No active subscription'}</small></div></section>
+          ${billFailedAlert(t.failed)}
+          ${billUsage(productCount,active)}
           <div class="bill-metrics"><article><small>Total paid</small><b>${billMoney(t.paid)}</b></article><article><small>Successful payments</small><b>${Number(t.successful||0).toLocaleString('en-NG')}</b></article><article><small>Pending</small><b>${Number(t.pending||0).toLocaleString('en-NG')}</b></article></div>
           <section class="bill-card"><div class="bill-card-head"><b>Subscription details</b><button data-fx="billing-subscription">Manage</button></div><div class="bill-kv"><span>Renewal type</span><b>Manual</b></div><div class="bill-kv"><span>Next renewal price</span><b>${billMoney(r.nextAmount)}</b></div><div class="bill-kv"><span>Expiry date</span><b>${active?billDate(sub.expires_at):'Not subscribed'}</b></div><div class="bill-kv"><span>Renewal setting</span><b>${sub.cancel_at_period_end?'Ends at expiry':'Not automatic'}</b></div></section>
           <div class="bill-actions"><button class="bill-primary" data-fx="billing-renew">${active?'Renew Premium':'Get Premium'}</button><button class="bill-secondary" data-fx="billing-history">Payment history</button></div>
@@ -616,13 +628,13 @@ window.StrapFeatures = (() => {
   };
   PAGES['billing-results'] = s => {
     const draw=async()=>{s.set(head('Payment results')+'<div class="bill-loading">Checking payment status…</div>');const r=await billGet('billing/payments?limit=100');if(!r.ok){s.set(head('Payment results')+billEmpty('Results unavailable',esc(r.msg||'')));return;}
-      const rows=r.payments||[];s.set(head('Payment results')+`<p class="bill-subtitle">Every checkout attempt and its latest recorded result.</p>${rows.length?'<div class="bill-list">'+rows.map(x=>'<article class="bill-result"><div><b>'+billMoney(x.amount)+'</b>'+billStatus(x.status)+'</div><small>'+billDate(x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small>'+(x.status==='pending'?'<button class="bill-text-btn" data-fx="billing-reconciliation">Resolve this payment</button>':'')+'</article>').join('')+'</div>':billEmpty('No payment attempts','When you start a Premium checkout, its result will appear here.')}`);
+      const rows=r.payments||[];s.set(head('Payment results')+`<p class="bill-subtitle">Every checkout attempt and its latest recorded result.</p>${rows.length?'<div class="bill-list">'+rows.map(x=>'<article class="bill-result"><div><b>'+billMoney(x.amount)+'</b>'+billStatus(x.status)+'</div><small>'+billDate(x.created_at)+'</small><small class="bill-ref">'+esc(x.tx_ref)+'</small>'+(x.status==='pending'?'<button class="bill-text-btn" data-fx="billing-reconciliation">Resolve this payment</button>':(x.status==='failed'?'<button class="bill-text-btn" data-fx="billing-renew">Retry payment</button>':''))+'</article>').join('')+'</div>':billEmpty('No payment attempts','When you start a Premium checkout, its result will appear here.')}`);
     };draw();
   };
   PAGES['billing-renew'] = s => {
     const draw=async()=>{s.set(head('Renew Premium')+'<div class="bill-loading">Checking your subscription…</div>');const r=await billGet('billing/overview');if(!r.ok){s.set(head('Renew Premium')+billEmpty('Could not load subscription',esc(r.msg||'')));return;}
       const sub=r.subscription||{},active=sub.status==='active'&&new Date(sub.expires_at)>new Date();
-      s.set(head('Renew Premium')+`<section class="bill-hero"><span>Strap Premium</span><h2>${billMoney(r.nextAmount)} <small>/ 30 days</small></h2><p>${active?'Your current access remains active. Renewing early adds 30 days to the existing expiry date.':'Restore full access to your Strap business tools.'}</p></section><div class="bill-card"><div class="bill-kv"><span>Payment</span><b>Flutterwave · Card</b></div><div class="bill-kv"><span>Currency</span><b>NGN</b></div><div class="bill-kv"><span>Billing</span><b>Manual renewal</b></div><div class="bill-kv"><span>Price sequence</span><b>₦4,500 first 3 successful payments, then ₦6,000</b></div></div><p class="bill-help">You will be taken to Flutterwave's secure checkout. Strap never collects your card number or CVV.</p><button class="bill-primary" data-renew>Continue to secure payment</button>`);
+      s.set(head('Renew Premium')+`<section class="bill-hero"><span>Strap Premium</span><h2>${billMoney(r.nextAmount)} <small>/ 30 days</small></h2><p>${active?'Your current access remains active. Renewing early adds 30 days to the existing expiry date.':'Restore full access to your Strap business tools.'}</p></section><div class="bill-card"><div class="bill-kv"><span>Payment</span><b>Flutterwave · Card</b></div><div class="bill-kv"><span>Currency</span><b>NGN</b></div><div class="bill-kv"><span>Billing</span><b>Manual renewal</b></div><div class="bill-kv"><span>Price sequence</span><b>₦4,500 first 3 successful payments, then ₦6,000</b></div></div><p class="bill-help">Pay by card through Flutterwave's secure hosted checkout. Strap does not store card numbers or CVV, and saved-card management is not currently available. You will be taken to Flutterwave's secure checkout. Strap never collects your card number or CVV.</p><button class="bill-primary" data-renew>Continue to secure payment</button>`);
     };draw();s.el.addEventListener('click',async e=>{const b=e.target.closest('[data-renew]');if(!b)return;b.disabled=true;b.textContent='Opening secure checkout…';try{await billLaunchRenew();}catch(err){toast(err.message||'Renewal could not be completed.');}finally{b.disabled=false;b.textContent='Continue to secure payment';}});
   };
   PAGES['billing-subscription'] = s => {
