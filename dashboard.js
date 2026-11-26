@@ -239,6 +239,11 @@
 
     const sheet = $('.dsheet', dash), tabsEl = $('.tabs', dash), tabs = $$('.tab', dash), bub = $('.bub', dash), drawer = $('#dr', dash);
     const panes = { home: $('.pane[data-id=home]', dash) }, mods = {};
+    const showPageFailure = pane => {
+      pane.innerHTML = '<section class="pg-empty"><h2>This page could not load</h2><p>Something went wrong while opening this section. Your saved data has not been changed.</p><button type="button" class="pm-add" data-page-retry>Refresh page</button></section>';
+      const retry = $('[data-page-retry]', pane);
+      if (retry) retry.addEventListener('click', () => location.reload());
+    };
     let current = 'home';
     const ctx = {
       toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products, openMenu: () => openDrawer(),
@@ -259,18 +264,30 @@
           mods.products = null;
         }
       } else {
-        mods[id] = StrapPages.build(id, p, ctx);
+        try {
+          mods[id] = StrapPages.build(id, p, ctx);
+        } catch (err) {
+          console.error('[Strap dashboard] Page module failed to initialize (' + id + '):', err);
+          mods[id] = null;
+          showPageFailure(p);
+        }
       }
       return p;
     }
     // inventory needs the products module to exist first
-    function show(id, options = {}) {
+    async function show(id, options = {}) {
       if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
-      if (!['home','products','settings','premium', 'billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'].includes(id) && StrapFeatures.state.plan !== 'premium') {
+      let planAccess = { verified: false, plan: StrapFeatures.state.plan };
+      try {
+        if (typeof StrapFeatures.waitForPlan === 'function') planAccess = await StrapFeatures.waitForPlan();
+      } catch (err) {
+        console.warn('[Strap dashboard] Could not verify Premium status before navigation:', err);
+      }
+      if (planAccess.verified && planAccess.plan !== 'premium' && !['home','products','settings','premium', 'billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'].includes(id)) {
         closeDrawer();
         toast('This feature requires Strap Premium.');
-        StrapFeatures.open('premium');
+        try { StrapFeatures.open('premium'); } catch (err) { console.error('[Strap dashboard] Premium screen failed to open:', err); }
         return;
       }
       if (id === 'ai') { ensure('products'); closeDrawer(); return mods.products.openAI(); }
@@ -283,7 +300,11 @@
       }
       current = id;
       Object.entries(panes).forEach(([k, el]) => { el.hidden = k !== id; });
-      if (!p.dataset.seen) p.dataset.seen = 1; else if (mods[id] && mods[id].onShow) mods[id].onShow();
+      if (!p.dataset.seen) p.dataset.seen = 1;
+      else if (mods[id] && mods[id].onShow) {
+        try { mods[id].onShow(); }
+        catch (err) { console.error('[Strap dashboard] Page refresh failed (' + id + '):', err); showPageFailure(p); }
+      }
       const t = TAB_OF[id];
       tabs.forEach((x, i) => { x.classList.toggle('on', i === t); i === t ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current'); });
       tabsEl.classList.toggle('none', t === undefined);
