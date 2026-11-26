@@ -19,8 +19,8 @@
 <p class="error" id="error" role="alert"></p>
 </main>
 <script type="module">
-import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.7.0-beta?bundle';
-const auth=createAuthClient(location.origin+'/api/neon-auth');
+import { createAuthClient } from 'https://esm.sh/@neon/auth@0.8.0?bundle';
+const auth=createAuthClient('https://ep-delicate-rain-begmai0o.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth');
 const params=new URLSearchParams(location.search),error=document.getElementById('error');
 const clientId=params.get('client_id')||'',scopes=(params.get('scope')||'').split(/\\s+/).filter(Boolean);
 let clientMeta={},branches=[];
