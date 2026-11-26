@@ -367,7 +367,6 @@ H['mcp/resource-metadata'] = async () => {
     resource: 'https://strap60.vercel.app/api/mcp',
     authorization_servers: [issuer],
     bearer_methods_supported: ['header'],
-    scopes_supported: ['store:read', 'store:write'],
     resource_documentation: 'https://strap60.vercel.app/MCP_SETUP.md'
   }];
 };
