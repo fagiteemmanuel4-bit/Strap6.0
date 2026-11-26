@@ -37,6 +37,8 @@ module.exports = function createMcp(options) {
    await q("create table if not exists strap_mcp_audit_log (id bigserial primary key, user_id text not null references app_users(id) on delete cascade, token_id uuid references strap_mcp_tokens(id) on delete set null, action text not null, branch_id text, resource_id text, details jsonb not null default '{}'::jsonb, created_at timestamptz not null default now())");
    await q('create index if not exists strap_mcp_audit_user_idx on strap_mcp_audit_log(user_id, created_at desc)');
    await q("create table if not exists strap_mcp_oauth_grants (user_id text not null references app_users(id) on delete cascade, client_id text not null, client_name text not null default 'OAuth AI client', scopes text[] not null default array['store:read']::text[], branch_ids text[] not null default array['b0']::text[], created_at timestamptz not null default now(), updated_at timestamptz not null default now(), revoked_at timestamptz, primary key(user_id,client_id))");
+   await q("alter table strap_mcp_oauth_grants add column if not exists client_uri text");
+   await q("alter table strap_mcp_oauth_grants add column if not exists logo_uri text");
   })().catch(error => { schemaReady = null; throw error; });
   return schemaReady;
  }
@@ -228,13 +230,31 @@ module.exports = function createMcp(options) {
   }
   return json(res,200,rpcError(body.id,-32601,'Method not found.'));
  }
+ async function approve(req,res,user) {
+  if(!user) return json(res,401,{ok:false,message:'Sign in to approve an AI connection.'});
+  await ensureSchema();
+  if(!await premiumActive(user.id)) return json(res,403,{ok:false,message:'Strap MCP connections require Strap Premium.'});
+  const ctx=await ownerContext(user.id);
+  if(req.method==='GET') return json(res,200,{ok:true,branches:ctx.branches.map(b=>({id:String(b.id),name:safeText(b.name,100)}))});
+  if(req.method!=='POST') { res.setHeader('Allow','GET, POST'); return json(res,405,{ok:false,message:'Method not allowed.'}); }
+  const body=req.body||{}, clientId=safeText(body.client_id,256), name=safeText(body.client_name||'AI application',100);
+  if(!clientId) return json(res,400,{ok:false,message:'OAuth client ID is required.'});
+  const scopes=['store:read',...(body.allow_write===true?['store:write']:[])];
+  const branches=Array.isArray(body.branch_ids)&&body.branch_ids.length?[...new Set(body.branch_ids.map(x=>safeText(x,100)).filter(Boolean))]:[String(ctx.settings.active||'b0')];
+  if(!branches.length||branches.includes('*')&&branches.length>1||branches.some(id=>id!=='*'&&!ctx.branches.some(b=>String(b.id)===id))) return json(res,400,{ok:false,message:'Choose valid branch access.'});
+  const safeUrl=value=>{try{const u=new URL(String(value||''));return u.protocol==='https:'?u.toString().slice(0,1000):null;}catch(_){return null;}};
+  const clientUri=safeUrl(body.client_uri), logoUri=safeUrl(body.logo_uri);
+  await q("insert into strap_mcp_oauth_grants(user_id,client_id,client_name,client_uri,logo_uri,scopes,branch_ids,revoked_at,updated_at) values($1,$2,$3,$4,$5,$6::text[],$7::text[],null,now()) on conflict(user_id,client_id) do update set client_name=excluded.client_name,client_uri=excluded.client_uri,logo_uri=excluded.logo_uri,scopes=excluded.scopes,branch_ids=excluded.branch_ids,revoked_at=null,updated_at=now()",
+   [user.id,clientId,name,clientUri,logoUri,scopes,branches]);
+  return json(res,200,{ok:true,approved:true,scopes,branch_ids:branches});
+ }
  async function manage(req,res,user) {
   if(!user) return json(res,401,{ok:false,message:'Sign in to manage AI connections.'});
   await ensureSchema();
   if(!await premiumActive(user.id)) return json(res,403,{ok:false,message:'Strap MCP connections require Strap Premium.'});
   if(req.method==='GET') {
    const rows=await q('select id::text,name,token_prefix,scopes,branch_ids,created_at,last_used_at from strap_mcp_tokens where user_id=$1 and revoked_at is null order by created_at desc',[user.id]);
-   const oauth=await q('select client_id,client_name,scopes,branch_ids,created_at,updated_at,revoked_at from strap_mcp_oauth_grants where user_id=$1 order by created_at desc',[user.id]);
+   const oauth=await q('select client_id,client_name,client_uri,logo_uri,scopes,branch_ids,created_at,updated_at,revoked_at from strap_mcp_oauth_grants where user_id=$1 order by created_at desc',[user.id]);
    const activity=await q('select id,action,branch_id,resource_id,details,created_at from strap_mcp_audit_log where user_id=$1 order by created_at desc limit 50',[user.id]);
    const ctx=await ownerContext(user.id);
    const branches=ctx.branches.map(b=>({id:String(b.id),name:safeText(b.name,100)}));
@@ -277,5 +297,5 @@ module.exports = function createMcp(options) {
   res.setHeader('Allow','GET, POST, PATCH, DELETE');
   return json(res,405,{ok:false,message:'Method not allowed.'});
  }
- return {handle,manage};
+ return {handle,manage,approve};
 };
