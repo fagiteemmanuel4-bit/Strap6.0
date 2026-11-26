@@ -371,6 +371,13 @@ window.StrapPages = (() => {
       }
       if (e.target.closest('[data-growth-see-all]')) ctx.go('products');
     });
+    root.addEventListener('pointermove', e => {
+      const stage=e.target.closest('.growth-chart-stage'); if(!stage || (e.pointerType==='mouse' && e.buttons!==0)) return;
+      const svg=stage.querySelector('.growth-line-chart'); if(!svg) return;
+      const rect=svg.getBoundingClientRect(), x=(e.clientX-rect.left)/Math.max(1,rect.width)*700;
+      const index=Math.max(0,Math.min(6,Math.round((x-20)/110)));
+      const button=root.querySelector('.growth-chart-x [data-growth-point="'+index+'"]'); if(button) button.click();
+    });
     root.addEventListener('keydown', e => {
       if ((e.key==='Enter'||e.key===' ') && e.target.matches('.growth-chart-point')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
     });
