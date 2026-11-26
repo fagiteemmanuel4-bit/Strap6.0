@@ -258,7 +258,7 @@ window.StrapPages = (() => {
       const revenue = sumRevenue(sales), recentRevenue = sumRevenue(recent), previousRevenue = sumRevenue(previous);
       const unitsIn = rows => rows.reduce((sum, sale) => sum + (Array.isArray(sale.lines) ? sale.lines.reduce((n, line) => n + Math.max(0, Number(line.qty) || 0), 0) : 0), 0);
       const units = unitsIn(sales), recentUnits = unitsIn(recent);
-      const average = sales.length ? revenue / sales.length : 0;
+      const average = recent.length ? recentRevenue / recent.length : 0;
       const change = previousRevenue > 0 ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 : null;
       const products = new Map();
       sales.forEach(sale => (Array.isArray(sale.lines) ? sale.lines : []).forEach(line => {
@@ -276,12 +276,16 @@ window.StrapPages = (() => {
         return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), date: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }), value: sumRevenue(rows), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
-      const chartPoints = days.map((day, i) => ({ ...day, x: 30 + i * 106.6, y: 190 - (day.value / max) * 145 }));
+      const chartPoints = days.map((day, i) => ({ ...day, x: 20 + i * 110, y: Math.max(28, Math.min(205, 205 - (day.value / max) * 160)) }));
+      const peakIndex = chartPoints.reduce((best, point, i, arr) => point.value > arr[best].value ? i : best, 0);
+      const peak = chartPoints[peakIndex];
       const chartLine = chartPoints.map((point, i) => {
         if (!i) return 'M ' + point.x.toFixed(1) + ' ' + point.y.toFixed(1);
         const prev = chartPoints[i - 1], before = chartPoints[Math.max(0, i - 2)], after = chartPoints[Math.min(chartPoints.length - 1, i + 1)];
-        const c1x = prev.x + (point.x - before.x) / 6, c1y = prev.y + (point.y - before.y) / 6;
-        const c2x = point.x - (after.x - prev.x) / 6, c2y = point.y - (after.y - prev.y) / 6;
+        const dx = point.x - prev.x;
+        const c1y = Math.max(Math.min(prev.y, point.y), Math.min(Math.max(prev.y, point.y), prev.y + (point.y - before.y) / 6));
+        const c2y = Math.max(Math.min(prev.y, point.y), Math.min(Math.max(prev.y, point.y), point.y - (after.y - prev.y) / 6));
+        const c1x = prev.x + dx / 3, c2x = point.x - dx / 3;
         return 'C ' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ', ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) + ', ' + point.x.toFixed(1) + ' ' + point.y.toFixed(1);
       }).join(' ');
       const chartArea = chartLine + ' L ' + chartPoints[chartPoints.length - 1].x.toFixed(1) + ' 205 L ' + chartPoints[0].x.toFixed(1) + ' 205 Z';
@@ -300,30 +304,30 @@ window.StrapPages = (() => {
           <div class="growth-hero-top"><span>Sales performance</span><span class="growth-period">Last 7 days</span></div>
           <b class="growth-revenue">${ctx.money(recentRevenue)}</b>
           <div class="growth-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}">${esc(growthLabel)}</div>
-          <div class="growth-hero-foot"><span>${recent.length.toLocaleString('en-NG')} sales</span><span>${recentUnits.toLocaleString('en-NG')} items sold</span></div>
+          <div class="growth-hero-foot"><span><b>${recent.length.toLocaleString('en-NG')}</b><small>sales</small></span><span><b>${recentUnits.toLocaleString('en-NG')}</b><small>items sold</small></span><span><b>${ctx.money(average)}</b><small>avg. sale</small></span></div>
         </section>
-        <div class="growth-metrics">
-          <article class="growth-average-card"><small>Average sale</small><b>${ctx.money(average)}</b><span>Across ${sales.length.toLocaleString('en-NG')} sales</span></article>
-        </div>
         <section class="growth-chart-panel">
+          <div class="growth-panel-head"><h3>Daily sales trend</h3><span class="growth-peak">Peak: ${esc(peak.label)}</span></div>
           <div class="growth-chart-visual">
             <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
+            <div class="growth-chart-stage"><div class="growth-tooltip" aria-live="polite">${esc(peak.label)} ${esc(peak.date)} · ${ctx.money(peak.value)}</div>
             <svg class="growth-line-chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
               <defs><linearGradient id="growthAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e6f53a" stop-opacity=".34"/><stop offset="100%" stop-color="#e6f53a" stop-opacity=".015"/></linearGradient><filter id="growthLineGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-              <line x1="20" y1="45" x2="680" y2="45" class="growth-grid-line"/>
-              <line x1="20" y1="120" x2="680" y2="120" class="growth-grid-line"/>
-              <line x1="20" y1="205" x2="680" y2="205" class="growth-grid-line"/>
-              <path d="${chartArea}" class="growth-chart-area"/>
+              <line x1="10" y1="45" x2="690" y2="45" class="growth-grid-line"/>
+              <line x1="10" y1="120" x2="690" y2="120" class="growth-grid-line"/>
+              <line x1="10" y1="205" x2="690" y2="205" class="growth-grid-line"/>
+              <path d="${chartArea}" class="growth-chart-area"/><line x1="${peak.x}" y1="28" x2="${peak.x}" y2="205" class="growth-chart-guide"/>
               <path d="${chartLine}" class="growth-chart-line-glow"/>
               <path d="${chartLine}" class="growth-chart-line"/>
-              ${chartPoints.map((point,i)=>`<g class="growth-chart-point ${i===6?'latest':''}"><title>${point.date}: ${ctx.money(point.value)} · ${point.count} sales</title><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?9:6}"/><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?3:2}"/></g>`).join('')}
+              ${chartPoints.map((point,i)=>`<g class="growth-chart-point ${i===peakIndex?'active':''}" data-growth-point="${i}" role="button" tabindex="0" aria-label="${esc(point.label)} ${esc(point.date)}: ${ctx.money(point.value)}"><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="13" class="growth-point-hit"/><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===peakIndex?7:5}" class="growth-point-dot"/></g>`).join('')}
+            </svg></div>
             </svg>
           </div>
-          <div class="growth-chart-x">${days.map((day,i)=>`<div class="${i===6?'today':''}"><b>${day.label}</b><small>${day.date}</small></div>`).join('')}</div>
+          <div class="growth-chart-x">${days.map((day,i)=>`<button type="button" data-growth-point="${i}" class="${i===peakIndex?'today':''}"><b>${day.label}</b><small>${day.date}</small></button>`).join('')}</div>
         </section>
         <section class="growth-panel">
-          <div class="growth-panel-head"><div><h3>Best-selling products</h3><p>Ranked by units sold</p></div></div>
-          ${top.length ? `<div class="growth-products">${top.map((item, i) => `<div class="growth-product-row"><span class="growth-rank">${String(i + 1).padStart(2, '0')}</span><div><b>${esc(item.title)}</b><small>${ctx.money(item.revenue)} sales value</small></div><strong>${item.qty.toLocaleString('en-NG')} <small>sold</small></strong></div>`).join('')}</div>` : '<p class="growth-muted">Product-level sales will appear here when sale items are recorded.</p>'}
+          <div class="growth-panel-head"><h3>Best-selling products</h3><button type="button" class="growth-see-all" data-growth-see-all>See all <span aria-hidden="true">→</span></button></div>
+          ${top.length ? `<div class="growth-products">${top.map((item, i) => { const share = recentRevenue > 0 ? item.revenue / recentRevenue * 100 : 0; const volume = top[0].qty > 0 ? item.qty / top[0].qty * 100 : 0; return `<div class="growth-product-row"><span class="growth-rank">${String(i + 1).padStart(2, '0')}</span><div><b>${esc(item.title)}</b><small>${ctx.money(item.revenue)} revenue · ${share.toFixed(0)}% share</small><i class="growth-product-volume" style="--volume:${volume}%"></i></div><strong>${item.qty.toLocaleString('en-NG')} <small>sold</small></strong></div>`; }).join('')}</div>` : '<p class="growth-muted">Product-level sales will appear here when sale items are recorded.</p>'}
         </section>
         <section class="growth-panel growth-milestone-panel">
           <div class="growth-panel-head"><div><h3>Business milestones</h3><p>${completed} of ${milestones.length} milestones reached</p></div><b class="growth-progress-count">${Math.round(completed / milestones.length * 100)}%</b></div>
@@ -340,6 +344,28 @@ window.StrapPages = (() => {
         </section>`);
     };
     draw();
+    root.addEventListener('click', e => {
+      const point = e.target.closest('[data-growth-point]');
+      if (point) {
+        const i = Number(point.dataset.growthPoint);
+        const sales = StrapStore.sales().filter(x => Number.isFinite(Number(x.ts)) && Number(x.ts) > 0);
+        const now = new Date(), today = new Date(now); today.setHours(0,0,0,0);
+        const start = new Date(today); start.setDate(start.getDate()-6);
+        const date = new Date(start); date.setDate(start.getDate()+i);
+        const next = new Date(date); next.setDate(date.getDate()+1);
+        const rows = sales.filter(x => Number(x.ts)>=date.getTime() && Number(x.ts)<next.getTime());
+        const value = rows.reduce((sum,x)=>sum+(Number(x.total)||0),0);
+        const label = date.toLocaleDateString('en-NG',{weekday:'short'})+' '+date.toLocaleDateString('en-NG',{day:'numeric',month:'short'})+' · '+ctx.money(value);
+        const tooltip = root.querySelector('.growth-tooltip'); if (tooltip) tooltip.textContent=label;
+        root.querySelectorAll('[data-growth-point]').forEach(el=>el.classList.toggle('active',Number(el.dataset.growthPoint)===i));
+        const guide = root.querySelector('.growth-chart-guide'), dot = root.querySelector('.growth-chart-point.active .growth-point-dot');
+        if(guide && dot){const x=dot.getAttribute('cx');guide.setAttribute('x1',x);guide.setAttribute('x2',x);}
+      }
+      if (e.target.closest('[data-growth-see-all]')) ctx.go('products');
+    });
+    root.addEventListener('keydown', e => {
+      if ((e.key==='Enter'||e.key===' ') && e.target.matches('.growth-chart-point')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
+    });
     return { onShow: draw };
   }
   function online(root, ctx) {
