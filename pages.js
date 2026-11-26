@@ -264,7 +264,7 @@ window.StrapPages = (() => {
       const days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(start); date.setDate(start.getDate() + i);
         const key = StrapStore.dayKey(date.getTime());
-        const rows = recent.filter(s => S.dayKey(Number(s.ts)) === key);
+        const rows = recent.filter(s => StrapStore.dayKey(Number(s.ts)) === key);
         return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), value: rows.reduce((sum, x) => sum + (Number(x.total) || 0), 0), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
@@ -340,7 +340,7 @@ window.StrapPages = (() => {
       root.innerHTML = head('plug', 'MCP') +
         '<section class="pg-card mcp-connect-card"><div class="mcp-connect-head"><span class="mcp-connect-mark">✦</span><div><h3>Connect an AI app</h3><p>Use Strap with Claude, ChatGPT-compatible MCP clients, or another supported AI tool.</p></div></div>' +
         '<label class="pm-fl"><span>Your MCP server URL</span><div class="mcp-url-row"><input id="mcp-endpoint" readonly value="' + endpoint + '"><button type="button" class="pm-imp" data-copy-endpoint>Copy</button></div></label>' +
-        '<ol class="mcp-steps"><li>Open your AI app and choose <b>Add custom connector</b> or <b>Add MCP server</b>.</li><li>Paste the URL above. For Claude, choose <b>Use Claude's published identity (Recommended)</b> when asked about OAuth client identity. Do not enter a client ID or secret.</li><li>Click <b>Connect</b>. Strap opens a secure approval page. Sign in, choose permissions and branches, then approve.</li><li>Your connected app will appear here. You can change access or revoke it anytime.</li></ol>' +
+        '<ol class="mcp-steps"><li>Open your AI app and choose <b>Add custom connector</b> or <b>Add MCP server</b>.</li><li>Paste the URL above. For Claude, choose <b>Use Claude&rsquo;s published identity (Recommended)</b> when asked about OAuth client identity. Do not enter a client ID or secret.</li><li>Click <b>Connect</b>. Strap opens a secure approval page. Sign in, choose permissions and branches, then approve.</li><li>Your connected app will appear here. You can change access or revoke it anytime.</li></ol>' +
         '<p class="pg-note">Strap never asks for your AI app password. Approve only connection requests you started.</p></section>' +
         '<section class="pg-card"><div class="mcp-section-head"><div><h3>Connected apps</h3><p>Apps that have been approved to access this store.</p></div><button class="pm-imp" type="button" data-refresh>Refresh</button></div><div id="mcp-connections"><p class="pg-note">Loading connected apps…</p></div></section>' +
         '<section class="pg-card"><h3>Recent AI activity</h3><div id="mcp-activity"><p class="pg-note">Loading activity…</p></div></section>' +
