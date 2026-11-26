@@ -18,13 +18,53 @@
 <p class="muted" id="status">Secure sign-in powered by Neon Auth.</p>
 </main>
 <script type="module">
-import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.7.0-beta?bundle';
+import { createAuthClient } from 'https://esm.sh/@neon/auth@0.8.0?bundle';
 const auth=createAuthClient(location.origin+'/api/neon-auth');
-const params=new URLSearchParams(location.search), oauthVisit=params.has('sig')&&params.has('ba_param');
-const mustSignInAgain=oauthVisit&&/\b(login|create)\b/.test(params.get('prompt')||'');
-const error=document.getElementById('error'), status=document.getElementById('status');
+const params=new URLSearchParams(location.search);
+const mustSignInAgain=/\\b(login|create)\\b/.test(params.get('prompt')||'');
+const pendingKey='strap:mcp-oauth-login-pending';
+const error=document.getElementById('error'),status=document.getElementById('status');
+const form=document.getElementById('login-form'),google=document.getElementById('google');
 const message=e=>e instanceof Error?e.message:'Sign-in could not be completed.';
-(async()=>{try{const {data}=await auth.getSession();if(data?.user&&!mustSignInAgain){if(!oauthVisit){location.replace('/');return;}const resumed=await auth.oauth2.continue({selected:true});if(resumed?.error)throw resumed.error;}}catch(e){if(e?.status===400){error.textContent='This sign-in request expired. Return to your AI client and connect again.';document.getElementById('login-form').classList.add('hidden');document.getElementById('google').classList.add('hidden');}else{status.textContent='Please sign in to continue.';}}})();
-document.getElementById('login-form').addEventListener('submit',async e=>{e.preventDefault();const button=document.getElementById('submit');button.disabled=true;button.textContent='Signing in…';error.textContent='';try{const {data,error:signInError}=await auth.signIn.email({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value});if(signInError)throw signInError;if(!data?.redirect){if(oauthVisit){const resumed=await auth.oauth2.continue({selected:true});if(resumed?.error)throw resumed.error;}else location.replace('/');}}catch(err){error.textContent=message(err);}finally{button.disabled=false;button.textContent='Continue';}});
-document.getElementById('google').addEventListener('click',async()=>{error.textContent='';try{const result=await auth.signIn.social({provider:'google',callbackURL:location.href});if(result?.error)throw result.error;}catch(err){error.textContent=message(err);}});
+const continueOAuth=async()=>{
+ const {error:resumeError}=await auth.oauth2.continue({selected:true});
+ if(resumeError)throw resumeError;
+};
+(async()=>{
+ try{
+  const {data,error:sessionError}=await auth.getSession();
+  if(sessionError)throw sessionError;
+  const socialReturn=sessionStorage.getItem(pendingKey)==='1';
+  if(socialReturn)sessionStorage.removeItem(pendingKey);
+  if(data?.user&&(!mustSignInAgain||socialReturn)){
+   await continueOAuth();
+  }
+ }catch(e){
+  if(e?.status===400||e?.status===404){
+   error.textContent='This connection request expired or is no longer valid. Return to Claude and connect again.';
+   form.classList.add('hidden');google.classList.add('hidden');
+  }else{
+   status.textContent='We could not resume the connection. Check your internet connection and try again.';
+   error.textContent=message(e);
+  }
+ }
+})();
+form.addEventListener('submit',async e=>{
+ e.preventDefault();const button=document.getElementById('submit');
+ button.disabled=true;button.textContent='Signing in…';error.textContent='';
+ try{
+  const {data,error:signInError}=await auth.signIn.email({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value});
+  if(signInError)throw signInError;
+  if(!data?.redirect)await continueOAuth();
+ }catch(err){error.textContent=message(err);}
+ finally{button.disabled=false;button.textContent='Continue';}
+});
+google.addEventListener('click',async()=>{
+ error.textContent='';
+ try{
+  sessionStorage.setItem(pendingKey,'1');
+  const result=await auth.signIn.social({provider:'google',callbackURL:location.href});
+  if(result?.error){sessionStorage.removeItem(pendingKey);throw result.error;}
+ }catch(err){sessionStorage.removeItem(pendingKey);error.textContent=message(err);}
+});
 </script></body></html>
