@@ -245,36 +245,84 @@ window.StrapPages = (() => {
 
   function growth(root, ctx) {
     const draw = () => {
-      const sales = StrapStore.sales();
+      const sales = StrapStore.sales().filter(x => Number.isFinite(Number(x.ts)) && Number(x.ts) > 0);
       const now = new Date();
-      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
-      const recent = sales.filter(x => Number(x.ts) >= start.getTime());
-      const revenue = sales.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
-      const recentRevenue = recent.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
-      const units = sales.reduce((sum, x) => sum + (Array.isArray(x.lines) ? x.lines.reduce((n, line) => n + (Number(line.qty) || 0), 0) : 0), 0);
+      const today = new Date(now); today.setHours(0, 0, 0, 0);
+      const start = new Date(today); start.setDate(start.getDate() - 6);
+      const previousStart = new Date(start); previousStart.setDate(previousStart.getDate() - 7);
+      const previousEnd = start.getTime();
+      const inRange = (rows, from, to) => rows.filter(x => Number(x.ts) >= from && Number(x.ts) < to);
+      const recent = inRange(sales, start.getTime(), now.getTime() + 1);
+      const previous = inRange(sales, previousStart.getTime(), previousEnd);
+      const sumRevenue = rows => rows.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
+      const revenue = sumRevenue(sales), recentRevenue = sumRevenue(recent), previousRevenue = sumRevenue(previous);
+      const unitsIn = rows => rows.reduce((sum, sale) => sum + (Array.isArray(sale.lines) ? sale.lines.reduce((n, line) => n + Math.max(0, Number(line.qty) || 0), 0) : 0), 0);
+      const units = unitsIn(sales), recentUnits = unitsIn(recent);
+      const average = sales.length ? revenue / sales.length : 0;
+      const change = previousRevenue > 0 ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 : null;
       const products = new Map();
       sales.forEach(sale => (Array.isArray(sale.lines) ? sale.lines : []).forEach(line => {
         const key = String(line.id || line.title || 'product');
         const item = products.get(key) || { title: line.title || 'Product', qty: 0, revenue: 0 };
-        item.qty += Number(line.qty) || 0;
+        item.qty += Math.max(0, Number(line.qty) || 0);
         item.revenue += (Number(line.price) || 0) * (Number(line.qty) || 0);
         products.set(key, item);
       }));
       const top = [...products.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
       const days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(start); date.setDate(start.getDate() + i);
-        const key = StrapStore.dayKey(date.getTime());
-        const rows = recent.filter(s => StrapStore.dayKey(Number(s.ts)) === key);
-        return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), value: rows.reduce((sum, x) => sum + (Number(x.total) || 0), 0), count: rows.length };
+        const next = new Date(date); next.setDate(date.getDate() + 1);
+        const rows = inRange(sales, date.getTime(), next.getTime());
+        return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), date: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }), value: sumRevenue(rows), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
+      const milestones = [
+        { label: 'First sale recorded', detail: 'Your store has made its first sale', done: sales.length >= 1 },
+        { label: '10 sales completed', detail: 'Build a steady sales rhythm', done: sales.length >= 10 },
+        { label: '50 items sold', detail: 'Move more products through your store', done: units >= 50 },
+        { label: '₦100,000 in sales', detail: 'Reach your first six-figure sales milestone', done: revenue >= 100000 },
+        { label: '100 sales completed', detail: 'Keep building customer momentum', done: sales.length >= 100 }
+      ];
+      const completed = milestones.filter(x => x.done).length;
+      const nextMilestone = milestones.find(x => !x.done);
+      const growthLabel = change === null ? 'No previous-week baseline' : (change > 0 ? '+' : '') + change.toFixed(1) + '% vs previous 7 days';
       root.innerHTML = head('growth', 'Growth') + (sales.length ? `
-        <section class="pg-big"><span>All-time sales revenue</span><b>${ctx.money(revenue)}</b><small>${sales.length.toLocaleString('en-NG')} sales recorded · ${units.toLocaleString('en-NG')} items sold</small></section>
-        <div class="pg-sum two"><div><b>${ctx.money(recentRevenue)}</b><small>Last 7 days</small></div><div><b>${recent.length.toLocaleString('en-NG')}</b><small>Sales this week</small></div></div>
-        <section class="pg-card"><h3>Sales over the last 7 days</h3><div class="pg-bars">${days.map(day => `<i title="${day.label}: ${ctx.money(day.value)} · ${day.count} sales" style="--h:${Math.max(day.value ? 8 : 0, day.value / max * 100)}%;--d:${days.indexOf(day) * 50}ms"></i>`).join('')}</div><div class="pg-bar-labels">${days.map(day => `<small>${day.label}</small>`).join('')}</div></section>
-        <section class="pg-card"><h3>Best-selling products</h3>${top.length ? `<div class="pg-rows">${top.map((item, i) => `<div class="pg-r"><span>${i + 1}. ${esc(item.title)}</span><b>${item.qty.toLocaleString('en-NG')} sold</b></div>`).join('')}</div>` : '<p>No product sales yet.</p>'}</section>
-        <p class="pg-note">Visitor counts and conversion rates will appear when online-store analytics tracking is connected. These figures are based on sales recorded in Strap on this device.</p>
-      ` : empty('growth', 'Your growth starts here', 'Record your first sale to see revenue trends, sales activity and your best-selling products.'));
+        <section class="growth-hero">
+          <div class="growth-hero-top"><span>Sales performance</span><span class="growth-period">Last 7 days</span></div>
+          <b class="growth-revenue">${ctx.money(recentRevenue)}</b>
+          <div class="growth-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}">${esc(growthLabel)}</div>
+          <div class="growth-hero-foot"><span>${recent.length.toLocaleString('en-NG')} sales</span><span>${recentUnits.toLocaleString('en-NG')} items sold</span></div>
+        </section>
+        <div class="growth-metrics">
+          <article><small>All-time revenue</small><b>${ctx.money(revenue)}</b><span>Since your first recorded sale</span></article>
+          <article><small>Average sale</small><b>${ctx.money(average)}</b><span>Across ${sales.length.toLocaleString('en-NG')} sales</span></article>
+          <article><small>Items sold</small><b>${units.toLocaleString('en-NG')}</b><span>All-time quantity</span></article>
+        </div>
+        <section class="growth-panel">
+          <div class="growth-panel-head"><div><h3>Revenue trend</h3><p>Daily sales for the last seven days</p></div><span class="growth-unit">NGN</span></div>
+          <div class="growth-chart" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
+            <div class="growth-y-labels"><span>${ctx.money(max)}</span><span>${ctx.money(max / 2)}</span><span>₦0</span></div>
+            <div class="growth-bars">${days.map(day => `<div class="growth-bar-col" title="${day.date}: ${ctx.money(day.value)} · ${day.count} sales"><div class="growth-bar-value">${day.value ? ctx.money(day.value) : '—'}</div><i style="--bar-height:${Math.max(day.value ? 5 : 0, day.value / max * 100)}%"></i><small>${day.label}</small></div>`).join('')}</div>
+          </div>
+          <div class="growth-compare"><span>Previous 7 days</span><b class="tabular-nums">${ctx.money(previousRevenue)}</b><span class="growth-compare-count">${previous.length.toLocaleString('en-NG')} sales</span></div>
+        </section>
+        <section class="growth-panel">
+          <div class="growth-panel-head"><div><h3>Best-selling products</h3><p>Ranked by units sold</p></div></div>
+          ${top.length ? `<div class="growth-products">${top.map((item, i) => `<div class="growth-product-row"><span class="growth-rank">${String(i + 1).padStart(2, '0')}</span><div><b>${esc(item.title)}</b><small>${ctx.money(item.revenue)} sales value</small></div><strong>${item.qty.toLocaleString('en-NG')} <small>sold</small></strong></div>`).join('')}</div>` : '<p class="growth-muted">Product-level sales will appear here when sale items are recorded.</p>'}
+        </section>
+        <section class="growth-panel growth-milestone-panel">
+          <div class="growth-panel-head"><div><h3>Business milestones</h3><p>${completed} of ${milestones.length} milestones reached</p></div><b class="growth-progress-count">${Math.round(completed / milestones.length * 100)}%</b></div>
+          <div class="growth-progress"><i style="width:${completed / milestones.length * 100}%"></i></div>
+          <div class="growth-milestones">${milestones.map(m => `<div class="growth-milestone ${m.done ? 'done' : ''}"><span>${m.done ? ic('check', 16, 2.5) : ic('circle', 16, 1.8)}</span><div><b>${m.label}</b><small>${m.detail}</small></div><em>${m.done ? 'Reached' : 'In progress'}</em></div>`).join('')}</div>
+          ${nextMilestone ? `<p class="growth-next">Next up: <b>${nextMilestone.label}</b></p>` : '<p class="growth-next">Every milestone reached. Keep going.</p>'}
+        </section>
+        <p class="growth-disclaimer">Growth figures use sales recorded in this Strap workspace on this device. Store visits and conversion rates are not included until online-store analytics are connected.</p>
+      ` : `
+        <section class="growth-empty">
+          <span>${ic('chart-no-axes-combined', 30, 1.8)}</span><h2>Your growth starts with a sale</h2>
+          <p>Once you record sales, this page will show revenue trends, product performance and business milestones.</p>
+          <div class="growth-empty-steps"><div><b>01</b><span>Add your products</span></div><div><b>02</b><span>Record your first sale</span></div><div><b>03</b><span>Track your progress here</span></div></div>
+        </section>`);
     };
     draw();
     return { onShow: draw };
