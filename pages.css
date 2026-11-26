@@ -592,3 +592,10 @@
 @media(prefers-reduced-motion:reduce){
  .growth-chart-line,.growth-chart-area,.growth-product-volume:after{transition:none!important;animation:none!important}
 }
+
+
+/* Growth page viewport clearance and timeframe pill details. */
+.dsheet:has(.growth-hero){padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+.growth-period-wrap{position:relative;display:inline-flex;align-items:center}
+.growth-period{appearance:none;-webkit-appearance:none;max-width:100%;padding-right:28px;cursor:pointer;background:#0a0a0a;color:var(--lemon)}
+.growth-period-wrap>span{position:absolute;right:10px;top:50%;transform:translateY(-58%);pointer-events:none;color:var(--lemon);font-size:17px;line-height:1}
