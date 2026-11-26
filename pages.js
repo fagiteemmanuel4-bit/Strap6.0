@@ -74,7 +74,6 @@ window.StrapPages = (() => {
         }).join('')}</ul>`
           : empty(c.ill, c.h, c.p, cta));
     }
-    root.addEventListener('change', e => { if (e.target.matches('.growth-period')) { rangeDays = [7,30,90].includes(Number(e.target.value)) ? Number(e.target.value) : 7; draw(); } });
     root.addEventListener('click', e => {
       if (e.target.closest('[data-add]')) add();
       const view = e.target.closest('[data-view]'); if (view) { const card = rows.find(x => x.id === view.dataset.view); if (card) giftSlip(card, ctxRef); }
@@ -350,6 +349,7 @@ window.StrapPages = (() => {
         </section>`);
     };
     draw();
+    root.addEventListener('change', e => { if (e.target.matches('.growth-period')) { rangeDays = [7,30,90].includes(Number(e.target.value)) ? Number(e.target.value) : 7; draw(); } });
     root.addEventListener('click', e => {
       const point = e.target.closest('[data-growth-point]');
       if (point) {
