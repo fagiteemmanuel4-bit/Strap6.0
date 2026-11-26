@@ -161,7 +161,7 @@ window.StrapFeatures = (() => {
   function screen(html, wire) {
     const el = document.createElement('section'); el.className = 'fx-screen'; el.innerHTML = `<div class="fx-in" id="fxb">${html}</div>`;
     document.body.appendChild(el); depth++; document.body.classList.add('pm-open'); void el.offsetWidth; el.classList.add('on');
-    const s = { el, root: $('#fxb', el), set(h) { s.root.innerHTML = h; s.root.style.animation = 'none'; void s.root.offsetWidth; s.root.style.animation = ''; },
+    const s = { el, root: $('#fxb', el), set(h) { const html = /class=["']bill-/.test(h) && !h.includes('bill-workspace') ? '<div class="bill-workspace">' + h + '</div>' : h; s.root.innerHTML = html; s.root.style.animation = 'none'; void s.root.offsetWidth; s.root.style.animation = ''; },
       async close(msg = 'Going back') { await cover(msg, () => { el.remove(); if (!--depth) document.body.classList.remove('pm-open'); }); } };
     el.addEventListener('click', e => { if (e.target.closest('[data-x]')) s.close(); });
     wire && wire(s); return s;
