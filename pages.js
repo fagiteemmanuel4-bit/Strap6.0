@@ -281,6 +281,7 @@ window.StrapPages = (() => {
         return { label, date: dateLabel, value: sumRevenue(rows), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
+      const axisMoney = n => '₦' + new Intl.NumberFormat('en-NG', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n) || 0);
       const chartPoints = days.map((day, i) => ({ ...day, x: 20 + i * 110, y: Math.max(28, Math.min(205, 205 - (day.value / max) * 160)) }));
       const peakIndex = chartPoints.reduce((best, point, i, arr) => point.value > arr[best].value ? i : best, 0);
       const peak = chartPoints[peakIndex];
@@ -314,7 +315,7 @@ window.StrapPages = (() => {
         <section class="growth-chart-panel">
           <div class="growth-panel-head"><h3>${rangeDays===7?'Daily sales trend':'Sales trend'}</h3><span class="growth-peak">Peak: ${esc(peak.label)}</span></div>
           <div class="growth-chart-visual">
-            <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
+            <div class="growth-chart-y"><span>${axisMoney(max)}</span><span>${axisMoney(max * .5)}</span><span>₦0</span></div>
             <div class="growth-chart-stage"><div class="growth-tooltip" aria-live="polite">${esc(peak.label)} ${esc(peak.date)} · ${ctx.money(peak.value)}</div>
             <svg class="growth-line-chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
               <defs><linearGradient id="growthAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e6f53a" stop-opacity=".34"/><stop offset="100%" stop-color="#e6f53a" stop-opacity=".015"/></linearGradient><filter id="growthLineGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
