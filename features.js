@@ -665,7 +665,6 @@ window.StrapFeatures = (() => {
       'Point of sale, sales history and revenue reports',
       'Gift cards, collections and inventory tools',
       'Expenses, purchase tools and advanced reporting',
-      'Online store and customer orders',
       'MCP connections and AI agent access',
       'Branches and advanced business tools'
     ];
