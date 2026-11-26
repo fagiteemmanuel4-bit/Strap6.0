@@ -280,3 +280,47 @@ body{
 #strap-premium-success .strap-premium-success-frame{width:min(100%,560px);max-height:88vh;overflow:auto;border-radius:24px;background:#efefe8;box-shadow:0 35px 100px rgba(0,0,0,.42)}
 #strap-premium-success .strap-premium-success-frame iframe{display:block;width:100%;height:min(82vh,820px);min-height:520px;border:0;border-radius:24px;background:#efefe8}
 @media(max-width:480px){#strap-premium-success{padding:10px}#strap-premium-success .strap-premium-success-frame{max-height:92vh;border-radius:18px}#strap-premium-success .strap-premium-success-frame iframe{height:88vh;min-height:460px;border-radius:18px}}
+
+
+/* MCP connection manager */
+.mcp-connect-card{border:1px solid var(--line,#deded5)}
+.mcp-connect-head{display:flex;gap:13px;align-items:flex-start;margin-bottom:18px}
+.mcp-connect-head h3,.mcp-section-head h3{margin:0 0 5px}
+.mcp-connect-head p,.mcp-section-head p{margin:0;color:var(--muted,#777);font-size:13px;line-height:1.55}
+.mcp-connect-mark{width:42px;height:42px;flex:0 0 42px;border-radius:14px;background:#e6f53a;color:#090909;display:grid;place-items:center;font-size:22px}
+.mcp-url-row{display:flex;gap:8px;align-items:center}
+.mcp-url-row input{min-width:0;flex:1;font-size:12px}
+.mcp-url-row button{flex:0 0 auto}
+.mcp-steps{margin:17px 0 12px;padding-left:22px;display:grid;gap:10px;color:var(--text,#171717);font-size:13px;line-height:1.55}
+.mcp-steps li{padding-left:3px}
+.mcp-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.mcp-app-card{border:1px solid var(--line,#deded5);border-radius:17px;padding:15px;margin:12px 0;background:var(--surface,#fff)}
+.mcp-app-top{display:flex;align-items:center;gap:12px;min-width:0}
+.mcp-app-icon,.mcp-app-fallback{width:42px;height:42px;flex:0 0 42px;border-radius:13px;object-fit:contain;background:#f0f0eb;padding:7px}
+.mcp-app-fallback{display:grid;place-items:center;background:#e6f53a;color:#090909;font-size:22px}
+.mcp-app-ident{display:grid;gap:3px;min-width:0;flex:1}
+.mcp-app-ident b{font-size:14px;overflow-wrap:anywhere}
+.mcp-app-ident small{font-size:11px;color:var(--muted,#777);overflow-wrap:anywhere}
+.mcp-status{font-size:10px;font-weight:800;border-radius:99px;padding:6px 9px;background:#eff7d2;color:#526300;white-space:nowrap}
+.mcp-status.is-revoked{background:#f3e9e7;color:#934c40}
+.mcp-app-meta{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0}
+.mcp-app-meta span,.mcp-tool-chip{font-size:11px;padding:6px 9px;border-radius:8px;background:var(--soft,#f3f3ee);color:var(--text,#333)}
+.mcp-tools{border-top:1px solid var(--line,#e5e5de);padding-top:10px;font-size:12px}
+.mcp-tools summary,.mcp-advanced summary{cursor:pointer;font-weight:700;list-style:none}
+.mcp-tools summary:after,.mcp-advanced summary:after{content:'＋';float:right;color:var(--muted,#777)}
+.mcp-tools[open] summary:after,.mcp-advanced[open] summary:after{content:'−'}
+.mcp-tool-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.mcp-app-controls{border-top:1px solid var(--line,#e5e5de);margin-top:12px;padding-top:12px}
+.mcp-app-controls .pm-fl{margin:10px 0}
+.mcp-app-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pm-imp.danger{color:#b33f32;border-color:#e7c9c4}
+.mcp-empty{text-align:center;padding:22px 12px}
+.mcp-empty>span{display:grid;place-items:center;margin:0 auto 12px;width:48px;height:48px;border-radius:15px;background:#e6f53a;color:#090909;font-size:24px}
+.mcp-empty b{display:block;font-size:14px}
+.mcp-empty p{max-width:310px;margin:7px auto 0;color:var(--muted,#777);font-size:12px;line-height:1.55}
+.mcp-advanced{margin-top:14px}
+.mcp-advanced>summary{font-size:13px;font-weight:700;cursor:pointer}
+.mcp-token-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line,#e5e5de)}
+.mcp-token-row>div{display:grid;gap:4px;min-width:0}
+.mcp-token-row small{font-size:11px;color:var(--muted,#777)}
+@media(max-width:520px){.mcp-app-card{padding:12px}.mcp-app-top{gap:9px}.mcp-app-icon,.mcp-app-fallback{width:38px;height:38px;flex-basis:38px}.mcp-section-head{align-items:flex-start}.mcp-url-row{align-items:stretch}.mcp-url-row input{font-size:10px}}
