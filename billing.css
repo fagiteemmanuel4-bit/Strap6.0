@@ -8,13 +8,13 @@
 .bill-workspace .bill-hero{position:relative;overflow:hidden;background:#0a0a0a;color:#fff;border:1px solid #0a0a0a;border-radius:24px;padding:24px;margin:0 0 16px;box-shadow:0 12px 28px rgba(10,10,10,.08)}
 .bill-workspace .bill-hero:after{content:"";position:absolute;width:240px;height:240px;right:-110px;top:-145px;border:1px solid rgba(230,245,58,.28);border-radius:50%;box-shadow:0 0 0 28px rgba(230,245,58,.035),0 0 0 58px rgba(230,245,58,.025);pointer-events:none}
 .bill-workspace .bill-hero-top,.bill-workspace .bill-hero-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:1}
-.bill-workspace .bill-hero-top{font-size:11px;color:#c8c8be;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.bill-workspace .bill-hero-top{font-size:11px;color:rgba(255,255,255,.72);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
 .bill-workspace .bill-hero h2{position:relative;z-index:1;font-size:clamp(28px,5vw,40px);line-height:1.1;letter-spacing:-.055em;margin:20px 0 8px}
 .bill-workspace .bill-hero p{position:relative;z-index:1;color:rgba(255,255,255,.72);font:400 13px/1.65 "Inter",sans-serif;max-width:600px;margin:0}
-.bill-workspace .bill-hero-foot{margin-top:24px;padding-top:16px;border-top:1px solid #30302a;align-items:flex-end}
+.bill-workspace .bill-hero-foot{margin-top:24px;padding-top:16px;border-top:1px solid #2b2b2b;align-items:flex-end}
 .bill-workspace .bill-hero-foot b{font-size:clamp(23px,4vw,30px);font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .bill-workspace .bill-hero-foot small{font:400 11px "Inter",sans-serif;color:rgba(255,255,255,.72);text-align:right}
-.bill-workspace .bill-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f3f3ee;color:#5e5f57;font:700 10px "Sora",sans-serif;white-space:nowrap;text-transform:capitalize}
+.bill-workspace .bill-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f3f3ee;color:#8d8d86;font:700 10px "Sora",sans-serif;white-space:nowrap;text-transform:capitalize}
 .bill-workspace .bill-status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .bill-workspace .bill-status.active,.bill-workspace .bill-status.successful{background:#e6f53a;color:#0a0a0a}
 .bill-workspace .bill-status.pending{background:#f3f3ee;color:#0a0a0a}
@@ -36,17 +36,17 @@
 .bill-workspace .bill-secondary{background:#fff;color:#0a0a0a;border-color:#ececea}
 .bill-workspace .bill-primary:active,.bill-workspace .bill-secondary:active{transform:scale(.98)}
 .bill-workspace button:disabled{opacity:.5;cursor:not-allowed}
-.bill-workspace button:focus-visible,.bill-workspace input:focus-visible{outline:3px solid #aab92a;outline-offset:3px}
+.bill-workspace button:focus-visible,.bill-workspace input:focus-visible{outline:3px solid #e6f53a;outline-offset:3px}
 .bill-workspace .bill-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.bill-workspace .bill-links>button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:14px;border:1px solid #ececea;border-radius:14px;background:#fff;color:#111;text-align:left;font:600 12px "Sora",sans-serif}
+.bill-workspace .bill-links>button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:14px;border:1px solid #ececea;border-radius:14px;background:#fff;color:#0a0a0a;text-align:left;font:600 12px "Sora",sans-serif}
 .bill-workspace .bill-links>button span{display:flex;align-items:center;gap:9px;min-width:0}
 .bill-workspace .bill-subtitle,.bill-workspace .bill-help{font:400 12px/1.7 "Inter",sans-serif;color:#8d8d86;margin:0 0 15px}
 .bill-workspace .bill-section-title{font-size:15px;letter-spacing:-.03em;margin:22px 0 12px}
 .bill-workspace .bill-filter{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
-.bill-workspace .bill-filter button{min-height:35px;padding:0 13px;border:1px solid #ececea;border-radius:999px;background:#fff;color:#55564f;font:600 11px "Sora",sans-serif}
+.bill-workspace .bill-filter button{min-height:35px;padding:0 13px;border:1px solid #ececea;border-radius:999px;background:#fff;color:#8d8d86;font:600 11px "Sora",sans-serif}
 .bill-workspace .bill-filter button.on{background:#0a0a0a;border-color:#0a0a0a;color:#e6f53a}
 .bill-workspace .bill-list{display:grid;gap:9px}
-.bill-workspace .bill-payment{display:flex;align-items:center;gap:12px;width:100%;min-width:0;padding:14px;border:1px solid #ececea;border-radius:15px;background:#fff;text-align:left;color:#111}
+.bill-workspace .bill-payment{display:flex;align-items:center;gap:12px;width:100%;min-width:0;padding:14px;border:1px solid #ececea;border-radius:15px;background:#fff;text-align:left;color:#0a0a0a}
 .bill-workspace .bill-payment-icon{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border-radius:12px;background:#f3f3ee}
 .bill-workspace .bill-payment-main{display:grid;gap:4px;flex:1;min-width:0}
 .bill-workspace .bill-payment-main>b{font-size:14px;font-variant-numeric:tabular-nums}
@@ -57,7 +57,7 @@
 .bill-workspace .bill-result>div>b{font-size:14px;font-variant-numeric:tabular-nums}
 .bill-workspace .bill-result>small{font:400 10px "Inter",sans-serif;color:#8d8d86}
 .bill-workspace .bill-result>.bill-ref{grid-column:1/-1;overflow-wrap:anywhere}
-.bill-workspace .bill-text-btn{justify-self:start;border:0;background:none;color:#111;text-decoration:underline;text-underline-offset:3px;font:600 11px "Sora",sans-serif;padding:5px 0}
+.bill-workspace .bill-text-btn{justify-self:start;border:0;background:none;color:#0a0a0a;text-decoration:underline;text-underline-offset:3px;font:600 11px "Sora",sans-serif;padding:5px 0}
 .bill-workspace .bill-receipt{max-width:680px;margin:0 auto 14px;background:#fff;border:1px solid #ececea;border-radius:18px;padding:clamp(18px,4vw,30px)}
 .bill-workspace .bill-receipt-brand{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:18px;border-bottom:1px solid #ececea}
 .bill-workspace .bill-receipt-brand>b{font-size:20px;letter-spacing:-.06em}
@@ -67,15 +67,15 @@
 .bill-workspace .bill-receipt-total>b{font-size:32px;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
 .bill-workspace .bill-receipt>p{font:400 11px/1.7 "Inter",sans-serif;color:#8d8d86;margin-top:18px}
 .bill-workspace .bill-empty{display:grid;justify-items:center;text-align:center;gap:9px;padding:34px 20px;border:1px dashed #ececea;border-radius:17px;background:rgba(255,255,255,.7);color:#8d8d86}
-.bill-workspace .bill-empty>span{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#f3f3ee;color:#111}
-.bill-workspace .bill-empty>b{font-size:14px;color:#111}
+.bill-workspace .bill-empty>span{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#f3f3ee;color:#0a0a0a}
+.bill-workspace .bill-empty>b{font-size:14px;color:#0a0a0a}
 .bill-workspace .bill-empty>p{max-width:360px;font:400 12px/1.65 "Inter",sans-serif;margin:0}
 .bill-workspace .bill-loading{height:116px;display:grid;align-content:center;gap:10px;padding:16px;border:1px solid #ececea;border-radius:16px;background:#fff;color:transparent;font-size:0}
-.bill-workspace .bill-loading:before,.bill-workspace .bill-loading:after{content:"";display:block;height:12px;border-radius:8px;background:linear-gradient(90deg,#eeeeea,#f8f8f5,#eeeeea);background-size:200% 100%;animation:billShimmer 1.3s linear infinite}
+.bill-workspace .bill-loading:before,.bill-workspace .bill-loading:after{content:"";display:block;height:12px;border-radius:8px;background:linear-gradient(90deg,#f3f3ee,#fff,#f3f3ee);background-size:200% 100%;animation:billShimmer 1.3s linear infinite}
 .bill-workspace .bill-loading:after{width:62%}
 @keyframes billShimmer{to{background-position:-200% 0}}
 .bill-workspace .bill-field{display:grid;gap:7px;margin:14px 0;font:600 11px "Sora",sans-serif}
-.bill-workspace .bill-field input{width:100%;min-height:46px;padding:0 13px;border:1px solid #ececea;border-radius:12px;background:#fff;color:#111;font:400 13px "Inter",sans-serif}
+.bill-workspace .bill-field input{width:100%;min-height:46px;padding:0 13px;border:1px solid #ececea;border-radius:12px;background:#fff;color:#0a0a0a;font:400 13px "Inter",sans-serif}
 .bill-workspace .bill-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:14px}
 .bill-workspace .bill-toggle-row>span{display:grid;gap:5px;min-width:0}
 .bill-workspace .bill-toggle-row>span>b{font-size:12px}
@@ -96,7 +96,7 @@
 .bill-workspace .bill-price-card li{margin:5px 0}
 .bill-workspace .bill-price-card.featured .bill-price{color:#e6f53a}
 .bill-workspace .bill-note{padding:13px 15px;border:1px solid #ececea;border-radius:13px;background:#fff;font:400 11px/1.7 "Inter",sans-serif;color:#8d8d86;margin:12px 0}
-.bill-workspace .bill-alert{padding:14px 16px;border:1px solid #efd6aa;border-radius:14px;background:#fff3f0;border-color:#f3b9ad;color:#c62828;font:500 12px/1.65 "Inter",sans-serif;margin:0 0 14px}
+.bill-workspace .bill-alert{padding:14px 16px;border:1px solid #f3b9ad;border-radius:14px;background:#fff3f0;border-color:#f3b9ad;color:#c62828;font:500 12px/1.65 "Inter",sans-serif;margin:0 0 14px}
 .bill-workspace .bill-alert strong{display:block;font:700 12px "Sora",sans-serif;margin-bottom:4px}
 .bill-workspace .bill-numeric{font-variant-numeric:tabular-nums}
 @media(min-width:900px){.bill-workspace .bill-overview-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:14px;align-items:start}.bill-workspace .bill-overview-grid>.bill-card{margin-bottom:14px}}
@@ -127,7 +127,7 @@
 .bill-workspace .bill-usage-track i{display:block;height:100%;border-radius:99px;background:#0a0a0a;transition:width .25s}
 .bill-workspace .bill-usage-track i.near-limit{background:#e6f53a}
 .bill-workspace .bill-muted{font:500 10px "Inter",sans-serif;color:#8d8d86}
-.bill-workspace .bill-card-head>button{border:1px solid #e2e2d9;border-radius:99px;background:#fff;color:#111;padding:8px 12px;font:600 10px "Sora",sans-serif}
+.bill-workspace .bill-card-head>button{border:1px solid #ececea;border-radius:99px;background:#fff;color:#0a0a0a;padding:8px 12px;font:600 10px "Sora",sans-serif}
 .bill-workspace .bill-status.ending_at_expiry{background:#f3f3ee;color:#0a0a0a}
 
 .bill-workspace .bill-alert .bill-secondary{margin-top:8px}
