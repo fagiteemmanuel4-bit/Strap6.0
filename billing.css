@@ -119,3 +119,13 @@
 }
 @media(prefers-reduced-motion:reduce){.bill-workspace *,.bill-workspace *:before,.bill-workspace *:after{animation:none!important;transition:none!important}}
 @media print{.fx-screen:has(.bill-receipt){position:static;background:#fff;overflow:visible;transform:none!important}.fx-screen:has(.bill-receipt) .pm-head,.fx-screen:has(.bill-receipt) .bill-primary,.fx-screen:has(.bill-receipt) .bill-secondary{display:none!important}.fx-screen:has(.bill-receipt) .fx-in{max-width:none;width:100%;padding:0}.bill-workspace .bill-receipt{box-shadow:none;border:0}}
+
+.bill-workspace .bill-usage-line{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0 9px;font:500 11px "Inter",sans-serif}
+.bill-workspace .bill-usage-line b{font:700 13px "Sora",sans-serif;font-variant-numeric:tabular-nums}
+.bill-workspace .bill-usage-line span{color:#77786f}
+.bill-workspace .bill-usage-track{height:8px;border-radius:99px;background:#efefe9;overflow:hidden}
+.bill-workspace .bill-usage-track i{display:block;height:100%;border-radius:99px;background:#0a0a0a;transition:width .25s}
+.bill-workspace .bill-usage-track i.near-limit{background:#a86b0b}
+.bill-workspace .bill-muted{font:500 10px "Inter",sans-serif;color:#77786f}
+.bill-workspace .bill-card-head>button{border:1px solid #e2e2d9;border-radius:99px;background:#fff;color:#111;padding:8px 12px;font:600 10px "Sora",sans-serif}
+.bill-workspace .bill-status.ending_at_expiry{background:#fff2d7;color:#895800}
