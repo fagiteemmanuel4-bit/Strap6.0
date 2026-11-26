@@ -277,7 +277,13 @@ window.StrapPages = (() => {
       });
       const max = Math.max(1, ...days.map(x => x.value));
       const chartPoints = days.map((day, i) => ({ ...day, x: 30 + i * 106.6, y: 190 - (day.value / max) * 145 }));
-      const chartLine = chartPoints.map((point, i) => (i ? 'L' : 'M') + point.x.toFixed(1) + ' ' + point.y.toFixed(1)).join(' ');
+      const chartLine = chartPoints.map((point, i) => {
+        if (!i) return 'M ' + point.x.toFixed(1) + ' ' + point.y.toFixed(1);
+        const prev = chartPoints[i - 1], before = chartPoints[Math.max(0, i - 2)], after = chartPoints[Math.min(chartPoints.length - 1, i + 1)];
+        const c1x = prev.x + (point.x - before.x) / 6, c1y = prev.y + (point.y - before.y) / 6;
+        const c2x = point.x - (after.x - prev.x) / 6, c2y = point.y - (after.y - prev.y) / 6;
+        return 'C ' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ', ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) + ', ' + point.x.toFixed(1) + ' ' + point.y.toFixed(1);
+      }).join(' ');
       const chartArea = chartLine + ' L ' + chartPoints[chartPoints.length - 1].x.toFixed(1) + ' 205 L ' + chartPoints[0].x.toFixed(1) + ' 205 Z';
       const milestones = [
         { label: 'First sale recorded', detail: 'Your store has made its first sale', done: sales.length >= 1 },
@@ -297,13 +303,9 @@ window.StrapPages = (() => {
           <div class="growth-hero-foot"><span>${recent.length.toLocaleString('en-NG')} sales</span><span>${recentUnits.toLocaleString('en-NG')} items sold</span></div>
         </section>
         <div class="growth-metrics">
-          <article><small>All-time revenue</small><b>${ctx.money(revenue)}</b><span>Since your first recorded sale</span></article>
-          <article><small>Average sale</small><b>${ctx.money(average)}</b><span>Across ${sales.length.toLocaleString('en-NG')} sales</span></article>
-          <article><small>Items sold</small><b>${units.toLocaleString('en-NG')}</b><span>All-time quantity</span></article>
+          <article class="growth-average-card"><small>Average sale</small><b>${ctx.money(average)}</b><span>Across ${sales.length.toLocaleString('en-NG')} sales</span></article>
         </div>
-        <section class="growth-panel growth-chart-panel">
-          <div class="growth-panel-head"><div><span class="growth-eyebrow">PERFORMANCE</span><h3>Revenue over time</h3><p>Your sales movement across the last seven days</p></div><span class="growth-unit">NGN</span></div>
-          <div class="growth-chart-summary"><div><small>Last 7 days</small><b>${ctx.money(recentRevenue)}</b></div><span class="growth-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}">${esc(growthLabel)}</span></div>
+        <section class="growth-chart-panel">
           <div class="growth-chart-visual">
             <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
             <svg class="growth-line-chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
@@ -316,7 +318,6 @@ window.StrapPages = (() => {
             </svg>
           </div>
           <div class="growth-chart-x">${days.map((day,i)=>`<div class="${i===6?'today':''}"><b>${day.label}</b><small>${day.date}</small></div>`).join('')}</div>
-          <div class="growth-compare"><span>Previous 7 days</span><b class="tabular-nums">${ctx.money(previousRevenue)}</b><span class="growth-compare-count">${previous.length.toLocaleString('en-NG')} sales</span></div>
         </section>
         <section class="growth-panel">
           <div class="growth-panel-head"><div><h3>Best-selling products</h3><p>Ranked by units sold</p></div></div>
