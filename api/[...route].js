@@ -375,6 +375,7 @@ H['mcp/resource-metadata'] = async () => {
 const strapMcp = createMcp({ pool, premiumActive });
 H['mcp'] = async (req, res) => { await strapMcp.handle(req, res); return null; };
 H['mcp/keys'] = async (req, res, user) => { await strapMcp.manage(req, res, user); return null; };
+H['mcp/approve'] = async (req, res, user) => { await strapMcp.approve(req, res, user); return null; };
 /* ---- Premium access + Flutterwave (live/test mode selected by Vercel env) ---- */
 let premiumSchemaReady;
 async function ensurePremiumSchema() {
