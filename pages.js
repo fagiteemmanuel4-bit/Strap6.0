@@ -307,15 +307,17 @@ window.StrapPages = (() => {
       return '<img class="mcp-app-icon" src="' + esc(src) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'mcp-app-fallback\',textContent:\'✦\'}))">';
     };
     const renderConnections = data => {
-      const branches = data.branches || [];
-      const oauth = (data.oauth_connections || []).map(item => {
-        const all = item.branch_ids.includes('*');
-        const branchNames = all ? 'All branches' : item.branch_ids.map(id => (branches.find(b => String(b.id) === String(id)) || {}).name || id).join(', ');
-        const write = item.scopes.includes('store:write');
+      const branches = Array.isArray(data.branches) ? data.branches : [];
+      const oauth = (Array.isArray(data.oauth_connections) ? data.oauth_connections : []).map(item => {
+        const branchIds = Array.isArray(item.branch_ids) ? item.branch_ids.map(String) : ['*'];
+        const scopes = Array.isArray(item.scopes) ? item.scopes : ['store:read'];
+        const all = branchIds.includes('*');
+        const branchNames = all ? 'All branches' : branchIds.map(id => (branches.find(b => String(b.id) === String(id)) || {}).name || id).join(', ');
+        const write = scopes.includes('store:write');
         const revoked = !!item.revoked_at;
         let domain = '';
         try { domain = new URL(item.client_uri).host; } catch (_) {}
-        const branchOptions = '<option value="*" ' + (all ? 'selected' : '') + '>All branches</option>' + branches.map(b => '<option value="' + esc(b.id) + '" ' + (!all && item.branch_ids.includes(String(b.id)) ? 'selected' : '') + '>' + esc(b.name) + '</option>').join('');
+        const branchOptions = '<option value="*" ' + (all ? 'selected' : '') + '>All branches</option>' + branches.map(b => '<option value="' + esc(b.id) + '" ' + (!all && branchIds.includes(String(b.id)) ? 'selected' : '') + '>' + esc(b.name) + '</option>').join('');
         const toolList = (write ? toolsRead.concat(toolsWrite) : toolsRead).map(t => '<span class="mcp-tool-chip">' + esc(t) + '</span>').join('');
         return '<article class="mcp-app-card" data-oauth-card="' + esc(item.client_id) + '">' +
           '<div class="mcp-app-top">' + appIcon(item) + '<div class="mcp-app-ident"><b>' + esc(item.client_name || 'Connected AI app') + '</b><small>' + esc(domain || 'MCP client') + '</small></div>' +
@@ -327,7 +329,7 @@ window.StrapPages = (() => {
           '<div class="mcp-app-actions"><button class="pm-imp" type="button" data-oauth-save="' + esc(item.client_id) + '">' + (revoked ? 'Restore access' : 'Save changes') + '</button>' +
           (revoked ? '' : '<button class="pm-imp danger" type="button" data-revoke-oauth="' + esc(item.client_id) + '">Revoke</button>') + '</div></div></article>';
       }).join('');
-      const keys = (data.connections || []).map(item => '<div class="mcp-token-row"><div><b>' + esc(item.name) + '</b><small>Private token · ' + esc(item.scopes.includes('store:write') ? 'Read & write' : 'Read only') + '</small></div><button class="pm-imp danger" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('');
+      const keys = (Array.isArray(data.connections) ? data.connections : []).map(item => '<div class="mcp-token-row"><div><b>' + esc(item.name || 'Private connection') + '</b><small>Private token · ' + esc((Array.isArray(item.scopes) ? item.scopes : []).includes('store:write') ? 'Read & write' : 'Read only') + '</small></div><button class="pm-imp danger" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('');
       return (oauth || keys) ? oauth + (keys ? '<details class="mcp-advanced"><summary>Private access tokens (' + (data.connections || []).length + ')</summary>' + keys + '</details>' : '') : '<div class="mcp-empty"><span>✦</span><b>No apps connected yet</b><p>Copy your server URL, paste it into an MCP-compatible app, then approve the request.</p></div>';
     };
     const copy = async (value, label) => {
@@ -352,7 +354,7 @@ window.StrapPages = (() => {
         const branch = $('#mcp-branch', root);
         branch.innerHTML = '<option value="*">All branches</option>' + (data.branches || []).map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('');
         $('#mcp-connections', root).innerHTML = renderConnections(data);
-        $('#mcp-activity', root).innerHTML = data.activity && data.activity.length ? data.activity.map(item => '<div class="pg-r"><div><b>' + esc(item.action.replaceAll('strap_', '').replaceAll('_', ' ')) + '</b><small>' + esc(item.branch_id || 'Store') + ' · ' + esc(new Date(item.created_at).toLocaleString()) + '</small></div></div>').join('') : '<p class="pg-note">No AI actions recorded yet.</p>';
+        $('#mcp-activity', root).innerHTML = data.activity && data.activity.length ? data.activity.map(item => '<div class="pg-r"><div><b>' + esc(String(item.action || 'AI activity').replaceAll('strap_', '').replaceAll('_', ' ')) + '</b><small>' + esc(item.branch_id || 'Store') + ' · ' + esc(item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently') + '</small></div></div>').join('') : '<p class="pg-note">No AI actions recorded yet.</p>';
       } catch (error) {
         $('#mcp-connections', root).innerHTML = '<p class="pg-note">' + esc(error.message) + '</p>';
         $('#mcp-activity', root).innerHTML = '';
