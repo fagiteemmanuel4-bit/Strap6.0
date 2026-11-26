@@ -561,7 +561,7 @@ window.StrapFeatures = (() => {
       '<p class="bill-help">' + (premium ? 'Premium removes the Free plan product cap.' : 'The Free plan includes up to 30 products. Upgrade before reaching the limit.') + '</p></section>';
   };
   const billFailedAlert = count => Number(count) > 0
-    ? '<div class="bill-alert"><strong>' + Number(count).toLocaleString('en-NG') + ' failed payment' + (Number(count) === 1 ? '' : 's') + '</strong>A previous checkout did not complete. You can safely start a new secure payment when you are ready.<br><button class="bill-secondary" style="margin-top:10px" data-fx="billing-renew">Retry payment</button></div>'
+    ? '<div class="bill-alert"><strong>' + Number(count).toLocaleString('en-NG') + ' failed payment' + (Number(count) === 1 ? '' : 's') + '</strong>A previous checkout did not complete. You can safely start a new secure payment when you are ready.<br><button class="bill-secondary" data-fx="billing-renew">Retry payment</button></div>'
     : '';
   async function billGet(path) { return StrapAPI.call('GET',path); }
   async function billLaunchRenew() {
@@ -679,7 +679,7 @@ window.StrapFeatures = (() => {
         '<div class="bill-hero-foot"><b>' + (prem ? 'Premium' : 'Free') + '</b><small>' + (prem ? 'Manual renewal · 30-day access' : 'No subscription required') + '</small></div></section>' +
         '<div class="bill-price-grid"><article class="bill-price-card"><h3>Free</h3><div class="bill-price">₦0</div><p>For getting started and managing a small catalogue.</p><ul><li>Up to 30 products</li><li>Core store workspace</li><li>Basic product management</li><li>No recurring charge</li></ul>' +
         (!prem ? '<button class="bill-secondary" type="button" disabled>Current plan</button>' : '') + '</article>' +
-        '<article class="bill-price-card featured"><h3>Strap Premium</h3><div class="bill-price">' + price + '<small style="font:500 11px Inter,sans-serif;color:#d2d2c8"> / 30 days</small></div><p>Full business tools with secure payment through Flutterwave.</p><ul>' +
+        '<article class="bill-price-card featured"><h3>Strap Premium</h3><div class="bill-price">' + price + '<small class="bill-price-period"> / 30 days</small></div><p>Full business tools with secure payment through Flutterwave.</p><ul>' +
         perks.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' +
         (prem ? '<button class="bill-primary" type="button" data-fx="billing-subscription">Manage subscription</button>' : (S.checkoutReady ? '<button class="bill-primary" type="button" data-up>Continue to secure payment</button>' : '<button class="bill-primary" type="button" disabled>Checkout temporarily unavailable</button>')) +
         '</article></div>' +
