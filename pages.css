@@ -525,3 +525,70 @@
 @media(prefers-reduced-motion:reduce){
  .growth-chart-panel .growth-chart-line,.growth-chart-panel .growth-chart-line-glow{filter:none}
 }
+
+
+/* Growth reference refinement: compact KPI row, soft chart card, usable chart scrubber. */
+.growth-hero{border-radius:24px;padding:27px 25px 20px}
+.growth-hero-foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;align-items:center}
+.growth-hero-foot>span{display:grid;gap:3px;min-width:0;padding:0 13px;border-left:1px solid rgba(255,255,255,.14)}
+.growth-hero-foot>span:first-child{padding-left:0;border-left:0}
+.growth-hero-foot>span:last-child{text-align:right;padding-right:0}
+.growth-hero-foot>span>b{font:700 clamp(15px,3.5vw,21px)/1.15 "Sora",sans-serif;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.growth-hero-foot>span:last-child>b{color:var(--lemon)}
+.growth-hero-foot>span>small{font:400 11px/1.3 "Inter",sans-serif;color:rgba(255,255,255,.65)}
+.growth-chart-panel{margin:15px 0 0;padding:19px 16px 15px;border:1px solid #deded5;border-radius:24px;background:#f7f7f0;box-shadow:none;min-width:0;overflow:hidden}
+.growth-chart-panel .growth-panel-head{align-items:center;margin:0 0 13px}
+.growth-chart-panel .growth-panel-head h3{font:700 clamp(17px,4.3vw,22px)/1.2 "Sora",sans-serif;color:#0a0a0a;letter-spacing:-.045em}
+.growth-peak{font:500 12px "Inter",sans-serif;color:#77776f;white-space:nowrap}
+.growth-chart-visual{grid-template-columns:65px minmax(0,1fr);gap:8px;align-items:stretch}
+.growth-chart-y{overflow:visible;padding:14px 0 10px;font-size:10px;color:#77776f}
+.growth-chart-stage{position:relative;min-width:0;padding-top:28px}
+.growth-line-chart{height:225px;overflow:visible;touch-action:pan-y}
+.growth-grid-line{stroke:#deded4;stroke-width:1.3;stroke-dasharray:none}
+.growth-chart-area{fill:url(#growthAreaFill);fill-opacity:1}
+.growth-chart-line{fill:none;stroke:#0a0a0a;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.growth-chart-guide{stroke:#77776f;stroke-width:1.4;stroke-dasharray:5 6;opacity:.85;vector-effect:non-scaling-stroke}
+.growth-point-hit{fill:transparent;stroke:transparent;pointer-events:all}
+.growth-point-dot{fill:var(--lemon);stroke:#0a0a0a;stroke-width:2.5;vector-effect:non-scaling-stroke}
+.growth-chart-point{cursor:pointer;outline:none}
+.growth-chart-point:focus-visible .growth-point-dot{stroke:#6b7400;stroke-width:4}
+.growth-chart-point.active .growth-point-dot{r:7;fill:var(--lemon);stroke:#0a0a0a;stroke-width:2.7}
+.growth-tooltip{position:absolute;top:0;left:50%;z-index:2;max-width:calc(100% - 8px);transform:translateX(-50%);padding:8px 12px;border-radius:999px;background:#0a0a0a;color:#fff;font:600 11px/1.2 "Inter",sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.growth-chart-x{margin:3px 0 0 73px;gap:2px}
+.growth-chart-x>button{display:grid;gap:5px;min-width:0;padding:5px 0;border:0;border-radius:8px;background:transparent;text-align:center;cursor:pointer}
+.growth-chart-x>button:focus-visible{outline:2px solid var(--lemon);outline-offset:2px}
+.growth-chart-x>button b{font:600 11px "Sora",sans-serif;color:#77776f}
+.growth-chart-x>button small{font:500 9px "Inter",sans-serif;color:#999990;white-space:nowrap}
+.growth-chart-x>button.today b,.growth-chart-x>button.today small{color:#0a0a0a;font-weight:700}
+.growth-see-all{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 2px;border:0;background:transparent;color:#0a0a0a;font:700 12px "Sora",sans-serif;white-space:nowrap;cursor:pointer}
+.growth-see-all:focus-visible{outline:2px solid var(--lemon);outline-offset:3px;border-radius:6px}
+.growth-product-row>div{gap:6px}
+.growth-product-volume{display:block;width:100%;height:4px;border-radius:99px;background:#efefe8;overflow:hidden}
+.growth-product-volume:after{content:"";display:block;width:var(--volume,0%);height:100%;border-radius:inherit;background:var(--lemon)}
+.growth-products{padding-bottom:4px}
+.growth-product-row>div>small{font-variant-numeric:tabular-nums}
+.growth-page,.growth-root{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+@media(max-width:430px){
+ .growth-hero{padding:23px 18px 18px}
+ .growth-hero-foot>span{padding:0 7px}
+ .growth-hero-foot>span>b{font-size:clamp(12px,3.2vw,17px)}
+ .growth-hero-foot>span>small{font-size:9px}
+ .growth-chart-panel{padding:16px 11px 13px;border-radius:20px}
+ .growth-chart-visual{grid-template-columns:58px minmax(0,1fr);gap:5px}
+ .growth-chart-y{font-size:9px}
+ .growth-line-chart{height:185px}
+ .growth-chart-x{margin-left:63px}
+ .growth-chart-x>button b{font-size:9px}
+ .growth-chart-x>button small{font-size:7px}
+ .growth-tooltip{font-size:9px;padding:7px 9px}
+ .growth-peak{font-size:10px}
+}
+@media(max-width:350px){
+ .growth-hero-foot>span{padding:0 5px}
+ .growth-hero-foot>span>b{font-size:11px}
+ .growth-chart-visual{grid-template-columns:52px minmax(0,1fr)}
+ .growth-chart-x{margin-left:57px}
+}
+@media(prefers-reduced-motion:reduce){
+ .growth-chart-line,.growth-chart-area,.growth-product-volume:after{transition:none!important;animation:none!important}
+}
