@@ -357,7 +357,7 @@ window.StrapPages = (() => {
         const value = rows.reduce((sum,x)=>sum+(Number(x.total)||0),0);
         const label = date.toLocaleDateString('en-NG',{weekday:'short'})+' '+date.toLocaleDateString('en-NG',{day:'numeric',month:'short'})+' · '+ctx.money(value);
         const tooltip = root.querySelector('.growth-tooltip'); if (tooltip) tooltip.textContent=label;
-        root.querySelectorAll('[data-growth-point]').forEach(el=>el.classList.toggle('active',Number(el.dataset.growthPoint)===i));
+        root.querySelectorAll('[data-growth-point]').forEach(el=>{const selected=Number(el.dataset.growthPoint)===i;el.classList.toggle('active',selected);if(el.tagName==='BUTTON')el.classList.toggle('today',selected);});
         const guide = root.querySelector('.growth-chart-guide'), dot = root.querySelector('.growth-chart-point.active .growth-point-dot');
         if(guide && dot){const x=dot.getAttribute('cx');guide.setAttribute('x1',x);guide.setAttribute('x2',x);}
       }
