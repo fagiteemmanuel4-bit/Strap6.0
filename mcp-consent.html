@@ -1,29 +1,68 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a0a0a"><title>Approve Strap access</title>
+<meta name="theme-color" content="#080808"><title>Approve access · Strap</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080808;color:#f5f5f5;font:15px system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.panel{width:min(100%,460px);background:#111;border:1px solid #292929;border-radius:22px;padding:28px;box-shadow:0 24px 80px #0008}.mark{width:48px;height:48px;border-radius:15px;background:#e6f53a;color:#090909;display:grid;place-items:center;font-weight:900;font-size:25px}.muted{color:#a2a2a2;line-height:1.55}h1{font-size:25px;margin:20px 0 8px}.client{padding:16px;background:#080808;border:1px solid #303030;border-radius:14px;margin:18px 0}.client strong{display:block;font-size:17px}.scope{padding:14px;background:#191919;border-radius:12px;margin:12px 0;color:#ddd;line-height:1.6}button{width:100%;border:0;border-radius:12px;padding:14px;font:600 15px system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;margin-top:12px}.allow{background:#e6f53a;color:#080808}.deny{background:#202020;color:#fff;border:1px solid #383838}.error{color:#ff8b8b;min-height:22px;margin-top:12px}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080808;color:#f5f5f5;font:15px system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:20px}.panel{width:min(100%,480px);background:#111;border:1px solid #292929;border-radius:22px;padding:26px;box-shadow:0 24px 80px #0008}.brand{display:flex;align-items:center;gap:11px;font-weight:800}.mark{width:42px;height:42px;border-radius:13px;background:#e6f53a;color:#090909;display:grid;place-items:center;font-size:23px}.muted{color:#a2a2a2;line-height:1.55}h1{font-size:24px;margin:22px 0 7px}.client{display:flex;align-items:center;gap:13px;padding:15px;background:#080808;border:1px solid #303030;border-radius:14px;margin:18px 0}.client img,.client .fallback{width:42px;height:42px;border-radius:12px;object-fit:contain;background:#222;display:grid;place-items:center}.client strong{display:block;font-size:16px}.section{padding:15px;background:#191919;border-radius:13px;margin:12px 0}.section h2{font-size:14px;margin:0 0 10px}.choice{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-top:1px solid #303030}.choice input{accent-color:#e6f53a;width:18px;height:18px;margin:2px 0 0}.choice b{display:block;font-size:14px}.choice small{display:block;color:#a2a2a2;line-height:1.45;margin-top:3px}.branches{max-height:170px;overflow:auto}.buttons{display:grid;gap:10px;margin-top:18px}button{width:100%;border:0;border-radius:12px;padding:14px;font:700 15px system-ui;cursor:pointer}.allow{background:#e6f53a;color:#080808}.deny{background:#202020;color:#fff;border:1px solid #383838}.error{color:#ff8b8b;min-height:22px;margin-top:12px}.hint{font-size:12px;color:#858585;line-height:1.5;margin-top:16px}
 </style></head><body><main class="panel">
-<div class="mark">S</div><h1>Connect your AI assistant</h1>
-<p class="muted">Review this request before allowing access to your Strap account.</p>
-<div class="client"><strong id="client-name">An application</strong><span class="muted" id="client-info">Requesting access to Strap</span></div>
-<div class="scope"><b>Requested permissions</b><p id="scope" class="muted">Loading…</p><p id="resource" class="muted"></p></div>
-<p class="muted">Only approve this if you started the connection. You can revoke AI connections from Strap settings.</p>
-<button class="allow" id="allow" type="button">Allow access</button>
-<button class="deny" id="deny" type="button">Deny</button>
+<div class="brand"><div class="mark">S</div><span>Strap</span></div>
+<h1>Connect an AI app</h1><p class="muted">Review the app and choose exactly what it can access before connecting it to your store.</p>
+<div class="client"><span class="fallback" id="app-fallback">✦</span><div><strong id="client-name">Checking application…</strong><span class="muted" id="client-info">Requesting access to your Strap store</span></div></div>
+<section class="section"><h2>Choose permissions</h2>
+<label class="choice"><input type="checkbox" checked disabled><span><b>Read store information</b><small>View your business profile, permitted branches, products, stock, sales and customers.</small></span></label>
+<label class="choice"><input type="checkbox" id="allow-write"><span><b>Make changes to your store</b><small>Create and update products, change stock quantities and upload product images.</small></span></label>
+</section>
+<section class="section"><h2>Choose branch access</h2><label class="choice"><input type="radio" name="branch-mode" value="all"><span><b>All branches</b><small>Allow this app to access every branch.</small></span></label><div id="branch-list" class="branches"><p class="muted">Loading your branches…</p></div></section>
+<p class="hint">Only approve this request if you started it. You can change permissions or revoke access at any time from Strap → Settings → MCP.</p>
+<div class="buttons"><button class="allow" id="allow" type="button">Approve connection</button><button class="deny" id="deny" type="button">Deny</button></div>
 <p class="error" id="error" role="alert"></p>
 </main>
 <script type="module">
 import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.8.0?bundle';
 const auth=createAuthClient(location.origin+'/api/neon-auth');
 const params=new URLSearchParams(location.search),error=document.getElementById('error');
-const scopes=(params.get('scope')||'').split(/\s+/).filter(Boolean);
-document.getElementById('scope').textContent=scopes.length?scopes.join(', '):'Sign in and identify your Strap account.';
-document.getElementById('resource').textContent=params.get('resource')||'';
-(async()=>{try{const {data}=await auth.getSession();if(!data?.user){location.replace('/mcp-login.html'+location.search);return;}const {data:client,error:clientError}=await auth.oauth2.publicClient({query:{client_id:params.get('client_id')||''}});if(clientError)throw clientError;document.getElementById('client-name').textContent=client?.client_name||client?.name||'An application';const uris=client?.redirect_uris||[];document.getElementById('client-info').textContent=uris.length?'Redirects to: '+uris.map(u=>{try{return new URL(u).host}catch{return 'approved app'}}).join(', '):'Requesting access to Strap';}catch(e){error.textContent=e instanceof Error?e.message:'Could not verify this request.';document.getElementById('allow').disabled=true;}})();
-async function answer(accept){document.getElementById('allow').disabled=true;document.getElementById('deny').disabled=true;try{const result=await auth.oauth2.consent({accept});if(result?.error)throw result.error;}catch(e){error.textContent=e instanceof Error?e.message:'Could not complete the approval.';document.getElementById('allow').disabled=false;document.getElementById('deny').disabled=false;}}
+const clientId=params.get('client_id')||'',scopes=(params.get('scope')||'').split(/\\s+/).filter(Boolean);
+let clientMeta={},branches=[];
+const say=e=>error.textContent=e instanceof Error?e.message:'Could not complete this approval.';
+(async()=>{
+ try{
+  const {data:session}=await auth.getSession();
+  if(!session?.user){location.replace('/mcp-login.html'+location.search);return;}
+  if(!clientId)throw new Error('The connection request is missing its app ID. Return to your AI app and connect again.');
+  const {data:client,error:clientError}=await auth.oauth2.publicClient({query:{client_id:clientId}});
+  if(clientError)throw clientError;clientMeta=client||{};
+  const name=clientMeta.client_name||clientMeta.name||'AI application';
+  document.getElementById('client-name').textContent=name;
+  const redirects=clientMeta.redirect_uris||[];let host='';
+  try{host=new URL(clientMeta.client_uri||redirects[0]||'').host;}catch(_){}
+  document.getElementById('client-info').textContent=host||'Requesting access to your Strap store';
+  let logo=clientMeta.logo_uri||'';
+  if(!logo&&clientMeta.client_uri){try{logo=new URL('/favicon.ico',clientMeta.client_uri).toString();}catch(_){}}
+  if(logo){const img=document.createElement('img');img.src=logo;img.alt='';img.referrerPolicy='no-referrer';img.onerror=()=>img.remove();document.getElementById('app-fallback').replaceWith(img);}
+  const response=await fetch('/api/mcp/approve',{credentials:'same-origin',cache:'no-store'});
+  const data=await response.json();if(!response.ok)throw new Error(data.message||'Could not load your branches.');
+  branches=data.branches||[];
+  const list=document.getElementById('branch-list');
+  list.innerHTML=branches.map((b,i)=>'<label class="choice"><input type="checkbox" name="branch" value="'+String(b.id).replace(/[&<>"']/g,'')+'" '+(i===0?'checked':'')+'><span><b>'+String(b.name).replace(/[&<>"']/g,'')+'</b><small>Limit this app to this branch.</small></span></label>').join('')||'<p class="muted">No branches are available.</p>';
+  const all=document.querySelector('input[name="branch-mode"]');
+  all.addEventListener('change',()=>{document.querySelectorAll('input[name="branch"]').forEach(x=>x.checked=false);});
+  document.querySelectorAll('input[name="branch"]').forEach(x=>x.addEventListener('change',()=>{all.checked=false;}));
+ }catch(e){say(e);document.getElementById('allow').disabled=true;}
+})();
+async function answer(accept){
+ const buttons=[document.getElementById('allow'),document.getElementById('deny')];buttons.forEach(b=>b.disabled=true);error.textContent='';
+ try{
+  if(accept){
+   const all=document.querySelector('input[name="branch-mode"]').checked;
+   const selected=[...document.querySelectorAll('input[name="branch"]:checked')].map(x=>x.value);
+   if(!all&&!selected.length)throw new Error('Choose at least one branch.');
+   const response=await fetch('/api/mcp/approve',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:clientId,client_name:clientMeta.client_name||clientMeta.name||'AI application',client_uri:clientMeta.client_uri||'',logo_uri:clientMeta.logo_uri||'',allow_write:document.getElementById('allow-write').checked,branch_ids:all?['*']:selected})});
+   const result=await response.json();if(!response.ok)throw new Error(result.message||'Could not save your permissions.');
+  }
+  const result=await auth.oauth2.consent({accept});if(result?.error)throw result.error;
+ }catch(e){say(e);buttons.forEach(b=>b.disabled=false);}
+}
 document.getElementById('allow').addEventListener('click',()=>answer(true));
 document.getElementById('deny').addEventListener('click',()=>answer(false));
 </script></body></html>
