@@ -18,7 +18,7 @@
 <p class="muted" id="status">Secure sign-in powered by Neon Auth.</p>
 </main>
 <script type="module">
-import { createAuthClient } from 'https://esm.sh/@neon/auth@0.8.0?bundle';
+import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.7.0-beta?bundle';
 const auth=createAuthClient(location.origin+'/api/neon-auth');
 const params=new URLSearchParams(location.search), oauthVisit=params.has('sig')&&params.has('ba_param');
 const mustSignInAgain=oauthVisit&&/\b(login|create)\b/.test(params.get('prompt')||'');
