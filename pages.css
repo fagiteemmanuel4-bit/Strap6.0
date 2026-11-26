@@ -386,3 +386,88 @@
 .growth-empty-steps b{color:#8d8d86;font:700 10px "Space Mono",monospace}
 @media(max-width:380px){.growth-metrics{gap:6px}.growth-metrics article{padding:11px 8px}.growth-metrics b{font-size:14px}.growth-panel{padding:15px 12px}.growth-bars{gap:3px}.growth-bar-value{font-size:6px}.growth-milestone{grid-template-columns:25px minmax(0,1fr) auto;gap:7px}.growth-milestone>em{font-size:7px}}
 @media(prefers-reduced-motion:reduce){.growth-bar-col i{animation:none}}
+
+
+/* Growth visual scale-up: larger type, stronger contrast and a richer chart. */
+.pm-head:has(+ .growth-hero) .pm-title{font-size:clamp(27px,5vw,34px);font-weight:750;letter-spacing:-.055em}
+.growth-hero{padding:30px 27px 23px;border-radius:30px;margin-top:23px}
+.growth-hero-top>span:first-child{font-size:15px}
+.growth-period{font-size:11px;padding:8px 12px}
+.growth-revenue{font-size:clamp(39px,10vw,55px);margin:28px 0 13px;letter-spacing:-.065em}
+.growth-change{font-size:12px;min-height:34px;padding:7px 12px;font-weight:700}
+.growth-hero-foot{font-size:13px;margin-top:27px;padding-top:17px}
+.growth-metrics{gap:12px;margin:15px 0}
+.growth-metrics article{min-height:132px;padding:17px 15px;border-radius:19px}
+.growth-metrics small{font-size:12px;font-weight:600}
+.growth-metrics b{font-size:clamp(18px,4.8vw,24px);margin:12px 0 7px}
+.growth-metrics span{font-size:10px}
+.growth-panel{margin-top:15px;padding:22px 20px;border-radius:23px}
+.growth-panel-head{margin-bottom:20px}
+.growth-panel-head h3{font-size:20px;font-weight:700;letter-spacing:-.04em}
+.growth-panel-head p{font-size:13px;margin-top:6px}
+.growth-eyebrow{display:block;margin-bottom:7px;color:#92928a;font:700 9px "Space Mono",monospace;letter-spacing:.12em}
+.growth-unit{font-size:10px;padding:7px 10px}
+.growth-chart-summary{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:-4px 0 17px}
+.growth-chart-summary>div{display:grid;gap:5px}
+.growth-chart-summary small{color:#85857d;font:600 11px "Inter",sans-serif}
+.growth-chart-summary b{font:700 clamp(23px,6vw,31px)/1.1 "Sora",sans-serif;letter-spacing:-.055em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.growth-chart-visual{display:grid;grid-template-columns:65px minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
+.growth-chart-y{display:flex;flex-direction:column;justify-content:space-between;padding:13px 0 9px;color:#85857d;font:500 10px "Inter",sans-serif;white-space:nowrap;overflow:hidden}
+.growth-line-chart{width:100%;height:235px;overflow:visible;display:block}
+.growth-grid-line{stroke:#e9e9e2;stroke-width:1.5;stroke-dasharray:4 7}
+.growth-chart-area{fill:#e6f53a;fill-opacity:.28}
+.growth-chart-line{fill:none;stroke:#0a0a0a;stroke-width:5.5;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.growth-chart-point circle:first-of-type{fill:#fff;stroke:#0a0a0a;stroke-width:3;vector-effect:non-scaling-stroke}
+.growth-chart-point circle:last-of-type{fill:#0a0a0a}
+.growth-chart-point.latest circle:first-of-type{fill:#e6f53a;stroke:#0a0a0a;stroke-width:3.5}
+.growth-chart-point.latest circle:last-of-type{fill:#0a0a0a}
+.growth-chart-x{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin:0 0 4px 72px;text-align:center}
+.growth-chart-x>div{display:grid;gap:5px;min-width:0}
+.growth-chart-x b{font:700 11px "Sora",sans-serif;color:#55554f}
+.growth-chart-x small{font:500 9px "Inter",sans-serif;color:#999990;white-space:nowrap}
+.growth-chart-x .today b{color:#0a0a0a}
+.growth-chart-x .today small{color:#0a0a0a;font-weight:700}
+.growth-compare{font-size:12px;margin-top:18px;padding-top:15px}
+.growth-compare b{font-size:13px}
+.growth-compare-count{font-size:10px}
+.growth-product-row{grid-template-columns:38px minmax(0,1fr) auto;gap:13px;padding:16px 0}
+.growth-rank{width:34px;height:34px;font-size:11px}
+.growth-product-row>div{gap:5px}
+.growth-product-row>div>b{font-size:13px}
+.growth-product-row>div>small{font-size:11px}
+.growth-product-row>strong{font-size:14px}
+.growth-product-row>strong small{font-size:10px}
+.growth-progress-count{font-size:14px}
+.growth-progress{height:9px;margin:0 0 11px}
+.growth-milestone{grid-template-columns:32px minmax(0,1fr) auto;gap:12px;padding:15px 0}
+.growth-milestone>span{width:30px;height:30px}
+.growth-milestone>div>b{font-size:12px}
+.growth-milestone>div>small{font-size:10px}
+.growth-milestone>em{font-size:9px}
+.growth-next{font-size:12px;padding:13px 14px}
+.growth-disclaimer,.growth-muted{font-size:11px}
+.growth-empty{padding:32px 22px;border-radius:24px}
+.growth-empty>span{width:68px;height:68px}
+.growth-empty h2{font-size:24px}
+.growth-empty>p{font-size:14px;max-width:370px}
+.growth-empty-steps>div{padding:14px;font-size:13px}
+@media(max-width:430px){
+ .growth-hero{padding:25px 20px 20px;border-radius:24px}
+ .growth-revenue{font-size:clamp(34px,9.5vw,45px)}
+ .growth-metrics{gap:7px}
+ .growth-metrics article{min-height:112px;padding:13px 9px}
+ .growth-metrics small{font-size:10px}
+ .growth-metrics b{font-size:clamp(15px,4.2vw,19px)}
+ .growth-metrics span{font-size:9px}
+ .growth-panel{padding:18px 14px}
+ .growth-panel-head h3{font-size:18px}
+ .growth-chart-visual{grid-template-columns:52px minmax(0,1fr);gap:5px}
+ .growth-chart-y{font-size:8px}
+ .growth-line-chart{height:190px}
+ .growth-chart-x{margin-left:57px}
+ .growth-chart-x b{font-size:9px}
+ .growth-chart-x small{font-size:7px}
+ .growth-chart-summary{align-items:flex-start;flex-direction:column}
+ .growth-chart-summary b{font-size:25px}
+}
+@media(prefers-reduced-motion:reduce){.growth-chart-line,.growth-chart-area{transition:none}}
