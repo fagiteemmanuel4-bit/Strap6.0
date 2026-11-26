@@ -1,5 +1,5 @@
 /* Strap billing workspace — uses the app's existing black/lemon skin. */
-.fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field) .fx-in{width:min(100% - 32px,1040px);max-width:1040px;padding:0 0 36px}
+.fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field) .fx-in{width:calc(100% - 32px);max-width:1040px;padding:0 0 36px}
 .fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field){background:#f7f7f2}
 .bill-workspace{color:var(--black,#0a0a0a);font-family:"Sora",sans-serif}
 .bill-workspace .pm-head{position:sticky;top:0;z-index:4;background:rgba(247,247,242,.96);backdrop-filter:blur(12px);padding:12px 0;border-bottom:1px solid #e8e8df;margin-bottom:22px}
@@ -129,3 +129,6 @@
 .bill-workspace .bill-muted{font:500 10px "Inter",sans-serif;color:#77786f}
 .bill-workspace .bill-card-head>button{border:1px solid #e2e2d9;border-radius:99px;background:#fff;color:#111;padding:8px 12px;font:600 10px "Sora",sans-serif}
 .bill-workspace .bill-status.ending_at_expiry{background:#fff2d7;color:#895800}
+
+.bill-workspace .bill-alert .bill-secondary{margin-top:8px}
+.bill-workspace .bill-price-period{font:500 11px "Inter",sans-serif;color:#d2d2c8}
