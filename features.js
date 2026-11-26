@@ -163,7 +163,7 @@ window.StrapFeatures = (() => {
     document.body.appendChild(el); depth++; document.body.classList.add('pm-open'); void el.offsetWidth; el.classList.add('on');
     const s = { el, root: $('#fxb', el), set(h) { const html = /class=["']bill-/.test(h) && !h.includes('bill-workspace') ? '<div class="bill-workspace">' + h + '</div>' : h; s.root.innerHTML = html; s.root.style.animation = 'none'; void s.root.offsetWidth; s.root.style.animation = ''; },
       async close(msg = 'Going back') { await cover(msg, () => { el.remove(); if (!--depth) document.body.classList.remove('pm-open'); }); } };
-    el.addEventListener('click', e => { if (e.target.closest('[data-x]')) s.close(); if (e.target.closest('[data-bill-retry]') && typeof s.retry === 'function') s.retry(); });
+    el.addEventListener('click', async e => { if (e.target.closest('[data-x]')) s.close(); const retry=e.target.closest('[data-bill-retry]'); if(retry && typeof s.retry==='function' && !retry.disabled){retry.disabled=true;retry.setAttribute('aria-busy','true');retry.textContent='Retrying…';try{await s.retry();}catch(err){toast(err&&err.message?err.message:'Could not retry this billing request.');}finally{if(retry.isConnected){retry.disabled=false;retry.removeAttribute('aria-busy');retry.textContent='Try again';}}} });
     wire && wire(s); return s;
   }
   const toast = m => ctx.toast(m);
