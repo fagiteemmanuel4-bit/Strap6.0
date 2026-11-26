@@ -238,7 +238,7 @@
     let current = 'home';
     const ctx = {
       toast, esc, money, cur: D.currency || 'NGN', data: d, store: D, staff: STAFF, go: id => show(id), products: () => mods.products, openMenu: () => openDrawer(),
-      rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $('.sn', dash).forEach(n => n.textContent = v); $('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
+      rename: v => { D.bizname = v; try { sessionStorage.setItem('strap.session', JSON.stringify(D)); } catch (e) {} $$('.sn', dash).forEach(n => n.textContent = v); $$('.av', dash).forEach(a => { if (!a.querySelector('img')) a.textContent = initials(v); }); },
       signOut: async () => { try { await StrapAPI.signOut(); } finally { location.replace('/'); } }
     };
     StrapFeatures.init(ctx);
@@ -313,7 +313,7 @@
     if(STAFF) { const nav=$('.dnav',dash); if(nav) nav.hidden=true; }
     const pageSearch = $('#ds-page-search', drawer);
     const searchEmpty = $('.ds-search-empty', drawer);
-    const groupOpenBeforeSearch = new Map($('.ds-grp', drawer).map(group => [group, group.classList.contains('open')]));
+    const groupOpenBeforeSearch = new Map($$('.ds-grp', drawer).map(group => [group, group.classList.contains('open')]));
     function filterMenu(query) {
       const q = String(query || '').trim().toLocaleLowerCase();
       let visible = 0;
