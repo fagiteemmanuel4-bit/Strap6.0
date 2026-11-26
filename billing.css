@@ -96,7 +96,7 @@
 .bill-workspace .bill-price-card li{margin:5px 0}
 .bill-workspace .bill-price-card.featured .bill-price{color:#e6f53a}
 .bill-workspace .bill-note{padding:13px 15px;border:1px solid #ececea;border-radius:13px;background:#fff;font:400 11px/1.7 "Inter",sans-serif;color:#8d8d86;margin:12px 0}
-.bill-workspace .bill-alert{padding:14px 16px;border:1px solid #efd6aa;border-radius:14px;background:#fff8e9;color:#77500b;font:500 12px/1.65 "Inter",sans-serif;margin:0 0 14px}
+.bill-workspace .bill-alert{padding:14px 16px;border:1px solid #efd6aa;border-radius:14px;background:#fff3f0;border-color:#f3b9ad;color:#c62828;font:500 12px/1.65 "Inter",sans-serif;margin:0 0 14px}
 .bill-workspace .bill-alert strong{display:block;font:700 12px "Sora",sans-serif;margin-bottom:4px}
 .bill-workspace .bill-numeric{font-variant-numeric:tabular-nums}
 @media(min-width:900px){.bill-workspace .bill-overview-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:14px;align-items:start}.bill-workspace .bill-overview-grid>.bill-card{margin-bottom:14px}}
@@ -135,3 +135,5 @@
 
 .bill-workspace .bill-primary[aria-busy="true"]::before,.bill-workspace .bill-secondary[aria-busy="true"]::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:billSpin .7s linear infinite}
 @keyframes billSpin{to{transform:rotate(360deg)}}
+
+.bill-workspace .bill-payment-main small,.bill-workspace .bill-result>small{font-variant-numeric:tabular-nums}
