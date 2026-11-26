@@ -18,8 +18,8 @@
 <p class="muted" id="status">Secure sign-in powered by Neon Auth.</p>
 </main>
 <script type="module">
-import { createAuthClient } from 'https://esm.sh/@neondatabase/auth@0.8.0?bundle';
-const auth=createAuthClient(location.origin+'/api/neon-auth');
+import { createAuthClient } from 'https://esm.sh/@neon/auth@0.8.0?bundle';
+const auth=createAuthClient('https://ep-delicate-rain-begmai0o.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth');
 const params=new URLSearchParams(location.search), oauthVisit=params.has('client_id');
 const mustSignInAgain=oauthVisit&&/\b(login|create)\b/.test(params.get('prompt')||'');
 const error=document.getElementById('error'), status=document.getElementById('status');
