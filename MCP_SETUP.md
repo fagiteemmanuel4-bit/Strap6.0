@@ -11,7 +11,7 @@ Strap exposes a Streamable HTTP MCP server backed by the same Neon data used by 
 - OAuth sign-in page: `https://strap60.vercel.app/mcp-login.html`
 - OAuth consent page: `https://strap60.vercel.app/mcp-consent.html`
 
-Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadata Documents are enabled and legacy dynamic client registration is disabled. The user signs in on Strap's hosted page, selects read/write permissions and allowed branches, then approves the connection on the hosted consent page.
+Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadata Documents are enabled and legacy dynamic client registration is disabled. The user signs in on Strap's hosted page, selects read/write permissions and allowed branches, then approves the connection on the hosted consent page. Claude's published OAuth identity is discovered through Client ID Metadata Documents; no client ID setup is required.
 
 ## Current rollout state
 
