@@ -609,3 +609,7 @@
 .growth-chart-panel .growth-chart-guide{stroke:#0a0a0a;opacity:.65}
 .growth-chart-panel .growth-point-dot,.growth-chart-panel .growth-chart-point.active .growth-point-dot{fill:#0a0a0a;stroke:#0a0a0a}
 .growth-chart-panel .growth-chart-point:focus-visible .growth-point-dot{stroke:#0a0a0a;stroke-width:4}
+
+
+/* Restore the reference's restrained lemon area beneath the crisp black curve. */
+.growth-chart-panel .growth-chart-area{fill:url(#growthAreaFill)!important;opacity:1!important}
