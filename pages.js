@@ -276,6 +276,9 @@ window.StrapPages = (() => {
         return { label: date.toLocaleDateString('en-NG', { weekday: 'short' }), date: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }), value: sumRevenue(rows), count: rows.length };
       });
       const max = Math.max(1, ...days.map(x => x.value));
+      const chartPoints = days.map((day, i) => ({ ...day, x: 30 + i * 106.6, y: 190 - (day.value / max) * 145 }));
+      const chartLine = chartPoints.map((point, i) => (i ? 'L' : 'M') + point.x.toFixed(1) + ' ' + point.y.toFixed(1)).join(' ');
+      const chartArea = chartLine + ' L ' + chartPoints[chartPoints.length - 1].x.toFixed(1) + ' 205 L ' + chartPoints[0].x.toFixed(1) + ' 205 Z';
       const milestones = [
         { label: 'First sale recorded', detail: 'Your store has made its first sale', done: sales.length >= 1 },
         { label: '10 sales completed', detail: 'Build a steady sales rhythm', done: sales.length >= 10 },
@@ -298,12 +301,21 @@ window.StrapPages = (() => {
           <article><small>Average sale</small><b>${ctx.money(average)}</b><span>Across ${sales.length.toLocaleString('en-NG')} sales</span></article>
           <article><small>Items sold</small><b>${units.toLocaleString('en-NG')}</b><span>All-time quantity</span></article>
         </div>
-        <section class="growth-panel">
-          <div class="growth-panel-head"><div><h3>Revenue trend</h3><p>Daily sales for the last seven days</p></div><span class="growth-unit">NGN</span></div>
-          <div class="growth-chart" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
-            <div class="growth-y-labels"><span>${ctx.money(max)}</span><span>${ctx.money(max / 2)}</span><span>₦0</span></div>
-            <div class="growth-bars">${days.map(day => `<div class="growth-bar-col" title="${day.date}: ${ctx.money(day.value)} · ${day.count} sales"><div class="growth-bar-value">${day.value ? ctx.money(day.value) : '—'}</div><i style="--bar-height:${Math.max(day.value ? 5 : 0, day.value / max * 100)}%"></i><small>${day.label}</small></div>`).join('')}</div>
+        <section class="growth-panel growth-chart-panel">
+          <div class="growth-panel-head"><div><span class="growth-eyebrow">PERFORMANCE</span><h3>Revenue over time</h3><p>Your sales movement across the last seven days</p></div><span class="growth-unit">NGN</span></div>
+          <div class="growth-chart-summary"><div><small>Last 7 days</small><b>${ctx.money(recentRevenue)}</b></div><span class="growth-change ${change === null ? 'neutral' : change >= 0 ? 'positive' : 'negative'}">${esc(growthLabel)}</span></div>
+          <div class="growth-chart-visual">
+            <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
+            <svg class="growth-line-chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
+              <line x1="20" y1="45" x2="680" y2="45" class="growth-grid-line"/>
+              <line x1="20" y1="120" x2="680" y2="120" class="growth-grid-line"/>
+              <line x1="20" y1="205" x2="680" y2="205" class="growth-grid-line"/>
+              <path d="${chartArea}" class="growth-chart-area"/>
+              <path d="${chartLine}" class="growth-chart-line"/>
+              ${chartPoints.map((point,i)=>`<g class="growth-chart-point ${i===6?'latest':''}"><title>${point.date}: ${ctx.money(point.value)} · ${point.count} sales</title><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?9:6}"/><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?3:2}"/></g>`).join('')}
+            </svg>
           </div>
+          <div class="growth-chart-x">${days.map((day,i)=>`<div class="${i===6?'today':''}"><b>${day.label}</b><small>${day.date}</small></div>`).join('')}</div>
           <div class="growth-compare"><span>Previous 7 days</span><b class="tabular-nums">${ctx.money(previousRevenue)}</b><span class="growth-compare-count">${previous.length.toLocaleString('en-NG')} sales</span></div>
         </section>
         <section class="growth-panel">
