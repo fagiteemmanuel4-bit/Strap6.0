@@ -1,8 +1,7 @@
 /* Strap dashboard page: base + dashboard styles (loader styles are in loader.css) */
 :root{
-  /* Legacy dashboard names resolve to the canonical tokens in tokens.css. */
+  /* Legacy dashboard timing name resolves to the canonical token. */
   --motion-feedback:var(--motion-fast);
-  --motion-panel:var(--motion-panel);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
