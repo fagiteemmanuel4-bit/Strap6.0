@@ -309,10 +309,12 @@ window.StrapPages = (() => {
           <div class="growth-chart-visual">
             <div class="growth-chart-y"><span>${ctx.money(max)}</span><span>${ctx.money(max * .5)}</span><span>₦0</span></div>
             <svg class="growth-line-chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-label="Daily revenue: ${days.map(d => d.label + ' ' + ctx.money(d.value)).join(', ')}">
+              <defs><linearGradient id="growthAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e6f53a" stop-opacity=".34"/><stop offset="100%" stop-color="#e6f53a" stop-opacity=".015"/></linearGradient><filter id="growthLineGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
               <line x1="20" y1="45" x2="680" y2="45" class="growth-grid-line"/>
               <line x1="20" y1="120" x2="680" y2="120" class="growth-grid-line"/>
               <line x1="20" y1="205" x2="680" y2="205" class="growth-grid-line"/>
               <path d="${chartArea}" class="growth-chart-area"/>
+              <path d="${chartLine}" class="growth-chart-line-glow"/>
               <path d="${chartLine}" class="growth-chart-line"/>
               ${chartPoints.map((point,i)=>`<g class="growth-chart-point ${i===6?'latest':''}"><title>${point.date}: ${ctx.money(point.value)} · ${point.count} sales</title><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?9:6}"/><circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${i===6?3:2}"/></g>`).join('')}
             </svg>
