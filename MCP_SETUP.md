@@ -11,7 +11,7 @@ Strap exposes a Streamable HTTP MCP server backed by the same Neon data used by 
 - OAuth sign-in page: `https://strap60.vercel.app/mcp-login.html`
 - OAuth consent page: `https://strap60.vercel.app/mcp-consent.html`
 
-Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadata Documents are enabled and legacy dynamic client registration is disabled. The user must sign in and approve the connection.
+Neon Auth is configured as the OAuth 2.1 authorization server. Client ID Metadata Documents are enabled and legacy dynamic client registration is disabled. The user signs in on Strap's hosted page, selects read/write permissions and allowed branches, then approves the connection on the hosted consent page.
 
 ## Current rollout state
 
@@ -21,7 +21,7 @@ The production Neon Auth OAuth 2.1 provider is enabled for the Strap MCP resourc
 
 There are two supported connection types:
 
-1. **OAuth connection** — read-only access to the user's active branch by default. After the client makes its first successful MCP request, it appears in Dashboard → Settings → MCP. The owner can change its branch access and enable product/stock writes, or revoke it.
+1. **OAuth connection** — the user approves the app from Strap's hosted consent screen, choosing read-only or read/write access and one or more branches (or all branches). After the client makes its first successful MCP request, it appears in Dashboard → Settings → MCP with its registered app name and icon (when supplied by the client). The owner can change permissions or branch access, or revoke it.
 2. **Strap access token** — generated from Dashboard → Settings → MCP. Tokens are unique, stored as SHA-256 hashes, shown once, and can be revoked. Start read-only and only grant write access when necessary.
 
 All access is Premium-gated. Tokens are tied to the authenticated owner. Branch permissions are checked on every tool call. OAuth tokens must match the exact Neon Auth issuer, exact MCP audience, signature, and expiry. The server never accepts a user ID from tool arguments.
@@ -56,7 +56,7 @@ Write access is intentionally limited to product and stock operations. The MCP s
 
 ## Client setup
 
-For OAuth-capable clients, add the remote MCP URL above and complete the Strap sign-in/approval flow.
+For OAuth-capable clients, copy the remote MCP URL from Dashboard → Settings → MCP, add it as a custom/remote MCP server in the AI app, and select Connect. The browser opens Strap's sign-in page if needed, then the Strap consent screen where the owner selects permissions and branches and approves. The app appears under Connected apps in Strap settings after its first successful MCP request.
 
 For clients that accept a custom bearer header, generate an access token in Strap and configure:
 
