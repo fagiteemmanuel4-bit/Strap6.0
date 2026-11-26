@@ -14,6 +14,8 @@ window.StrapFeatures = (() => {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
   S.plan = 'free'; // The server is the only authority for Premium access.\n  const lim = () => LIM[S.plan === 'premium' ? 'premium' : 'free'];
   let ctx = null;
+  // Keep gated navigation paused until the server has verified the current plan.
+  let planVerified = false, planPromise = null;
 
   /* ===== backend hooks ===== */
   const api = {
@@ -680,18 +682,33 @@ window.StrapFeatures = (() => {
 
   /* ===== Server-authoritative plan state ===== */
   async function refreshPlan() {
-    const was=S.plan;
-    try {
-      const r=await StrapAPI.call('GET','premium/status');
-      if(r.ok) {
-        S.plan=r.active?'premium':'free';
-        S.sub=r.active?{expiresAt:r.expiresAt}:null;
-        S.checkoutReady=!!r.checkoutReady;
-        S.checkoutAmount=Number(r.amount)||Number(r.introductoryAmount)||4500;
+    if (planPromise) return planPromise;
+    const pending = (async () => {
+      try {
+        const r = await StrapAPI.call('GET', 'premium/status');
+        if (!r || !r.ok || typeof r.active !== 'boolean') {
+          throw new Error((r && r.msg) || 'Subscription status could not be verified.');
+        }
+        S.plan = r.active ? 'premium' : 'free';
+        S.sub = r.active ? { expiresAt: r.expiresAt } : null;
+        S.checkoutReady = !!r.checkoutReady;
+        S.checkoutAmount = Number(r.amount) || Number(r.introductoryAmount) || 4500;
+        planVerified = true;
         save();
+      } catch (e) {
+        // A temporary API/network failure must not silently downgrade a paid account.
+        // Keep navigation usable; retry the authoritative check on the next page change.
+        planVerified = false;
+        console.warn('[Strap Premium] Plan status could not be verified; keeping page navigation available until it can be checked.', e);
       }
-    } catch(e) { S.plan='free'; S.sub=null; S.checkoutReady=false; }
-    return was;
+      return { verified: planVerified, plan: S.plan };
+    })();
+    planPromise = pending;
+    try {
+      return await pending;
+    } finally {
+      if (planPromise === pending) planPromise = null;
+    }
   }
   Object.assign(api, {
     async getAccountStatus() { await sleep(900); return { status: S.account.status }; },
@@ -839,5 +856,5 @@ window.StrapFeatures = (() => {
   }
   document.addEventListener('click', e => { const f = e.target.closest('[data-fx]'); if (f && ctx) { e.stopPropagation(); open(f.dataset.fx); } }, true);
 
-  return { api, state: S, notify, showPendingPremiumWelcome, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&/^\\d+$/.test(transaction_id)) { try { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') { toast('Payment verified. Strap Premium is now active.'); showPremiumActivationSuccess(); } else toast(v.msg||'Payment is not confirmed yet.'); } catch(err) { console.error('[Strap Premium] Return verification failed:',err); toast('Payment verification is still pending. Check Billing before trying again.'); } } else toast('Flutterwave returned without a transaction ID. If you were charged, contact support before retrying.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
+  return { api, state: S, waitForPlan: () => planVerified ? Promise.resolve({ verified: true, plan: S.plan }) : refreshPlan(), notify, showPendingPremiumWelcome, has: k => !!PAGES[k] || !!FLOWS[k], branchName: () => branch().name, open, mountHome, bind, stats, aiImport, items, setItems, init: c => { ctx = c; refreshPlan().then(async () => { const qs=new URLSearchParams(location.search); if(qs.get('payment')==='flutterwave') { const tx_ref=qs.get('tx_ref')||'', transaction_id=qs.get('transaction_id')||''; if(tx_ref&&/^\\d+$/.test(transaction_id)) { try { const v=await StrapAPI.call('POST','premium/verify',{tx_ref,transaction_id}); await refreshPlan(); if(v.ok&&S.plan==='premium') { toast('Payment verified. Strap Premium is now active.'); showPremiumActivationSuccess(); } else toast(v.msg||'Payment is not confirmed yet.'); } catch(err) { console.error('[Strap Premium] Return verification failed:',err); toast('Payment verification is still pending. Check Billing before trying again.'); } } else toast('Flutterwave returned without a transaction ID. If you were charged, contact support before retrying.'); for(const k of ['payment','status','tx_ref','transaction_id']) qs.delete(k); history.replaceState(history.state,'',location.pathname+(qs.toString()?'?'+qs.toString():'')+location.hash); } }); } };
 })();
