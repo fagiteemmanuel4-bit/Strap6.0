@@ -11,6 +11,7 @@ window.StrapFeatures = (() => {
   let S = { plan: 'free', branches: [{ id: 'b0', name: 'Main branch' }], active: 'b0', staff: [], imports: { m: mkey(), n: 0 }, theme: 'light', twofa: { on: false, secret: '' },
     backup: { email: '', phone: '' }, mcp: [], transfers: [], dismissed: [] };
   try { S = Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+  S.theme = 'light'; // Appearance controls are temporarily unavailable.
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
   S.plan = 'free'; // The server is the only authority for Premium access.\n  const lim = () => LIM[S.plan === 'premium' ? 'premium' : 'free'];
   let ctx = null;
@@ -138,17 +139,12 @@ window.StrapFeatures = (() => {
     } catch(e) { console.warn('[Strap Premium] Welcome animation check failed:',e); }
   }
 
-  /* ===== theme ===== */
+  /* ===== appearance temporarily disabled ===== */
   const applyTheme = () => {
-    const dark = S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.theme = 'light';
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = dark ? '#101110' : '#dbe94a';
+    if (meta) meta.content = '#dbe94a';
   };
-  if (window.matchMedia) {
-    const appearance = window.matchMedia('(prefers-color-scheme: dark)');
-    appearance.addEventListener?.('change', () => { if (S.theme === 'system') applyTheme(); });
-  }
   applyTheme();
 
   /* ===== per-branch products ===== */
@@ -220,13 +216,6 @@ window.StrapFeatures = (() => {
       if (p && p.replace(/\D/g, '').length < 7) return bad($('#bk-p', s.el).parentNode);
       S.backup = { email: e, phone: p }; save(); notify('security', 'Backup contact saved', 'We can reach you here if you lose access.'); K.fx('ok'); await s.close('Saving'); toast('Backup contact saved');
     };
-  };
-
-  /* --- Appearance --- */
-  PAGES.appearance = (s) => {
-    const draw = () => s.set(head('Appearance') + `<p class="fx-p">Choose how Strap looks on this device.</p><div class="fx-card">${[['light', 'Light', 'Bright and clean'], ['dark', 'Dark', 'Easier on the eyes at night'], ['system', 'Match device', 'Follows your phone’s setting']].map(([k, l, d]) =>
-      `<div class="fx-row" data-t="${k}" style="cursor:pointer"><div><b>${l}</b><small>${d}</small></div><span class="fx-sw${S.theme === k ? ' on' : ''}"></span></div>`).join('')}</div>`);
-    draw(); s.el.addEventListener('click', e => { const t = e.target.closest('[data-t]'); if (!t) return; S.theme = t.dataset.t; save(); applyTheme(); draw(); });
   };
 
   /* --- Delete account --- */
