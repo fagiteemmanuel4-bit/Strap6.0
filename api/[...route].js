@@ -1304,15 +1304,15 @@ H['storefront/products'] = async (req,res,user) => {
   if(req.method==='GET') return [200,{ok:true,products:await q('select id,source_product_id,source_branch_id,slug,title,description,price,sku,category,image_url,visible,featured,sort_order from store_products where store_id=$1 order by sort_order,title',[store.id])}];
   if(req.method!=='POST') return [405,{ok:false}];
   const row=(await q('select blob from user_data where user_id=$1',[user.id]))[0], blob=row&&row.blob||{}, existing=await q('select source_product_id,source_branch_id,slug from store_products where store_id=$1',[store.id]);
-  let synced=0;
+  const usedSlugs=new Set(existing.map(x=>x.slug)); let synced=0;
   for(const [key,value] of Object.entries(blob)) if(key.startsWith('ls:strap.f1.items.')) {
     const branch=key.slice('ls:strap.f1.items.'.length), list=parseStored(value,[]);
     if(!Array.isArray(list)) continue;
     for(const p of list) {
       if(!p||!p.id||String(p.status||'active')==='archived') continue;
       const title=String(p.title||p.name||'Untitled product').trim().slice(0,180), prior=existing.find(x=>String(x.source_product_id)===String(p.id)&&x.source_branch_id===branch);
-      let slug=prior?prior.slug:storeSlugify(p.title||p.name||p.id)||'product';
-      if(!prior && existing.some(x=>x.slug===slug)) slug=slug+'-'+String(p.id).slice(-6);
+      let slug=prior?prior.slug:(storeSlugify(p.title||p.name||p.id)||'product');
+      if(!prior) { const base=slug.slice(0,40); slug=base; let suffix=2; while(usedSlugs.has(slug)) slug=base+'-'+(suffix++); usedSlugs.add(slug); }
       await q('insert into store_products(store_id,source_product_id,source_branch_id,slug,title,description,price,sku,category,image_url,product_snapshot) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) on conflict(store_id,source_product_id,source_branch_id) do update set title=excluded.title,description=excluded.description,price=excluded.price,sku=excluded.sku,category=excluded.category,image_url=excluded.image_url,product_snapshot=excluded.product_snapshot,updated_at=now()',
         [store.id,String(p.id).slice(0,120),branch,slug,title,String(p.description||p.details||'').slice(0,4000),Math.max(0,Number(p.price)||0),String(p.sku||'').slice(0,100),String(p.category||'').slice(0,100),String(p.image||p.imageUrl||'').slice(0,1000),JSON.stringify({tracked:!!p.tracked,qty:Number(p.qty)||0,status:p.status||'active'})]);
       synced++;
@@ -1414,7 +1414,7 @@ H['storefront/page'] = async (req,res) => {
 /* ---- images stored inside Neon (bytea) ---- */
 H['media'] = async (req, res, user, staff) => {
   if (req.method === 'GET') {
-    const r = (await q('select mime,data,visibility,user_id from media where id=$1', [String(req.query.id || '')]).catch(() => []))[0];
+    const r = (await q("select mime,data,user_id,coalesce(to_jsonb(m)->>'visibility','public') as visibility from media m where id=$1", [String(req.query.id || '')]).catch(() => []))[0];
     if (!r || (r.visibility === 'private' && (!user || String(user.id) !== String(r.user_id)))) { res.statusCode = 404; res.end(); return null; }
     res.setHeader('Content-Type', r.mime); res.setHeader('Cache-Control', r.visibility === 'private' ? 'private, no-store' : 'public, max-age=31536000, immutable'); res.end(r.data); return null;
   }
