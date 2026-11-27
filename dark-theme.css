@@ -111,3 +111,130 @@ html[data-theme="dark"] .fx-gate .fx-tl>div+div:before{background:var(--border-s
 html[data-theme="dark"] .fx-gate .fx-tl i{background:var(--bg-surface);border-color:var(--border-strong)}
 html[data-theme="dark"] .fx-gate .fx-tl .done i{background:var(--accent-primary);border-color:var(--accent-primary)}
 html[data-theme="dark"] .fx-gate .fx-tl .now i{background:var(--accent-primary);border-color:var(--accent-primary)}
+
+/* Screenshot audit — drawer and receipt editor contrast corrections */
+html[data-theme="dark"] .dr-panel{
+  background:var(--surface-sidebar);
+  color:var(--ink-primary);
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] .dr-panel :where(.ds-i,.ds-s){
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] .dr-panel .ds-ic,
+html[data-theme="dark"] .dr-panel .ds-chev{
+  color:var(--ink-secondary);
+}
+html[data-theme="dark"] .dr-panel .ds-h{
+  color:var(--ink-muted);
+}
+html[data-theme="dark"] .dr-panel .ds-sep{
+  background:var(--border-subtle);
+}
+html[data-theme="dark"] .dr-panel .ds-i.on,
+html[data-theme="dark"] .dr-panel .ds-grp.has>.ds-i{
+  background:var(--bg-elevated);
+  color:var(--ink-primary);
+  box-shadow:inset 3px 0 0 var(--accent-primary);
+}
+html[data-theme="dark"] .dr-panel .ds-s.on{
+  color:var(--accent-strong);
+}
+html[data-theme="dark"] .dr-panel .ds-s.on::before{
+  background:var(--accent-primary);
+}
+html[data-theme="dark"] .dr-panel .ds-i:active,
+html[data-theme="dark"] .dr-panel .ds-s:active{
+  background:var(--bg-elevated);
+}
+html[data-theme="dark"] .dr-panel .ds-search{
+  background:var(--bg-input);
+  color:var(--ink-secondary);
+  border-color:var(--border-strong);
+}
+html[data-theme="dark"] .dr-panel .ds-search:focus-within{
+  background:var(--bg-elevated);
+  border-color:var(--focus-ring);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--focus-ring) 18%,transparent);
+}
+html[data-theme="dark"] .dr-panel .ds-search kbd{
+  background:var(--bg-elevated);
+  color:var(--ink-secondary);
+  border-color:var(--border-strong);
+}
+html[data-theme="dark"] .dr-panel .ds-open{
+  background:var(--accent-primary);
+  color:var(--accent-ink);
+}
+html[data-theme="dark"] .dr-panel .ds-open i{
+  background:var(--accent-ink);
+  color:var(--accent-primary);
+}
+
+/* Receipt designer fields: labels, cards and controls share the same dark surface. */
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl,
+html[data-theme="dark"] .pane[data-id="settings"] .st-logo,
+html[data-theme="dark"] .pane[data-id="settings"] .st-bold,
+html[data-theme="dark"] .pane[data-id="settings"] .st-pinc,
+html[data-theme="dark"] .pane[data-id="settings"] .st-seg,
+html[data-theme="dark"] .pane[data-id="settings"] .st-pv{
+  background:var(--bg-surface);
+  color:var(--ink-primary);
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl>span,
+html[data-theme="dark"] .pane[data-id="settings"] .st-logo small,
+html[data-theme="dark"] .pane[data-id="settings"] .st-bold small,
+html[data-theme="dark"] .pane[data-id="settings"] .st-lead,
+html[data-theme="dark"] .pane[data-id="settings"] .st-reset{
+  color:var(--ink-muted);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl input,
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl textarea,
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl select{
+  background:transparent;
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl input::placeholder,
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl textarea::placeholder{
+  color:var(--ink-disabled);
+  opacity:1;
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-seg button{
+  color:var(--ink-secondary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-seg button.on{
+  background:var(--accent-primary);
+  color:var(--accent-ink);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pv-fade{
+  background:linear-gradient(transparent,var(--bg-surface) 75%);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pv-b{
+  background:var(--bg-elevated);
+  color:var(--ink-primary);
+  border:1px solid var(--border-strong);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pinc{
+  background:var(--bg-elevated);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pinc p{
+  color:var(--ink-muted);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pinc.on{
+  background:var(--bg-elevated);
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-json{
+  background:var(--bg-sunken);
+  color:var(--accent-strong);
+  border-color:var(--border-strong);
+}
+
+/* Keep the fixed navigation from covering the final controls on long settings forms. */
+html[data-theme="dark"] .dsheet{
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 176px);
+}
+html[data-theme="dark"] .pane[data-id="settings"]{
+  padding-bottom:24px;
+}
