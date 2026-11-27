@@ -1339,7 +1339,7 @@ H['storefront/orders'] = async (req,res,user) => {
   return [200,{ok:true,orders:rows.map(o=>({...o,proof_url:o.proof_media_id?'/api/media?id='+o.proof_media_id:null}))}];
 };
 H['storefront/order/update'] = async (req,res,user) => {
-  if(!user) return [401,{ok:false}};
+  if(!user) return [401,{ok:false}];
   const store=await storeOwner(user.id), b=req.body||{}; if(!store) return [404,{ok:false}];
   const action=String(b.action||''); let payment=null, fulfillment=null, reason=String(b.reason||'').trim().slice(0,500);
   if(action==='verify') { payment='verified'; fulfillment='confirmed'; }
