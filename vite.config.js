@@ -16,6 +16,7 @@ function preserveLegacyAssets() {
         if (!/\.(?:js|css|svg|webmanifest)$/i.test(name) || name === 'mcp-server.js') continue;
         copyFileSync(resolve(root, name), resolve(out, name));
       }
+      cpSync(resolve(root, 'staff-modes'), resolve(out, 'staff-modes'), { recursive: true });
     }
   };
 }
@@ -34,8 +35,7 @@ export default defineConfig({
         support: resolve(root, 'support.html'),
         mcpLogin: resolve(root, 'mcp-login.html'),
         mcpConsent: resolve(root, 'mcp-consent.html'),
-        premiumThankYou: resolve(root, 'premium-thank-you.html'),
-        stockKeeper: resolve(root, 'staff-modes/stock-keeper.html')
+        premiumThankYou: resolve(root, 'premium-thank-you.html')
       }
     }
   }
