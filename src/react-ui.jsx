@@ -43,6 +43,7 @@ export function installReactUI() {
     if (!toastHost) return;
     if (!toastRoot) toastRoot = createRoot(toastHost);
     window.clearTimeout(toastTimer);
+    toastHost.classList.add('on');
     flushSync(() => toastRoot.render(<ToastView message={String(message ?? '')} />));
     // Re-rendering the same message does not change its React effect dependency.
     toastTimer = window.setTimeout(() => toastHost.classList.remove('on'), 2600);
