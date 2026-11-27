@@ -1292,3 +1292,84 @@ html[data-theme="dark"] .pane[data-id="settings"] .pm-add{background:var(--lemon
  .pane[data-id="settings"] .st-foot{align-items:stretch}
  .pane[data-id="settings"] .st-foot>*{max-width:100%}
 }
+
+
+/* MCP redesign: compact connected-app home with focused bottom-sheet management. */
+.pane[data-id="mcp"] .mcp-home{max-width:760px;margin:8px auto 40px}
+.pane[data-id="mcp"] .mcp-home-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 22px}
+.pane[data-id="mcp"] .mcp-kicker{margin:0 0 7px;color:var(--ink-muted);font-size:10px;font-weight:800;letter-spacing:.13em}
+.pane[data-id="mcp"] .mcp-home-heading h2{margin:0;font-size:clamp(23px,5vw,29px);letter-spacing:-.045em}
+.pane[data-id="mcp"] .mcp-home-heading p:last-child{margin:7px 0 0;color:var(--ink-muted);font-size:13px;line-height:1.55}
+.pane[data-id="mcp"] .mcp-count{min-width:38px;height:38px;padding:0 10px;display:grid;place-items:center;border:1px solid var(--border-subtle);border-radius:13px;font-size:13px;font-weight:800;color:var(--ink-primary)}
+.pane[data-id="mcp"] .mcp-linked-list{display:grid;gap:10px}
+.pane[data-id="mcp"] .mcp-linked-app{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:12px;padding:15px;border:1px solid var(--border-subtle);border-radius:17px;background:var(--bg-surface)}
+.pane[data-id="mcp"] .mcp-linked-app .mcp-app-icon,.pane[data-id="mcp"] .mcp-linked-app .mcp-app-fallback{width:42px;height:42px;border-radius:13px}
+.pane[data-id="mcp"] .mcp-linked-copy{display:grid;gap:4px;min-width:0}
+.pane[data-id="mcp"] .mcp-linked-copy>b,.pane[data-id="mcp"] .mcp-linked-copy b{font-size:14px;overflow-wrap:anywhere;color:var(--ink-primary)}
+.pane[data-id="mcp"] .mcp-linked-copy small{font-size:11px;color:var(--ink-muted);overflow-wrap:anywhere}
+.pane[data-id="mcp"] .mcp-linked-meta{font-size:11px;color:var(--ink-muted);line-height:1.45}
+.pane[data-id="mcp"] .mcp-linked-app .mcp-status{grid-column:3;grid-row:1;align-self:start}
+.pane[data-id="mcp"] .mcp-manage-btn{grid-column:2/4;justify-self:end;min-height:35px;padding:0 13px;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-elevated);color:var(--ink-primary);font:700 12px var(--font-ui);cursor:pointer}
+.pane[data-id="mcp"] .mcp-home-actions{display:flex;gap:10px;margin-top:18px}
+.pane[data-id="mcp"] .mcp-connect-btn,.pane[data-id="mcp"] .mcp-quiet-btn{min-height:48px;padding:0 17px;border-radius:13px;font:700 13px var(--font-ui);cursor:pointer}
+.pane[data-id="mcp"] .mcp-connect-btn{flex:1;border:1px solid #0a0a0a;background:#0a0a0a;color:#e6f53a}
+.pane[data-id="mcp"] .mcp-connect-btn span{font-size:20px;vertical-align:-1px;margin-right:7px}
+.pane[data-id="mcp"] .mcp-quiet-btn{border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--ink-primary)}
+.pane[data-id="mcp"] .mcp-settings-link{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:13px;padding:13px 2px;border:0;background:transparent;color:var(--ink-muted);font:600 12px var(--font-ui);text-align:left;cursor:pointer}
+.pane[data-id="mcp"] .mcp-empty{padding:38px 18px}
+.pane[data-id="mcp"] .mcp-empty-cta{margin-top:10px;min-height:42px;padding:0 16px;border:0;border-radius:11px;background:#0a0a0a;color:#e6f53a;font:700 12px var(--font-ui)}
+.mcp-sheet-backdrop{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0;background:rgba(0,0,0,.48);opacity:0;transition:opacity .22s ease}
+.mcp-sheet-backdrop.is-open{opacity:1}
+.mcp-sheet{width:min(100%,620px);max-height:min(88dvh,820px);overflow:hidden;display:flex;flex-direction:column;background:var(--bg-canvas,#fff);color:var(--ink-primary,#111);border:1px solid var(--border-subtle,#e5e5e0);border-bottom:0;border-radius:25px 25px 0 0;transform:translateY(28px);transition:transform .28s cubic-bezier(.2,.75,.25,1);box-shadow:0 -18px 60px rgba(0,0,0,.18);padding-bottom:env(safe-area-inset-bottom)}
+.mcp-sheet-backdrop.is-open .mcp-sheet{transform:translateY(0)}
+.mcp-sheet-grip{width:38px;height:4px;margin:10px auto 3px;border-radius:9px;background:var(--ink-muted);opacity:.35;flex:none}
+.mcp-sheet>header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border-subtle)}
+.mcp-sheet>header small{font-size:9px;letter-spacing:.14em;font-weight:800;color:var(--ink-muted)}
+.mcp-sheet>header h3{margin:4px 0 0;font-size:20px;letter-spacing:-.04em}
+.mcp-sheet-close{width:38px;height:38px;border:1px solid var(--border-subtle);border-radius:50%;background:var(--bg-surface);color:var(--ink-primary);font-size:25px;line-height:1}
+.mcp-sheet-content{overflow:auto;overscroll-behavior:contain;padding:18px 20px 24px}
+.mcp-sheet-content .pm-fl{display:grid;gap:8px;margin:14px 0}
+.mcp-sheet-content .pm-fl>span{font-size:12px;font-weight:750;color:var(--ink-primary)}
+.mcp-sheet-content .pm-fl input,.mcp-sheet-content .pm-fl select,.mcp-sheet-content textarea{width:100%;min-width:0;min-height:46px;padding:11px 12px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-elevated);color:var(--ink-primary);font:500 13px var(--font-reading)}
+.mcp-sheet-content select[multiple]{min-height:120px}
+.mcp-sheet-content select[multiple] option{padding:8px}
+.mcp-sheet-app{display:flex;align-items:center;gap:12px;margin-bottom:18px;min-width:0}
+.mcp-sheet-app .mcp-app-icon,.mcp-sheet-app .mcp-app-fallback{width:44px;height:44px;border-radius:13px}
+.mcp-sheet-app>div{display:grid;gap:4px;min-width:0}
+.mcp-sheet-app b{font-size:14px}
+.mcp-sheet-app small{font-size:11px;color:var(--ink-muted);overflow-wrap:anywhere}
+.mcp-field-help{font-size:11px;line-height:1.5;color:var(--ink-muted)}
+.mcp-sheet-tools{margin:18px 0;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.mcp-sheet-tools>b,.mcp-existing-tokens>b{font-size:12px}
+.mcp-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:20px}
+.mcp-sheet-actions>*{min-height:46px}
+.mcp-sheet-intro,.mcp-safety-note{font-size:13px;line-height:1.65;color:var(--ink-muted)}
+.mcp-sheet-content .mcp-steps{margin:18px 0;padding-left:22px;font-size:12px}
+.mcp-sheet-content .mcp-url-row{display:flex;gap:8px}
+.mcp-sheet-content .mcp-url-row input{flex:1;min-width:0}
+.mcp-sheet-content .mcp-token-create{margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.mcp-sheet-content .mcp-token-create summary{font-size:13px;font-weight:750;cursor:pointer}
+.mcp-existing-tokens{margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.mcp-existing-tokens .mcp-token-row{gap:8px}
+.mcp-activity-list{display:grid}
+.mcp-activity-list>div{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-subtle)}
+.mcp-activity-dot{width:8px;height:8px;flex:none;margin:5px 0;border-radius:50%;background:var(--accent-primary)}
+.mcp-activity-list section{display:grid;gap:5px}
+.mcp-activity-list b{font-size:13px;text-transform:capitalize}
+.mcp-activity-list small{font-size:11px;color:var(--ink-muted)}
+body.mcp-sheet-open{overflow:hidden}
+@media(max-width:520px){
+ .pane[data-id="mcp"] .mcp-linked-app{grid-template-columns:40px minmax(0,1fr);gap:10px;padding:13px}
+ .pane[data-id="mcp"] .mcp-linked-app .mcp-status{grid-column:2;grid-row:2;justify-self:start}
+ .pane[data-id="mcp"] .mcp-manage-btn{grid-column:2;grid-row:3}
+ .mcp-sheet-actions{grid-template-columns:1fr}
+ .mcp-sheet-content{padding-inline:16px}
+}
+@media(prefers-reduced-motion:reduce){.mcp-sheet-backdrop,.mcp-sheet{transition:none!important}}
+html[data-theme="dark"] .mcp-sheet{background:#0b0b0b;color:#f4f4ef;border-color:#303030}
+html[data-theme="dark"] .mcp-sheet>header,html[data-theme="dark"] .mcp-sheet-tools,html[data-theme="dark"] .mcp-token-create,html[data-theme="dark"] .mcp-existing-tokens{border-color:#303030}
+html[data-theme="dark"] .mcp-sheet-content .pm-fl input,html[data-theme="dark"] .mcp-sheet-content .pm-fl select,html[data-theme="dark"] .mcp-sheet-content textarea{background:#171717;color:#f4f4ef;border-color:#383838}
+html[data-theme="dark"] .pane[data-id="mcp"] .mcp-linked-app{background:#111;border-color:#303030}
+html[data-theme="dark"] .pane[data-id="mcp"] .mcp-manage-btn,html[data-theme="dark"] .pane[data-id="mcp"] .mcp-quiet-btn{background:#1b1b1b;color:#f4f4ef;border-color:#383838}
+html[data-theme="dark"] .pane[data-id="mcp"] .mcp-connect-btn{background:#e6f53a;color:#090909;border-color:#e6f53a}
+@media(max-width:520px){.mcp-sheet-backdrop{padding-top:12px}}
