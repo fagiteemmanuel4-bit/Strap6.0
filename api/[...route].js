@@ -1268,12 +1268,155 @@ H['data'] = async (req, res, user, staff) => {
   const r=await q('select blob from user_data where user_id=$1',[ownerId]);
   return [200,{ok:true,blob:await safeOwnerBlob(ownerId,r[0]?r[0].blob:{})}];
 };
+
+/* ---- storefront APIs: bank transfer proof is reviewed manually; no gateway or card processing ---- */
+const storeSlugify = v => lower(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50);
+const storeReserved = new Set(['api','admin','dashboard','login','signup','settings','orders','products','checkout','cart','store','support','legal','privacy','terms','mcp']);
+const storeOwner = async id => (await q('select * from stores where owner_id=$1 limit 1',[id]))[0] || null;
+const storePublic = async slug => (await q("select * from stores where slug=$1 and status='published' limit 1",[lower(slug)]))[0] || null;
+const storeSettings = v => {
+  const s=v&&typeof v==='object'&&!Array.isArray(v)?v:{}, b=s.bankTransfer&&typeof s.bankTransfer==='object'?s.bankTransfer:{};
+  return {description:String(s.description||'').slice(0,500),logoUrl:String(s.logoUrl||'').slice(0,500),bannerUrl:String(s.bannerUrl||'').slice(0,500),
+    phone:String(s.phone||'').slice(0,40),email:lower(s.email||'').slice(0,160),address:String(s.address||'').slice(0,300),
+    announcement:String(s.announcement||'').slice(0,180),deliveryFee:Math.max(0,Math.min(1e8,Number(s.deliveryFee)||0)),
+    bankTransfer:{bankName:String(b.bankName||'').trim().slice(0,100),accountNumber:String(b.accountNumber||'').replace(/\s/g,'').slice(0,30),
+      accountName:String(b.accountName||'').trim().slice(0,120),instructions:String(b.instructions||'').trim().slice(0,500)},
+    seoTitle:String(s.seoTitle||'').slice(0,120),seoDescription:String(s.seoDescription||'').slice(0,300),customDomainStatus:'coming_soon'};
+};
+H['storefront'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Sign in to manage your storefront.'}];
+  const current=await storeOwner(user.id);
+  if(req.method==='GET') return [200,{ok:true,store:current?{...current,settings:storeSettings(current.settings)}:null}];
+  if(!['POST','PATCH'].includes(req.method)) return [405,{ok:false}];
+  const b=req.body||{}, name=String(b.name||current&&current.name||'').trim().slice(0,100);
+  const slug=storeSlugify(b.slug||current&&current.slug||name), currency=String(b.currency||current&&current.currency||'NGN').toUpperCase();
+  if(name.length<2||slug.length<3||storeReserved.has(slug)||!/^[A-Z]{3}$/.test(currency)) return [400,{ok:false,msg:'Enter a valid store name, address and currency.'}];
+  const settings=storeSettings(b.settings||current&&current.settings||{}), status=b.status==='published'?'published':b.status==='paused'?'paused':(current&&current.status==='published'?'published':'draft');
+  try {
+    const row=(await q("insert into stores(owner_id,slug,name,status,currency,settings) values($1,$2,$3,$4,$5,$6::jsonb) on conflict(owner_id) do update set slug=excluded.slug,name=excluded.name,status=excluded.status,currency=excluded.currency,settings=excluded.settings,updated_at=now() returning *",
+      [user.id,slug,name,status,currency,JSON.stringify(settings)]))[0];
+    return [200,{ok:true,store:{...row,settings:storeSettings(row.settings)}}];
+  } catch(e) { if(e.code==='23505') return [409,{ok:false,msg:'That storefront address is already in use.'}]; throw e; }
+};
+H['storefront/products'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  const store=await storeOwner(user.id); if(!store) return [404,{ok:false,msg:'Set up your storefront first.'}];
+  if(req.method==='GET') return [200,{ok:true,products:await q('select id,source_product_id,source_branch_id,slug,title,description,price,sku,category,image_url,visible,featured,sort_order from store_products where store_id=$1 order by sort_order,title',[store.id])}];
+  if(req.method!=='POST') return [405,{ok:false}];
+  const row=(await q('select blob from user_data where user_id=$1',[user.id]))[0], blob=row&&row.blob||{}, existing=await q('select source_product_id,source_branch_id,slug from store_products where store_id=$1',[store.id]);
+  const usedSlugs=new Set(existing.map(x=>x.slug)); let synced=0;
+  for(const [key,value] of Object.entries(blob)) if(key.startsWith('ls:strap.f1.items.')) {
+    const branch=key.slice('ls:strap.f1.items.'.length), list=parseStored(value,[]);
+    if(!Array.isArray(list)) continue;
+    for(const p of list) {
+      if(!p||!p.id||String(p.status||'active')==='archived') continue;
+      const title=String(p.title||p.name||'Untitled product').trim().slice(0,180), prior=existing.find(x=>String(x.source_product_id)===String(p.id)&&x.source_branch_id===branch);
+      let slug=prior?prior.slug:(storeSlugify(p.title||p.name||p.id)||'product');
+      if(!prior) { const base=slug.slice(0,40); slug=base; let suffix=2; while(usedSlugs.has(slug)) slug=base+'-'+(suffix++); usedSlugs.add(slug); }
+      await q('insert into store_products(store_id,source_product_id,source_branch_id,slug,title,description,price,sku,category,image_url,product_snapshot) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) on conflict(store_id,source_product_id,source_branch_id) do update set title=excluded.title,description=excluded.description,price=excluded.price,sku=excluded.sku,category=excluded.category,image_url=excluded.image_url,product_snapshot=excluded.product_snapshot,updated_at=now()',
+        [store.id,String(p.id).slice(0,120),branch,slug,title,String(p.description||p.details||'').slice(0,4000),Math.max(0,Number(p.price)||0),String(p.sku||'').slice(0,100),String(p.category||'').slice(0,100),String(p.image||p.imageUrl||'').slice(0,1000),JSON.stringify({tracked:!!p.tracked,qty:Number(p.qty)||0,status:p.status||'active'})]);
+      synced++;
+    }
+  }
+  return [200,{ok:true,synced,products:await q('select id,source_product_id,source_branch_id,slug,title,price,visible,featured from store_products where store_id=$1 order by sort_order,title',[store.id])}];
+};
+H['storefront/products/update'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  const store=await storeOwner(user.id), b=req.body||{}; if(!store) return [404,{ok:false}];
+  const rows=await q('update store_products set visible=coalesce($3,visible),featured=coalesce($4,featured),sort_order=coalesce($5,sort_order),updated_at=now() where id=$1 and store_id=$2 returning id,visible,featured,sort_order',
+    [String(b.id||''),store.id,typeof b.visible==='boolean'?b.visible:null,typeof b.featured==='boolean'?b.featured:null,Number.isInteger(b.sort_order)?b.sort_order:null]);
+  return rows.length?[200,{ok:true,product:rows[0]}]:[404,{ok:false,msg:'Product not found.'}];
+};
+H['storefront/public'] = async req => {
+  const store=await storePublic(req.body.slug||req.query.slug); if(!store) return [404,{ok:false,msg:'This store is unavailable.'}];
+  const products=await q('select id,slug,title,description,price,sku,category,image_url,featured from store_products where store_id=$1 and visible=true order by featured desc,sort_order,title',[store.id]);
+  return [200,{ok:true,store:{id:store.id,slug:store.slug,name:store.name,currency:store.currency,settings:storeSettings(store.settings)},products}];
+};
+H['storefront/orders'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false,msg:'Sign in to view orders.'}];
+  const store=await storeOwner(user.id); if(!store) return [404,{ok:false,msg:'Set up your storefront first.'}];
+  const rows=await q('select id,order_number,payment_method,payment_status,fulfillment_status,buyer_name,buyer_email,buyer_phone,delivery_address,delivery_city,delivery_region,delivery_note,currency,subtotal,delivery_fee,total,proof_media_id,sender_name,transfer_reference,payment_note,seller_note,rejection_reason,items_snapshot,created_at,updated_at from store_orders where store_id=$1 order by created_at desc limit 250',[store.id]);
+  return [200,{ok:true,orders:rows.map(o=>({...o,proof_url:o.proof_media_id?'/api/media?id='+o.proof_media_id:null}))}];
+};
+H['storefront/order/update'] = async (req,res,user) => {
+  if(!user) return [401,{ok:false}];
+  const store=await storeOwner(user.id), b=req.body||{}; if(!store) return [404,{ok:false}];
+  const action=String(b.action||''); let payment=null, fulfillment=null, reason=String(b.reason||'').trim().slice(0,500);
+  if(action==='verify') { payment='verified'; fulfillment='confirmed'; }
+  else if(action==='reject'||action==='request_reupload') payment='rejected';
+  else if(action==='confirm') fulfillment='confirmed';
+  else {
+    if(['pending','verified','rejected','not_required'].includes(b.payment_status)) payment=b.payment_status;
+    if(['pending','confirmed','processing','shipped','delivered','cancelled'].includes(b.fulfillment_status)) fulfillment=b.fulfillment_status;
+  }
+  const rows=await q("update store_orders set payment_status=coalesce($3,payment_status),fulfillment_status=coalesce($4,fulfillment_status),seller_note=coalesce($5,seller_note),rejection_reason=case when $6<>'' then $6 when $3='verified' then '' else rejection_reason end,updated_at=now() where id=$1 and store_id=$2 returning id,order_number,payment_status,fulfillment_status,rejection_reason,seller_note",
+    [String(b.id||''),store.id,payment,fulfillment,b.seller_note==null?null:String(b.seller_note).slice(0,1000),reason]);
+  return rows.length?[200,{ok:true,order:rows[0]}]:[404,{ok:false,msg:'Order not found.'}];
+};
+H['storefront/order'] = async (req,res) => {
+  if(req.method!=='POST') return [405,{ok:false}];
+  const b=req.body||{}, store=await storePublic(b.slug); if(!store) return [404,{ok:false,msg:'This store is unavailable.'}];
+  const name=String(b.buyer_name||'').trim().slice(0,120), phone=String(b.buyer_phone||'').trim().slice(0,40), email=lower(b.buyer_email||'').slice(0,160);
+  const address=String(b.delivery_address||'').trim().slice(0,300), method=String(b.payment_method||'');
+  if(name.length<2||phone.length<7||address.length<5||!['bank_transfer','pay_on_delivery'].includes(method)||(email&&!emailRe.test(email))) return [400,{ok:false,msg:'Enter your contact details, delivery address and payment option.'}];
+  const cart=Array.isArray(b.items)?b.items.slice(0,50):[]; if(!cart.length) return [400,{ok:false,msg:'Your cart is empty.'}];
+  const ids=[...new Set(cart.map(x=>String(x&&x.id||'')))];
+  const products=await q('select id,title,slug,price,image_url,product_snapshot from store_products where store_id=$1 and visible=true and id=any($2::uuid[])',[store.id,ids]);
+  if(products.length!==ids.length) return [409,{ok:false,msg:'A product in your cart is unavailable. Refresh and try again.'}];
+  const lines=[]; let subtotal=0;
+  for(const item of cart) {
+    const p=products.find(x=>x.id===item.id), qty=Math.max(1,Math.min(99,Math.floor(Number(item.qty)||1))), snap=p.product_snapshot||{};
+    if(snap.tracked&&Number(snap.qty)<qty) return [409,{ok:false,msg:'Not enough stock for '+p.title+'.'}];
+    const price=Number(p.price)||0, line=Math.round(price*qty*100)/100; subtotal+=line;
+    lines.push({product_id:p.id,title:p.title,slug:p.slug,price,quantity:qty,line_total:line,image_url:p.image_url});
+  }
+  const settings=storeSettings(store.settings), deliveryFee=settings.deliveryFee, total=Math.round((subtotal+deliveryFee)*100)/100;
+  const proof=b.proof&&typeof b.proof==='object'?b.proof:null; let bytes=null,mime='',filename='';
+  if(method==='bank_transfer') {
+    if(proof&&typeof proof.data==='string') {
+      mime=String(proof.type||'').toLowerCase();
+      if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)) return [400,{ok:false,msg:'Upload a JPG, PNG, WebP or PDF receipt.'}];
+      bytes=Buffer.from(proof.data,'base64'); if(!bytes.length||bytes.length>3*1024*1024) return [413,{ok:false,msg:'Payment proof must be smaller than 3 MB.'}];
+      filename=String(proof.name||'Payment proof').slice(0,120);
+    }
+    if(!settings.bankTransfer.bankName||!settings.bankTransfer.accountNumber||!settings.bankTransfer.accountName) return [409,{ok:false,msg:'The seller has not configured bank details yet.'}];
+    if(!bytes&&!String(b.sender_name||'').trim()&&!String(b.transfer_reference||'').trim()) return [400,{ok:false,msg:'Upload your receipt or enter sender name or transfer reference.'}];
+  } else if(proof&&proof.data) return [400,{ok:false,msg:'Pay on Delivery does not require payment proof.'}];
+  const wait=await actionBlocked(req,email||phone,'store-order'); if(wait) return [429,{ok:false,msg:'Please wait before placing another order.'}];
+  const client=await pool.connect();
+  try {
+    await client.query('BEGIN'); let mediaId=null;
+    if(bytes) mediaId=(await client.query("insert into media(user_id,name,mime,data,visibility) values($1,$2,$3,$4,'private') returning id",[store.owner_id,filename,mime,bytes])).rows[0].id;
+    const order=(await client.query("insert into store_orders(store_id,payment_method,payment_status,fulfillment_status,buyer_name,buyer_email,buyer_phone,delivery_address,delivery_city,delivery_region,delivery_note,currency,subtotal,delivery_fee,total,proof_media_id,sender_name,transfer_reference,payment_note,items_snapshot) values($1,$2,$3,'pending',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb) returning id,order_number,payment_status,fulfillment_status,created_at",
+      [store.id,method,method==='pay_on_delivery'?'not_required':'pending',name,email,phone,address,String(b.delivery_city||'').slice(0,100),String(b.delivery_region||'').slice(0,100),String(b.delivery_note||'').slice(0,500),store.currency,subtotal,deliveryFee,total,mediaId,String(b.sender_name||'').trim().slice(0,120),String(b.transfer_reference||'').trim().slice(0,120),String(b.payment_note||'').trim().slice(0,500),JSON.stringify(lines)])).rows[0];
+    await client.query("insert into store_analytics_events(store_id,event_type) values($1,'order_placed')",[store.id]); await client.query('COMMIT');
+    await recordAction(req,email||phone,'store-order').catch(()=>{});
+    return [201,{ok:true,order:{...order,total,currency:store.currency},message:'Your order has been sent to the seller.'}];
+  } catch(e) { await client.query('ROLLBACK').catch(()=>{}); throw e; } finally { client.release(); }
+};
+
+
+H['storefront/page'] = async (req,res) => {
+  const slug=lower(req.query.slug||''), store=await storePublic(slug);
+  if(!store) { res.statusCode=404; res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<!doctype html><title>Store unavailable</title><main><h1>This store is unavailable</h1><p>Check the address or contact the seller.</p></main>'); return null; }
+  const settings=storeSettings(store.settings), products=await q('select id,slug,title,description,price,category,image_url,featured from store_products where store_id=$1 and visible=true order by featured desc,sort_order,title',[store.id]);
+  const selected=products.find(p=>p.slug===String(req.query.product||''))||null;
+  if(req.query.product&&!selected){res.statusCode=404;res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<!doctype html><title>Product not found</title><h1>Product not found</h1>');return null;}
+  const title=selected?selected.title+' · '+store.name:(settings.seoTitle||store.name), description=settings.seoDescription||settings.description||('Shop '+store.name+' online.');
+  const canonical=origin(req)+'/store/'+encodeURIComponent(slug)+(selected?'/product/'+encodeURIComponent(selected.slug):'');
+  await q("insert into store_analytics_events(store_id,event_type,product_id) values($1,'store_view',$2)",[store.id,selected?selected.id:null]).catch(()=>[]);
+  const schema=selected?{'@context':'https://schema.org','@type':'Product',name:selected.title,description:selected.description,image:selected.image_url?[selected.image_url]:undefined,offers:{'@type':'Offer',price:String(selected.price),priceCurrency:store.currency,availability:'https://schema.org/InStock',url:canonical}}:{'@context':'https://schema.org','@type':'Store',name:store.name,url:origin(req)+'/store/'+encodeURIComponent(slug),description,telephone:settings.phone||undefined};
+  const payload=JSON.stringify({slug:store.slug,product:selected&&selected.slug||''}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+  const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111"><title>'+esc(title)+'</title><meta name="description" content="'+esc(description)+'"><link rel="canonical" href="'+esc(canonical)+'"><meta property="og:type" content="website"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(description)+'"><meta property="og:url" content="'+esc(canonical)+'">'+(settings.logoUrl?'<meta property="og:image" content="'+esc(settings.logoUrl)+'">':'')+'<script type="application/ld+json">'+JSON.stringify(schema).replace(/</g,'\\u003c')+'</script><link rel="stylesheet" href="/storefront.css"></head><body><header class="sf-header"><a class="sf-brand" href="/store/'+esc(slug)+'">'+esc(store.name)+'</a><button id="sf-cart-open" class="sf-cart-button">Cart <span id="sf-cart-count">0</span></button></header><main id="sf-app" class="sf-main"><div class="sf-loading">Loading '+esc(store.name)+'…</div></main><footer class="sf-footer">Storefront powered by Strap · Template based on Amado</footer><script>window.STRAP_STOREFRONT='+payload+';</script><script src="/storefront-client.js" defer></script></body></html>';
+  res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(html);return null;
+};
+
 /* ---- images stored inside Neon (bytea) ---- */
 H['media'] = async (req, res, user, staff) => {
   if (req.method === 'GET') {
-    const r = (await q('select mime,data from media where id=$1', [String(req.query.id || '')]).catch(() => []))[0];
-    if (!r) { res.statusCode = 404; res.end(); return null; }
-    res.setHeader('Content-Type', r.mime); res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); res.end(r.data); return null;
+    const r = (await q("select mime,data,user_id,coalesce(to_jsonb(m)->>'visibility','public') as visibility from media m where id=$1", [String(req.query.id || '')]).catch(() => []))[0];
+    if (!r || (r.visibility === 'private' && (!user || String(user.id) !== String(r.user_id)))) { res.statusCode = 404; res.end(); return null; }
+    res.setHeader('Content-Type', r.mime); res.setHeader('Cache-Control', r.visibility === 'private' ? 'private, no-store' : 'public, max-age=31536000, immutable'); res.end(r.data); return null;
   }
   if (!user && !(staff && staff.role === 'Stock keeper')) return [403, { ok: false }];
   const { name, type, data } = req.body || {};
@@ -1306,6 +1449,23 @@ H['account/delete'] = async (req, res, user) => {
   await q("update app_users set deleted_at=now(), survey=$2 where id=$1", [user.id, req.body.payload || {}]);
   await na(req, 'POST', '/delete-user', {}, upCookie(req)); // works if account deletion is enabled in Neon Auth
   await na(req, 'POST', '/sign-out', {}, upCookie(req)); clearMine(res); return [200, { ok: true }];
+};
+
+
+H['storefront/sitemap'] = async (req,res) => {
+  const rows=await q("select slug,updated_at from stores where status='published' order by slug");
+  const xmlEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+  let urls='';
+  for(const store of rows) {
+    const base=origin(req)+'/store/'+encodeURIComponent(store.slug);
+    urls+='<url><loc>'+xmlEsc(base)+'</loc><lastmod>'+new Date(store.updated_at).toISOString()+'</lastmod></url>';
+    const products=await q("select slug,updated_at from store_products where store_id=(select id from stores where slug=$1) and visible=true",[store.slug]);
+    for(const p of products) urls+='<url><loc>'+xmlEsc(base+'/product/'+encodeURIComponent(p.slug))+'</loc><lastmod>'+new Date(p.updated_at).toISOString()+'</lastmod></url>';
+  }
+  res.statusCode=200;res.setHeader('Content-Type','application/xml; charset=utf-8');res.setHeader('Cache-Control','public, max-age=300');res.end('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+urls+'</urlset>');return null;
+};
+H['storefront/robots'] = async (req,res) => {
+  res.statusCode=200;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: '+origin(req)+'/sitemap.xml\n');return null;
 };
 
 module.exports = async (req, res) => {
