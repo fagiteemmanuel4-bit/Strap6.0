@@ -287,3 +287,79 @@ html[data-theme="dark"] .pane[data-id="settings"] .pm-fl:focus-within{
 html[data-theme="dark"] .pane[data-id="settings"] .pm-fl.bad{
   border-color:var(--status-danger);
 }
+
+/* Shared form, picker and page-heading surfaces — applies to sheets and workspace pages. */
+html[data-theme="dark"] :where(.pm-fl,.pm-tagbox,.pm-rte,.pm-search,.pm-si,.pm-so,.pm-filter,.pm-sel,.kt-dd,.kt-opt,.kt-col,.kt-hex,.sx-chip,.sx-due,.sx-hold,.pm-drop,.pm-gc,.pm-site,.pm-opt,.pm-pill,.pm-ghost,.pm-imp,.pm-round,.pm-x,.pm-pi,.pm-icobtn){
+  background-color:var(--bg-surface);
+  color:var(--ink-primary);
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] :where(.pm-h,.pm-title,.pm-tico,.pm-fl>span,.pm-tagbox>span,.pm-seoprev small,.pm-seoprev b,.pm-so select,.pm-filter select,.pm-sel select,.pm-si input,.pm-search input,.kt-dd,.kt-opt,.kt-hex input,.pm-ghost,.pm-pi,.pm-icobtn){
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] :where(.pm-fl input,.pm-fl textarea,.pm-fl select,.pm-search input,.pm-si input,.pm-so select,.pm-filter select,.pm-sel select,.kt-hex input){
+  background:transparent;
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] :where(.pm-fl input::placeholder,.pm-fl textarea::placeholder,.pm-search input::placeholder,.pm-si input::placeholder){
+  color:var(--ink-disabled);
+  opacity:1;
+}
+html[data-theme="dark"] :where(.pm-fl>span,.pm-tagbox>span,.pm-gc small,.pm-gc .pm-price,.pm-seoprev small,.pm-nomatch,.pm-site small,.pm-info small,.kt-opt small,.kt-dd small,.sx-sub,.sx-hint){
+  color:var(--ink-muted);
+}
+html[data-theme="dark"] :where(.pm-fl:focus-within,.pm-search:focus-within,.pm-si:focus-within,.pm-rte:focus-within,.kt-hex:focus-within){
+  border-color:var(--focus-ring);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--focus-ring) 16%,transparent);
+}
+html[data-theme="dark"] :where(.pm-tab.on,.pm-pl.on,.pm-ck input:checked+span,.pm-chip.on,.kt-opt.on,.sx-pm.on,.sx-qc.on){
+  background:var(--accent-soft);
+  color:var(--ink-primary);
+  border-color:var(--accent-strong);
+}
+html[data-theme="dark"] :where(.pm-tab,.pm-pl,.pm-chip,.pm-imp,.pm-ghost,.pm-round,.pm-x,.pm-pi,.pm-icobtn){
+  color:var(--ink-secondary);
+}
+html[data-theme="dark"] :where(.pm-so,.pm-sel,.pm-filter,.pm-si){
+  background:var(--bg-input);
+  border-color:var(--border-strong);
+}
+html[data-theme="dark"] :where(.pm-opt:hover,.pm-site:hover,.pm-pi:hover,.pm-ghost:hover,.pm-tab:hover){
+  background:var(--bg-elevated);
+}
+html[data-theme="dark"] :where(.pm-add,.pm-add:hover,.sx-go,.sx-scn-cart,.bill-primary){
+  background:var(--accent-primary);
+  color:var(--accent-ink);
+  border-color:var(--accent-primary);
+}
+html[data-theme="dark"] :where(.pm-del,.sx-hold){
+  border-color:var(--border-strong);
+}
+html[data-theme="dark"] .dd-layer{
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] :where(.dd-sheet,.dd-card,.dd-o,.dd-s,.dd-new input,.dd-t,.dd-chip,.dd-y,.dd-tile){
+  background:var(--bg-surface);
+  color:var(--ink-primary);
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] :where(.dd-s input,.dd-new input){
+  background:var(--bg-input);
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] :where(.dd-s input::placeholder,.dd-t small,.dd-help,.dd-sub){
+  color:var(--ink-muted);
+}
+html[data-theme="dark"] :where(.dd-o.on,.dd-card.on,.dd-y.on,.dd-chip.on){
+  background:var(--accent-soft);
+  color:var(--ink-primary);
+  border-color:var(--accent-strong);
+  box-shadow:inset 0 0 0 1px var(--accent-strong);
+}
+html[data-theme="dark"] :where(.dd-tile,.dd-ck){
+  background:var(--bg-elevated);
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] :where(.pm-sheet,.dd-sheet,.dr-panel){
+  overscroll-behavior:contain;
+}
