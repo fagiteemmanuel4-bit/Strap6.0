@@ -1271,3 +1271,24 @@ html[data-theme="dark"] .pane[data-id="settings"] .st-ri{background:#242424;colo
 html[data-theme="dark"] .pane[data-id="settings"] .st-legal a{color:var(--ink-primary,#f4f4ef)}
 html[data-theme="dark"] .pane[data-id="settings"] .pm-fl input,
 html[data-theme="dark"] .pane[data-id="settings"] .pm-fl textarea{background:#111;color:#f4f4ef;border-color:#383838}
+
+
+/* Settings finish pass: make nested editors and compact controls feel consistent. */
+.pane[data-id="settings"] .pm-round{flex:0 0 42px;width:42px;height:42px;border:1px solid var(--border-subtle,#e7e7e1);border-radius:13px;background:var(--surface,#fff);color:var(--ink-primary,#111);display:grid;place-items:center}
+.pane[data-id="settings"] .pm-imp,.pane[data-id="settings"] .pm-add{min-height:48px;border-radius:13px;font-weight:700}
+.pane[data-id="settings"] .st-tabs{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.pane[data-id="settings"] .st-tabs::-webkit-scrollbar{display:none}
+.pane[data-id="settings"] .st-tabs>*{flex:1 0 auto}
+.pane[data-id="settings"] .st-pv-in{max-width:100%;overflow-x:auto}
+.pane[data-id="settings"] :is(button,input,textarea,select):focus-visible{outline:3px solid var(--lemon,#e6f53a);outline-offset:2px}
+.pane[data-id="settings"] .st-foot button{min-height:42px}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pv,
+html[data-theme="dark"] .pane[data-id="settings"] .st-tabs{background:#111;border-color:#303030}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-round,
+html[data-theme="dark"] .pane[data-id="settings"] .pm-imp{background:#222;color:#f4f4ef;border-color:#383838}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-add{background:var(--lemon,#e6f53a);color:#0a0a0a}
+@media(max-width:420px){
+ .pane[data-id="settings"] .pg-prof{padding:14px;margin-bottom:22px}
+ .pane[data-id="settings"] .st-foot{align-items:stretch}
+ .pane[data-id="settings"] .st-foot>*{max-width:100%}
+}
