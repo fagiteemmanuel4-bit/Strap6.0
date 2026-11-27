@@ -200,8 +200,8 @@
 
           ${card(6, 'bag', 'Products sold today', 'int', d.sold, `${num(d.orders)} orders`)}
           ${card(7, 'users', 'New customers', 'int', d.customers, 'Joined today')}
-          ${card(8, 'box', 'Total stock', 'int', d.stock, `Across ${num(d.products)} products`)}
-          ${card(9, 'alert', 'Low stock', 'int', d.low, d.low ? 'Running out soon' : 'All well stocked', d.low ? 'warn' : '')}
+          ${card(8, 'inventory', 'Total stock', 'int', d.stock, `Across ${num(d.products)} products`)}
+          ${card(9, 'warn', 'Low stock', 'int', d.low, d.low ? 'Running out soon' : 'All well stocked', d.low ? 'warn' : '')}
         </div>
       </section>
 
