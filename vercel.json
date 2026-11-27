@@ -2,6 +2,14 @@
   "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/health?__strap_route=storefront/sitemap"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/health?__strap_route=storefront/robots"
+    },
+    {
       "source": "/store/:slug/product/:productSlug",
       "destination": "/api/health?__strap_route=storefront/page&slug=:slug&product=:productSlug"
     },

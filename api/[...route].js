@@ -1404,6 +1404,7 @@ H['storefront/page'] = async (req,res) => {
   if(req.query.product&&!selected){res.statusCode=404;res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<!doctype html><title>Product not found</title><h1>Product not found</h1>');return null;}
   const title=selected?selected.title+' · '+store.name:(settings.seoTitle||store.name), description=settings.seoDescription||settings.description||('Shop '+store.name+' online.');
   const canonical=origin(req)+'/store/'+encodeURIComponent(slug)+(selected?'/product/'+encodeURIComponent(selected.slug):'');
+  await q("insert into store_analytics_events(store_id,event_type,product_id) values($1,'store_view',$2)",[store.id,selected?selected.id:null]).catch(()=>[]);
   const schema=selected?{'@context':'https://schema.org','@type':'Product',name:selected.title,description:selected.description,image:selected.image_url?[selected.image_url]:undefined,offers:{'@type':'Offer',price:String(selected.price),priceCurrency:store.currency,availability:'https://schema.org/InStock',url:canonical}}:{'@context':'https://schema.org','@type':'Store',name:store.name,url:origin(req)+'/store/'+encodeURIComponent(slug),description,telephone:settings.phone||undefined};
   const payload=JSON.stringify({slug:store.slug,product:selected&&selected.slug||''}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
   const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111"><title>'+esc(title)+'</title><meta name="description" content="'+esc(description)+'"><link rel="canonical" href="'+esc(canonical)+'"><meta property="og:type" content="website"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(description)+'"><meta property="og:url" content="'+esc(canonical)+'">'+(settings.logoUrl?'<meta property="og:image" content="'+esc(settings.logoUrl)+'">':'')+'<script type="application/ld+json">'+JSON.stringify(schema).replace(/</g,'\\u003c')+'</script><link rel="stylesheet" href="/storefront.css"></head><body><header class="sf-header"><a class="sf-brand" href="/store/'+esc(slug)+'">'+esc(store.name)+'</a><button id="sf-cart-open" class="sf-cart-button">Cart <span id="sf-cart-count">0</span></button></header><main id="sf-app" class="sf-main"><div class="sf-loading">Loading '+esc(store.name)+'…</div></main><footer class="sf-footer">Storefront powered by Strap · Template based on Amado</footer><script>window.STRAP_STOREFRONT='+payload+';</script><script src="/storefront-client.js" defer></script></body></html>';
@@ -1448,6 +1449,23 @@ H['account/delete'] = async (req, res, user) => {
   await q("update app_users set deleted_at=now(), survey=$2 where id=$1", [user.id, req.body.payload || {}]);
   await na(req, 'POST', '/delete-user', {}, upCookie(req)); // works if account deletion is enabled in Neon Auth
   await na(req, 'POST', '/sign-out', {}, upCookie(req)); clearMine(res); return [200, { ok: true }];
+};
+
+
+H['storefront/sitemap'] = async (req,res) => {
+  const rows=await q("select slug,updated_at from stores where status='published' order by slug");
+  const xmlEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+  let urls='';
+  for(const store of rows) {
+    const base=origin(req)+'/store/'+encodeURIComponent(store.slug);
+    urls+='<url><loc>'+xmlEsc(base)+'</loc><lastmod>'+new Date(store.updated_at).toISOString()+'</lastmod></url>';
+    const products=await q("select slug,updated_at from store_products where store_id=(select id from stores where slug=$1) and visible=true",[store.slug]);
+    for(const p of products) urls+='<url><loc>'+xmlEsc(base+'/product/'+encodeURIComponent(p.slug))+'</loc><lastmod>'+new Date(p.updated_at).toISOString()+'</lastmod></url>';
+  }
+  res.statusCode=200;res.setHeader('Content-Type','application/xml; charset=utf-8');res.setHeader('Cache-Control','public, max-age=300');res.end('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+urls+'</urlset>');return null;
+};
+H['storefront/robots'] = async (req,res) => {
+  res.statusCode=200;res.setHeader('Content-Type','text/plain; charset=utf-8');res.end('User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: '+origin(req)+'/sitemap.xml\n');return null;
 };
 
 module.exports = async (req, res) => {
