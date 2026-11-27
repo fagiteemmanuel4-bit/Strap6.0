@@ -46,3 +46,32 @@
 .sx-gift-active b{font-weight:700}.sx-gift-active button{border:0;background:transparent;text-decoration:underline;font:600 11px Sora,Arial,sans-serif}
 .sx-gift-saving{color:#477b27}.sx-total-due{padding-top:10px;border-top:1px solid #e8e8e2;font-weight:700}
 @media(prefers-reduced-motion:reduce){.gc-card{transition:none}}
+
+
+/* Gift-card preview modal refinements — keep the card artwork and actions intact. */
+.gc-layer{padding:clamp(10px,3vw,20px)}
+.gc-slip{width:min(100%,460px);max-height:min(92dvh,900px);padding:clamp(15px,4vw,22px);border:1px solid #30302c;box-shadow:0 24px 70px rgba(0,0,0,.42)}
+.gc-slip-top{min-height:38px;font-size:11px;letter-spacing:.16em}
+.gc-slip-top button{width:38px;height:38px;cursor:pointer;transition:background .18s,transform .18s}
+.gc-slip-top button:focus-visible,.gc-slip-actions button:focus-visible,.gc-download:focus-visible{outline:2px solid #e6f53a;outline-offset:3px}
+.gc-slip-top button:active,.gc-slip-actions button:active{transform:scale(.96)}
+.gc-stage{margin:22px 0 10px}
+.gc-card{border-radius:14px;touch-action:pan-y}
+.gc-face{box-shadow:0 16px 34px rgba(0,0,0,.34)}
+.gc-hint{font-size:12px;line-height:1.5}
+.gc-terms{padding:15px 17px}
+.gc-terms h4{font-size:13px}
+.gc-terms ul{font-size:12px;line-height:1.65}
+.gc-download{height:54px;border-radius:15px;font-size:14px;cursor:pointer;transition:transform .16s,filter .16s}
+.gc-download:active{transform:scale(.985)}
+.gc-download:disabled{cursor:wait}
+.gc-slip-actions button{min-width:104px;height:44px;cursor:pointer}
+@media(max-width:380px){
+ .gc-slip{border-radius:20px;padding:14px}
+ .gc-stage{margin:17px 0 8px}
+ .gc-terms{padding:12px 13px}
+ .gc-terms ul{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .gc-slip-top button,.gc-download,.gc-slip-actions button{transition:none}
+}
