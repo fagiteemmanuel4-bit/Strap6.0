@@ -1,0 +1,67 @@
+/* Strap dark theme — semantic component layer. Loaded after all page styles. */
+html[data-theme="dark"] body,html[data-theme="dark"] body.is-dash{background:var(--bg-canvas);color:var(--ink-primary)}
+html[data-theme="dark"] :where(.dash,.dsheet,.pane,.pm-page,.pm-sheet,.fx-screen,.fx-gate,.ob,.sf,.dr-panel,.mcp-sheet,.dd-sheet,.gc-slip,.bill-workspace){background-color:var(--bg-canvas);color:var(--ink-primary)}
+html[data-theme="dark"] :where(.dsheet,.pm-page,.pm-sheet,.fx-screen,.fx-gate,.ob,.sf,.dr-panel){background-color:var(--bg-surface);color:var(--ink-primary)}
+html[data-theme="dark"] :where(.sc,.sl-card,.row,.pg-rows,.pg-prof,.pg-sum div,.pm-box,.pm-card,.pm-search,.pm-pop,.pm-opt,.pm-site,.pm-sheet,.pm-img,.pm-fav,.sx-p,.sx-chip,.sx-stock,.kt-card,.kt-col,.kt-opt,.kt-dd,.kt-hex,.bill-card,.bill-metrics article,.bill-payment,.bill-result,.bill-receipt,.bill-price-card,.bill-note,.bill-empty,.mcp-linked-app,.mcp-sheet,.mcp-sheet-content .pm-fl input,.mcp-sheet-content .pm-fl select,.mcp-sheet-content textarea,.dd-sheet,.gc-terms){background:var(--bg-surface);color:var(--ink-primary);border-color:var(--border-subtle);box-shadow:var(--shadow-card)}
+html[data-theme="dark"] :where(.pg-big,.rev,.ds-open,.pm-add,.pm-pill.dark,.sx-scan,.sx-bar-in,.bill-hero,.bill-primary,.bill-filter button.on,.mcp-connect-btn,.mcp-empty-cta){background:#292d25;color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] :where(.pm-pill,.pm-imp,.pm-pico,.pm-x,.pg-ico,.pg-pill,.st-ri,.st-seg,.st-pv,.st-pinc,.st-logo-i,.st-bold,.st-tabs,.kt-mic,.kt-sw,.kt-cl,.bill-payment-icon,.bill-status.pending,.mcp-manage-btn,.mcp-quiet-btn,.mcp-sheet-close,.mcp-sheet-grip){background:var(--bg-elevated);color:var(--ink-secondary);border-color:var(--border-subtle)}
+html[data-theme="dark"] :where(.pm-tools,.pm-row,.pg-row,.pg-r,.ds-sep,.bill-kv,.bill-hero-foot,.bill-receipt-brand,.bill-switch,.mcp-sheet>header,.mcp-sheet-tools,.mcp-token-create,.mcp-existing-tokens,.mcp-activity-list>div){border-color:var(--border-subtle)}
+html[data-theme="dark"] :where(.pm-info small,.pm-price,.pm-search input::placeholder,.pm-sico,.pg-r>svg:last-child,.pg-x,.bill-intro,.bill-subtitle,.bill-help,.bill-kv span,.bill-metrics small,.bill-payment-main small,.bill-ref,.bill-result>small,.bill-receipt-brand>small,.bill-receipt-total>small,.bill-receipt>p,.bill-price-card p,.bill-price-card li,.bill-note,.mcp-linked-copy small,.mcp-linked-meta,.mcp-sheet-intro,.mcp-safety-note,.mcp-field-help,.mcp-activity-list small){color:var(--ink-muted)}
+html[data-theme="dark"] :where(.pm-row,.pg-r,.pm-opt,.pm-site,.sx-p,.bill-links>button,.bill-payment,.bill-filter button,.mcp-settings-link){color:var(--ink-primary)}
+html[data-theme="dark"] :where(.pm-search input,.pm-fl input,.pm-fl textarea,.pm-fl select,.pm-sheet input,.pm-sheet textarea,.pm-sheet select,.fx-screen input,.fx-screen textarea,.fx-screen select,.ob input,.sf input,.bill-field input,.mcp-sheet-content input,.mcp-sheet-content select,.mcp-sheet-content textarea,.kt-hex input){background:var(--bg-input);color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] :where(input,textarea,select)::placeholder{color:var(--ink-disabled);opacity:1}
+html[data-theme="dark"] :where(button,a,input,select,textarea,[tabindex]):focus-visible{outline-color:var(--focus-ring);box-shadow:0 0 0 1px var(--bg-canvas)}
+html[data-theme="dark"] :where(button:disabled,[aria-disabled="true"],.disabled){opacity:.58;filter:none;cursor:not-allowed}
+html[data-theme="dark"] :where(.pg-r:hover,.pm-opt:hover,.pm-site:hover,.bill-links>button:hover,.mcp-manage-btn:hover,.mcp-quiet-btn:hover){background:var(--bg-elevated)}
+html[data-theme="dark"] .sc.warn{background:var(--status-danger-bg);border-color:var(--status-danger)}
+html[data-theme="dark"] .sc.warn .ic{background:#572c29;color:#ffd0ca}
+html[data-theme="dark"] .sc.warn .vl{color:var(--status-danger)}
+html[data-theme="dark"] .sc .ic,html[data-theme="dark"] .empty .ic{background:var(--bg-elevated);color:var(--ink-primary)}
+html[data-theme="dark"] .toast{background:var(--bg-elevated);color:var(--ink-primary);border:1px solid var(--border-strong);box-shadow:var(--shadow-raised)}
+html[data-theme="dark"] .tabs{background:var(--bg-elevated);border-color:var(--border-subtle);box-shadow:var(--shadow-raised)}
+html[data-theme="dark"] .tab{color:var(--ink-muted)}
+html[data-theme="dark"] .tab.on{color:var(--ink-primary)}
+html[data-theme="dark"] .bub i{background:#343a31}
+html[data-theme="dark"] .mcp-sheet-backdrop,html[data-theme="dark"] .pm-scrim,html[data-theme="dark"] .dr-scrim{background:var(--bg-overlay)}
+html[data-theme="dark"] .mcp-sheet,html[data-theme="dark"] .pm-sheet,html[data-theme="dark"] .dr-panel{box-shadow:var(--shadow-overlay)}
+html[data-theme="dark"] .pm-grab{background:var(--bg-surface)}
+html[data-theme="dark"] .pm-grab i,html[data-theme="dark"] .mcp-sheet-grip{background:var(--ink-disabled)}
+html[data-theme="dark"] .bill-workspace .pm-head{background:var(--surface-sticky);border-color:var(--border-subtle)}
+html[data-theme="dark"] .bill-workspace .bill-hero{background:#242820;color:var(--ink-primary);border-color:#41483a}
+html[data-theme="dark"] .bill-workspace .bill-hero-top,html[data-theme="dark"] .bill-workspace .bill-hero p,html[data-theme="dark"] .bill-workspace .bill-hero-foot small{color:var(--ink-secondary)}
+html[data-theme="dark"] .bill-workspace .bill-hero-foot{border-color:var(--border-strong)}
+html[data-theme="dark"] .bill-workspace .bill-primary{background:var(--accent-primary);color:var(--accent-ink);border-color:var(--accent-primary)}
+html[data-theme="dark"] .bill-workspace .bill-secondary{background:var(--bg-elevated);color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured{background:#242820;color:var(--ink-primary);border-color:#41483a}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured .bill-price{color:var(--accent-strong)}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured p,html[data-theme="dark"] .bill-workspace .bill-price-card.featured li{color:var(--ink-secondary)}
+html[data-theme="dark"] .bill-workspace .bill-empty{background:var(--bg-elevated);border-color:var(--border-strong)}
+html[data-theme="dark"] .bill-workspace .bill-empty>b{color:var(--ink-primary)}
+html[data-theme="dark"] .bill-workspace .bill-empty>span{background:var(--bg-sunken);color:var(--ink-primary)}
+html[data-theme="dark"] .bill-workspace .bill-alert{background:var(--status-danger-bg);color:var(--status-danger)}
+html[data-theme="dark"] .bill-workspace .bill-loading{background:var(--bg-surface);border-color:var(--border-subtle)}
+html[data-theme="dark"] .bill-workspace .bill-loading:before,html[data-theme="dark"] .bill-workspace .bill-loading:after{background:linear-gradient(90deg,var(--bg-elevated),var(--bg-surface),var(--bg-elevated))}
+html[data-theme="dark"] .gc-slip{background:var(--bg-surface);color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] .gc-back{background:#171a17;color:var(--ink-primary)}
+html[data-theme="dark"] .gc-terms{background:var(--bg-elevated);border-color:var(--border-subtle)}
+html[data-theme="dark"] .gc-terms h4{color:var(--ink-primary)}
+html[data-theme="dark"] .gc-terms ul,html[data-theme="dark"] .gc-slip-top{color:var(--ink-muted)}
+html[data-theme="dark"] .gc-slip-top button,html[data-theme="dark"] .gc-slip-actions button{background:var(--bg-elevated);color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] .gc-download{background:var(--accent-primary);color:var(--accent-ink)}
+html[data-theme="dark"] .gc-hint{color:var(--ink-muted)}
+html[data-theme="dark"] .gc-qr{background:#fff;border:5px solid #fff}
+html[data-theme="dark"] .fx-screen .pm-round{background:var(--bg-elevated);border-color:var(--border-strong);color:var(--ink-primary)}
+html[data-theme="dark"] .fx-gate,html[data-theme="dark"] .ob,html[data-theme="dark"] .sf{background:var(--bg-canvas);color:var(--ink-primary)}
+html[data-theme="dark"] .fx-gate :where(button,input,textarea,select),html[data-theme="dark"] .ob :where(button,input,textarea,select),html[data-theme="dark"] .sf :where(button,input,textarea,select){color:var(--ink-primary)}
+html[data-theme="dark"] .fx-gate .fx-doc,html[data-theme="dark"] .fx-gate .fx-drop,html[data-theme="dark"] .fx-gate .fx-search,html[data-theme="dark"] .fx-gate .fx-chip{background:var(--bg-surface);color:var(--ink-primary);border-color:var(--border-strong)}
+html[data-theme="dark"] .fx-gate .fx-mail,html[data-theme="dark"] .fx-gate .fx-ai{background:var(--accent-soft);color:var(--ink-primary)}
+html[data-theme="dark"] .ob .fi,html[data-theme="dark"] .sf .sf-fi{border-color:var(--border-strong);color:var(--ink-primary)}
+html[data-theme="dark"] .ob .ss,html[data-theme="dark"] .sf .sf-s,html[data-theme="dark"] .sf .sf-note{color:var(--ink-muted)}
+html[data-theme="dark"] .ob .back-ic,html[data-theme="dark"] .sf .sf-back,html[data-theme="dark"] .sf .sf-eye{color:var(--ink-primary)}
+html[data-theme="dark"] .ob .ferr,html[data-theme="dark"] .sf .sf-err{color:var(--status-danger)}
+html[data-theme="dark"] .sf .sf-pill{background:var(--accent-primary);border-color:var(--accent-primary);color:var(--accent-ink)}
+html[data-theme="dark"] .fx-gate .fx-badge.red{background:var(--status-danger-bg);color:var(--status-danger);border-color:var(--status-danger)}
+html[data-theme="dark"] .fx-gate .fx-badge.green{background:var(--status-success-bg);color:var(--status-success);border-color:var(--status-success)}
+html[data-theme="dark"] :where(.pm-page,.pm-sheet,.fx-screen,.fx-gate,.ob,.sf,.mcp-sheet,.dd-sheet,.gc-slip,.bill-workspace){filter:none!important}
+html[data-theme="dark"] img,html[data-theme="dark"] svg,html[data-theme="dark"] canvas{filter:none!important}
+@media(prefers-contrast:more){html[data-theme="dark"] :where(.sc,.sl-card,.row,.pm-box,.pm-card,.pm-opt,.kt-opt,.kt-dd,.bill-card,.bill-payment,.bill-result,.mcp-linked-app,.mcp-sheet){border-color:var(--border-strong)}}
