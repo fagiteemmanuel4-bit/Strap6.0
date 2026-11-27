@@ -1,5 +1,8 @@
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { installReactUI } from './react-ui.jsx';
+
+installReactUI();
 
 function loadExternalScript(src) {
   return new Promise((resolve, reject) => {
