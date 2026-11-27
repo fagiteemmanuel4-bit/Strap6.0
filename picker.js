@@ -35,7 +35,24 @@ window.StrapPicker = (() => {
   let locks = 0; const stack = [];
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && stack.length) { e.stopPropagation(); stack[stack.length - 1](); } }, true);
   function layer(cls, title, html) {
-    const w = document.createElement('div'); w.className = 'dd-layer ' + cls;
+    // React owns the bottom-sheet shell; picker option content remains compatible
+    // with the existing delegated handlers until each picker is migrated.
+    if (window.StrapReactUI && typeof window.StrapReactUI.layer === 'function') {
+      const api = window.StrapReactUI.layer({ cls: 'dd-pick ' + cls, title, html, closeIcon: ic('close', 20, 2.2) });
+      locks++; document.body.classList.add('dd-lock');
+      let closed = false;
+      const close = api.close;
+      api.onClose = null;
+      api.close = () => {
+        if (closed) return; closed = true;
+        const i = stack.indexOf(api.close); if (i > -1) stack.splice(i, 1);
+        locks = Math.max(0, locks - 1); if (!locks) document.body.classList.remove('dd-lock');
+        close(); if (api.onClose) api.onClose();
+      };
+      stack.push(api.close);
+      return api;
+    }
+    const w = document.createElement('div'); w.className = 'dd-layer dd-pick ' + cls;
     w.innerHTML = `<div class="dd-scrim"></div><section class="dd-sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" tabindex="-1"><div class="dd-grab"><i></i></div>
       <header class="dd-h"><h2>${esc(title)}</h2><button type="button" class="dd-x" data-x aria-label="Close">${ic('close', 20, 2.2)}</button></header><div class="dd-b">${html}</div></section>`;
     document.body.appendChild(w); locks++; document.body.classList.add('dd-lock'); void w.offsetWidth; w.classList.add('on');
