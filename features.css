@@ -57,7 +57,6 @@ textarea.fx-t{width:100%;min-height:140px;border:1.5px solid #d9d9d0;border-radi
 .fx-scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-18px;padding-right:18px}.fx-scroll .fx-chip{white-space:nowrap;flex:none}
 mark{background:#e6f53a;color:inherit;border-radius:4px;padding:0 2px}
 a.pg-r{text-decoration:none;color:inherit}
-html[data-theme=dark] .fx-gate{filter:invert(.92) hue-rotate(180deg)}
 
 /* ===== onboarding-style screens (same look as the sign-up form): branch, staff, 2FA, backup phone ===== */
 .ob{position:fixed;inset:0;z-index:46;background:#fff;color:#0a0a0a;overflow-y:auto;overscroll-behavior:contain;font-family:"Sora","Helvetica Neue",Arial,sans-serif;opacity:0;transform:translateY(24px);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.25,1)}
@@ -110,7 +109,6 @@ html[data-theme=dark] .fx-gate{filter:invert(.92) hue-rotate(180deg)}
 .ob .okw .foot{opacity:0;animation:obIn .4s 1.1s ease-out forwards}@keyframes obIn{to{opacity:1}}
 .ob .enter{animation:obEnter .3s ease-out}@keyframes obEnter{from{opacity:0}}
 .ob .rise{animation:obRise .5s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*45ms + 40ms)}@keyframes obRise{from{opacity:0;transform:translateY(18px)}}
-html[data-theme=dark] .ob{filter:invert(.92) hue-rotate(180deg)}
 @media(prefers-reduced-motion:reduce){.ob,.ob *{animation:none!important;transition:none!important}.ob .okr,.ob .okt{stroke-dashoffset:0}.ob .okw .foot{opacity:1}}
 
 /* Premium page */
