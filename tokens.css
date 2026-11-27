@@ -1,85 +1,43 @@
-/* Strap shared design tokens — one source for auth and workspace surfaces. */
+/* Strap semantic design tokens — shared by dashboard, storefront, checkout and overlays. */
 :root{
-  color-scheme:light;
-  --bg-canvas:#f3f3ed;
-  --bg-surface:#ffffff;
-  --bg-elevated:#f7f7f2;
-  --ink-primary:#0a0a0a;
-  --ink-muted:#77776f;
-  --border-subtle:#e7e7df;
-  --accent-primary:#e6f53a;
-  --accent-ink:#0a0a0a;
-  --surface-page:var(--bg-canvas);
-  --surface-card:var(--bg-surface);
-  --surface-raised:var(--bg-elevated);
-  --ink-secondary:var(--ink-muted);
-
-  /* Compatibility aliases for the existing Strap UI. */
-  --lemon:var(--accent-primary);
-  --black:#0a0a0a;
-  --ink:#141414;
-  --edge:#2b2b2b;
-  --mute:#8d8d86;
-
-  --font-display:"DM Serif Display",Georgia,serif;
-  --font-ui:"Sora","Helvetica Neue",Arial,sans-serif;
-  --font-reading:"Inter",Arial,sans-serif;
-  --font-mono:"Space Mono",ui-monospace,monospace;
-
-  --type-body:16px;
-  --type-small:13.33px;
-  --type-large:19.2px;
-  --type-xl:23px;
-  --type-2xl:27.6px;
-  --type-3xl:33.2px;
-  --type-display:39.8px;
-
-  --space-1:4px;
-  --space-2:8px;
-  --space-3:12px;
-  --space-4:16px;
-  --space-5:20px;
-  --space-6:24px;
-  --space-8:32px;
-  --space-10:40px;
-
-  --radius-control:12px;
-  --radius-card:16px;
-  --radius-feature:24px;
-  --measure-copy:66ch;
-
-  --motion-fast:160ms;
-  --motion-panel:280ms;
-  --motion-stagger:40ms;
-  --motion-stagger-max:5;
+ color-scheme:light;
+ --bg-canvas:#f3f3ed;--bg-sunken:#e9e9e2;--bg-surface:#fff;--bg-elevated:#f8f8f4;--bg-overlay:rgba(18,18,16,.52);--bg-input:#fff;
+ --surface-sidebar:#f8f8f4;--surface-sticky:rgba(255,255,255,.94);
+ --ink-primary:#10100f;--ink-secondary:#55564f;--ink-muted:#6f7069;--ink-disabled:#8b8c84;
+ --border-subtle:#deded6;--border-strong:#bdbeb4;
+ --accent-primary:#dbe94a;--accent-strong:#cbdc32;--accent-soft:#f2f6c8;--accent-ink:#10100f;
+ --status-success:#176b45;--status-success-bg:#e7f4eb;--status-warning:#815000;--status-warning-bg:#fff3d6;
+ --status-danger:#b3261e;--status-danger-bg:#ffebe8;--status-info:#155e91;--status-info-bg:#e8f3fb;
+ --focus-ring:#536bff;--shadow-card:0 5px 18px rgba(16,16,15,.06);--shadow-raised:0 16px 42px rgba(16,16,15,.14);--shadow-overlay:0 28px 80px rgba(0,0,0,.24);
+ --hairline:rgba(16,16,15,.10);--z-sticky:10;--z-nav:20;--z-drawer:40;--z-toast:60;--z-modal:100;--z-popover:120;
+ --surface-page:var(--bg-canvas);--surface-card:var(--bg-surface);--surface-raised:var(--bg-elevated);--ink:var(--ink-primary);--mute:var(--ink-muted);--lemon:var(--accent-primary);--black:#10100f;--edge:var(--border-strong);
+ --font-display:"DM Serif Display",Georgia,serif;--font-ui:"Sora","Helvetica Neue",Arial,sans-serif;--font-reading:"Inter",Arial,sans-serif;--font-mono:"Space Mono",ui-monospace,monospace;
+ --type-body:16px;--type-small:13.33px;--type-large:19.2px;--type-xl:23px;--type-2xl:27.6px;--type-3xl:33.2px;--type-display:39.8px;
+ --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;
+ --radius-control:12px;--radius-card:16px;--radius-feature:24px;--measure-copy:66ch;
+ --motion-fast:160ms;--motion-panel:280ms;--motion-stagger:40ms;--motion-stagger-max:5;--motion-feedback:var(--motion-fast);
 }
 html[data-theme="dark"]{
-  color-scheme:dark;
-  --bg-canvas:#0a0a0a;
-  --bg-surface:#141414;
-  --bg-elevated:#202018;
-  --ink-primary:#f5f5ef;
-  --ink-muted:#aaa99f;
-  --border-subtle:#30302b;
-  --accent-primary:#e6f53a;
-  --accent-ink:#0a0a0a;
+ color-scheme:dark;
+ --bg-canvas:#101110;--bg-sunken:#0b0c0b;--bg-surface:#191b19;--bg-elevated:#222522;--bg-overlay:rgba(0,0,0,.68);--bg-input:#202320;
+ --surface-sidebar:#151715;--surface-sticky:rgba(25,27,25,.94);
+ --ink-primary:#f3f4ef;--ink-secondary:#d0d2c9;--ink-muted:#b0b4a9;--ink-disabled:#858a80;
+ --border-subtle:#343a34;--border-strong:#505850;
+ --accent-primary:#d9e94b;--accent-strong:#e5f36a;--accent-soft:#30351b;--accent-ink:#17190d;
+ --status-success:#7bd6a0;--status-success-bg:#193528;--status-warning:#f1c66b;--status-warning-bg:#3a2d16;
+ --status-danger:#ff9b91;--status-danger-bg:#40201e;--status-info:#8fc9f2;--status-info-bg:#192f40;
+ --focus-ring:#d9e94b;--shadow-card:0 1px 0 rgba(255,255,255,.035),0 8px 24px rgba(0,0,0,.20);
+ --shadow-raised:0 1px 0 rgba(255,255,255,.055),0 18px 44px rgba(0,0,0,.42);--shadow-overlay:0 28px 90px rgba(0,0,0,.62);
+ --hairline:rgba(255,255,255,.09);--black:#101110;--lemon:var(--accent-primary);--edge:var(--border-strong);
 }
+html{background:var(--bg-canvas);color:var(--ink-primary);color-scheme:light}
+html[data-theme="dark"]{background:var(--bg-canvas);color:var(--ink-primary);color-scheme:dark}
 body{font-family:var(--font-ui);font-size:var(--type-body);line-height:1.45;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 :where(button,input,select,textarea){font:inherit}
 :where(button,a,input,select,textarea){-webkit-tap-highlight-color:transparent}
 :where(.tab,.ds-i,.ds-s,.ds-open,.ds-search){touch-action:manipulation}
-:where(button,a,input,select,textarea,[tabindex]):focus-visible{
-  outline:2px solid var(--accent-primary);
-  outline-offset:3px;
-}
-:where(.fx-p,.pg-empty p,.bill-subtitle,.pm-hint){
-  font-family:var(--font-reading);
-  max-width:var(--measure-copy);
-}
-:where(.bill-ref,.fx-key,.fx-mail,.sec small,.sc .sb){
-  font-family:var(--font-mono);
-  font-variant-numeric:tabular-nums;
-}
-@media(prefers-reduced-motion:reduce){
-  :root{scroll-behavior:auto}
-}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
+:where(.fx-p,.pg-empty p,.bill-subtitle,.pm-hint){font-family:var(--font-reading);max-width:var(--measure-copy)}
+:where(.bill-ref,.fx-key,.fx-mail,.sec small,.sc .sb,.amt,.vl,.bill-numeric,.bill-hero-foot b,.bill-metrics b,.bill-price){font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}}
+@media(prefers-contrast:more){:root{--border-subtle:#77786f;--border-strong:#55564f;--ink-muted:#4d4e48;--focus-ring:#2539c9}html[data-theme="dark"]{--border-subtle:#73796f;--border-strong:#a4aa9e;--ink-muted:#d0d4c9;--focus-ring:#f1ff68}:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline-width:3px}}
