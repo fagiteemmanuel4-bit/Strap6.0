@@ -118,4 +118,4 @@ body.dd-lock{overflow:hidden}
 .pm-sel .dd-t{width:auto;padding:10px 6px 10px 8px;font-size:14.5px}
 .pm-fl.stat .dd-tt{font-weight:600}
 @media(prefers-reduced-motion:reduce){.dd-sheet,.dd-scrim,.dd-ck{transition:none!important}}
-html[data-theme=dark] .dd-sheet{filter:invert(.92) hue-rotate(180deg)}
+/* Picker dark surfaces are token-driven in dark-theme.css. */
