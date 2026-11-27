@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/sitemap.xml",
-      "destination": "/api/storefront/sitemap"
+      "destination": "/api/health?__strap_route=storefront/sitemap"
     },
     {
       "source": "/robots.txt",
-      "destination": "/api/storefront/robots"
+      "destination": "/api/health?__strap_route=storefront/robots"
     },
     {
       "source": "/store/:slug/product/:productSlug",
