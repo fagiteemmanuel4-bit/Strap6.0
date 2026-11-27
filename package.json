@@ -9,6 +9,6 @@
     "pg": "^8.11.5"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --check api/[...route].js && node --check pages.js && node --check dashboard.js && node --check storefront-client.js && node --test"
   }
 }
