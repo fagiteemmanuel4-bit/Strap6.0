@@ -384,62 +384,8 @@ window.StrapPages = (() => {
     return { onShow: draw };
   }
   function online(root, ctx) {
-    let store=null, products=[], loading=false;
-    const field=(label,key,value,ph,type='text')=>'<label class="sf-admin-field"><span>'+label+'</span><input name="'+key+'" type="'+type+'" value="'+esc(value||'')+'" placeholder="'+esc(ph||'')+'"></label>';
-    const area=(label,key,value,ph)=>'<label class="sf-admin-field sf-admin-wide"><span>'+label+'</span><textarea name="'+key+'" rows="2" placeholder="'+esc(ph||'')+'">'+esc(value||'')+'</textarea></label>';
-    const val=(key)=>{const n=root.querySelector('[name="'+key+'"]');return n?n.value.trim():'';};
-    const request=(method,path,body)=>StrapAPI.call(method,path,body);
-    async function load(){
-      root.innerHTML=head('store','Online store')+'<section class="sf-admin-loading">Loading your storefront…</section>';
-      const r=await request('GET','storefront');
-      if(!r.ok){root.innerHTML=head('store','Online store')+'<section class="sf-admin-error">'+esc(r.msg||'Could not load your store.')+'</section>';return;}
-      store=r.store;
-      if(store){const p=await request('GET','storefront/products');products=p.ok?p.products||[]:[];}
-      draw();
-    }
-    function draw(){
-      const s=store||{name:ctx.store.bizname||'',slug:'',currency:ctx.store.currency||'NGN',status:'draft',settings:{}}, x=s.settings||{}, bank=x.bankTransfer||{};
-      root.innerHTML=head('store','Online store')+
-        '<section class="sf-admin-intro"><div><span class="sf-admin-kicker">YOUR STOREFRONT</span><h2>Sell online, your way.</h2><p>Publish a product catalogue and receive orders. Buyers pay by bank transfer or pay on delivery. You verify transfers yourself.</p></div><span class="sf-admin-state">'+(s.status==='published'?'Published':'Draft')+'</span></section>'+
-        '<form id="sf-store-form" class="sf-admin-card"><h3>Store details</h3><div class="sf-admin-grid">'+
-        field('Store name','name',s.name,'Your business name')+field('Store address (slug)','slug',s.slug,'your-store')+field('Currency','currency',s.currency,'NGN')+
-        area('Store description','description',x.description,'What do you sell?')+field('Contact phone','phone',x.phone,'Phone number')+field('Contact email','email',x.email,'Email address','email')+
-        area('Store announcement','announcement',x.announcement,'A short announcement')+field('Delivery fee','deliveryFee',x.deliveryFee||0,'0','number')+
-        '</div><h3>Bank transfer details</h3><p class="sf-admin-help">These details are shown to buyers who choose Bank Transfer. No payment gateway is connected.</p><div class="sf-admin-grid">'+
-        field('Bank name','bankName',bank.bankName,'Bank name')+field('Account number','accountNumber',bank.accountNumber,'Account number')+field('Account name','accountName',bank.accountName,'Account name')+
-        area('Transfer instructions','bankInstructions',bank.instructions,'Optional instructions for buyers')+
-        '</div><label class="sf-admin-publish"><input type="checkbox" name="publish" '+(s.status==='published'?'checked':'')+'><span><b>Publish storefront</b><small>Make your store and visible products available to buyers.</small></span></label>'+
-        '<div class="sf-admin-actions"><button class="pm-add" type="submit" '+(loading?'disabled':'')+'>Save store settings</button>'+(s.slug?'<a class="sf-admin-link" target="_blank" rel="noopener" href="/store/'+encodeURIComponent(s.slug)+'">Open storefront ↗</a>':'')+'</div>'+
-        '<p class="sf-admin-help">Custom domains: <b>Coming soon</b>. Your Strap store link works without a custom domain.</p></form>'+
-        (store?'<section class="sf-admin-card"><div class="sf-admin-title-row"><div><h3>Product catalogue</h3><p class="sf-admin-help">Sync your existing Strap products, then choose which ones appear online.</p></div><button class="pm-imp" type="button" data-sync>Sync products</button></div>'+
-        (products.length?'<div class="sf-admin-products">'+products.map(p=>'<article class="sf-admin-product"><div class="sf-admin-product-copy"><b>'+esc(p.title)+'</b><small>'+ctx.money(p.price)+'</small></div><label class="sf-admin-toggle"><input type="checkbox" data-product-visible="'+esc(p.id)+'" '+(p.visible?'checked':'')+'><span>Visible online</span></label></article>').join('')+'</div>':'<p class="sf-admin-empty">No products synced yet. Tap Sync products to bring in your existing catalogue.</p>')+'</section>':'<section class="sf-admin-card"><p class="sf-admin-empty">Save your store details first. Then sync products and publish your store.</p></section>');
-      root.querySelector('#sf-store-form').addEventListener('submit',save);
-      const sync=root.querySelector('[data-sync]'); if(sync)sync.addEventListener('click',syncProducts);
-      root.querySelectorAll('[data-product-visible]').forEach(input=>input.addEventListener('change',()=>setVisible(input)));
-    }
-    async function save(e){
-      e.preventDefault(); if(loading)return; loading=true;
-      const bankTransfer={bankName:val('bankName'),accountNumber:val('accountNumber'),accountName:val('accountName'),instructions:val('bankInstructions')};
-      const settings={...(store&&store.settings||{}),description:val('description'),phone:val('phone'),email:val('email'),announcement:val('announcement'),deliveryFee:Number(val('deliveryFee'))||0,bankTransfer};
-      const r=await request('POST','storefront',{name:val('name'),slug:val('slug'),currency:val('currency'),settings,status:root.querySelector('[name=publish]').checked?'published':'draft'});
-      loading=false;
-      if(!r.ok){ctx.toast(r.msg||'Could not save store settings.');return;}
-      store=r.store; ctx.toast('Store settings saved'); draw();
-    }
-    async function syncProducts(){
-      const b=root.querySelector('[data-sync]'); if(b){b.disabled=true;b.textContent='Syncing…';}
-      const r=await request('POST','storefront/products',{});
-      if(!r.ok){ctx.toast(r.msg||'Could not sync products.');if(b){b.disabled=false;b.textContent='Sync products';}return;}
-      products=r.products||[];ctx.toast(r.synced+' products synced');draw();
-    }
-    async function setVisible(input){
-      input.disabled=true;
-      const r=await request('PATCH','storefront/products/update',{id:input.dataset.productVisible,visible:input.checked});
-      input.disabled=false;
-      if(!r.ok){input.checked=!input.checked;ctx.toast(r.msg||'Could not update product visibility.');}
-    }
-    load();
-    return {onShow:load};
+    root.innerHTML = head('store', 'Online store') + empty('online', 'Your online store is coming soon', 'Soon you’ll be able to launch a storefront straight from Strap.', `<button type="button" class="pm-add" data-n>Notify me</button>`);
+    $('[data-n]', root).addEventListener('click', e => { e.currentTarget.textContent = 'You’re on the list'; e.currentTarget.disabled = true; ctx.toast('We’ll let you know when it’s ready'); });
   }
   const soon = (ic, t, ill, h, p) => (root, ctx) => {
     root.innerHTML = head(ic, t) + empty(ill, h, p, `<button type="button" class="pm-add" data-n>Notify me</button>`);
@@ -447,44 +393,7 @@ window.StrapPages = (() => {
   };
   const activity = soon('clock', 'Activity log', 'activity', 'Activity log is coming soon', 'Soon you’ll see who did what in your store, from sales to stock changes.');
   const devices = soon('phone', 'Devices & printers', 'devices', 'Devices and printers are coming soon', 'Soon you’ll connect receipt printers and scanners and manage signed-in devices.');
-  function orders(root,ctx) {
-    let rows=[],selected=null,loading=false;
-    const req=(method,path,body)=>StrapAPI.call(method,path,body);
-    const statusLabel=s=>String(s||'pending').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-    async function load(){
-      root.innerHTML=head('receipt','Orders')+'<section class="sf-admin-loading">Loading online orders…</section>';
-      const r=await req('GET','storefront/orders');
-      if(!r.ok){root.innerHTML=head('receipt','Orders')+'<section class="sf-admin-error">'+esc(r.msg||'Create your online store first.')+'</section>';return;}
-      rows=r.orders||[];draw();
-    }
-    function detail(o){
-      const items=Array.isArray(o.items_snapshot)?o.items_snapshot:[];
-      const proof=o.proof_url?'<div class="sf-order-proof"><b>Payment proof</b><a href="'+esc(o.proof_url)+'" target="_blank" rel="noopener">Open original file ↗</a>'+(String(o.proof_media_id||'')&&items.length>=0?'<img src="'+esc(o.proof_url)+'" alt="Uploaded bank transfer proof" loading="lazy" onerror="this.hidden=true">':'')+'</div>':'<p class="sf-admin-help">No proof file uploaded. Sender details: '+esc(o.sender_name||'Not provided')+' · Reference: '+esc(o.transfer_reference||'Not provided')+'</p>';
-      return '<section class="sf-order-detail"><div class="sf-order-columns"><div><h4>Buyer</h4><p>'+esc(o.buyer_name)+'<br>'+esc(o.buyer_phone)+'<br>'+esc(o.buyer_email||'')+'</p><h4>Delivery</h4><p>'+esc(o.delivery_address)+'<br>'+esc([o.delivery_city,o.delivery_region].filter(Boolean).join(', '))+'<br>'+esc(o.delivery_note||'')+'</p></div><div><h4>Items</h4>'+items.map(i=>'<p>'+esc(i.title)+' × '+Number(i.quantity||1)+' — '+ctx.money(i.line_total)+'</p>').join('')+'<b>Total: '+ctx.money(o.total)+'</b></div></div>'+
-        (o.payment_method==='bank_transfer'?proof+'<p><b>Sender:</b> '+esc(o.sender_name||'Not provided')+' · <b>Reference:</b> '+esc(o.transfer_reference||'Not provided')+'</p><p>'+esc(o.payment_note||'')+'</p>':'<p class="sf-admin-help">Pay on Delivery — no upfront payment proof required.</p>')+
-        (o.rejection_reason?'<p class="sf-order-reason"><b>Payment flagged:</b> '+esc(o.rejection_reason)+'</p>':'')+
-        '<label class="sf-admin-field"><span>Seller note</span><textarea data-note rows="2">'+esc(o.seller_note||'')+'</textarea></label><button type="button" class="pm-imp" data-note-save="'+esc(o.id)+'">Save note</button>'+
-        (o.payment_method==='bank_transfer'&&o.payment_status!=='verified'?'<div class="sf-admin-actions"><button class="pm-add" type="button" data-order-action="verify" data-id="'+esc(o.id)+'">Payment Verified · Confirm Order</button><button class="pm-imp" type="button" data-order-action="request_reupload" data-id="'+esc(o.id)+'">Request re-upload</button><button class="pm-imp danger" type="button" data-order-action="reject" data-id="'+esc(o.id)+'">Payment Rejected</button></div>':'')+
-        '<label class="sf-admin-field"><span>Fulfillment status</span><select data-fulfillment="'+esc(o.id)+'">'+['pending','confirmed','processing','shipped','delivered','cancelled'].map(s=>'<option value="'+s+'" '+(o.fulfillment_status===s?'selected':'')+'>'+statusLabel(s)+'</option>').join('')+'</select></label></section>';
-    }
-    function draw(){
-      root.innerHTML=head('receipt','Orders')+'<section class="sf-orders-head"><div><h2>Online orders</h2><p>Bank transfers are verified manually. Pay on Delivery orders need no payment proof.</p></div><button type="button" class="pm-imp" data-refresh>Refresh</button></section>'+
-        (rows.length?'<div class="sf-order-list">'+rows.map(o=>'<article class="sf-order-card '+(selected===o.id?'is-open':'')+'" data-order-card="'+esc(o.id)+'"><button type="button" class="sf-order-summary" data-order="'+esc(o.id)+'"><span><b>#'+o.order_number+' · '+esc(o.buyer_name)+'</b><small>'+new Date(o.created_at).toLocaleString()+' · '+esc(o.payment_method==='bank_transfer'?'Bank Transfer':'Pay on Delivery')+'</small></span><span class="sf-order-total">'+ctx.money(o.total)+'<small>'+statusLabel(o.payment_status)+' · '+statusLabel(o.fulfillment_status)+'</small></span></button>'+(selected===o.id?detail(o):'')+'</article>').join('')+'</div>':'<section class="sf-admin-empty"><h3>No online orders yet</h3><p>Orders placed through your published storefront will appear here.</p></section>');
-    }
-    async function update(id,action,extra={}){
-      const r=await req('PATCH','storefront/order/update',{id,action,...extra});
-      if(!r.ok){ctx.toast(r.msg||'Could not update order.');return;}
-      ctx.toast(action==='verify'?'Payment verified and order confirmed':action==='reject'?'Payment rejected':'Order updated');await load();
-    }
-    root.addEventListener('click',async e=>{
-      if(e.target.closest('[data-refresh]'))return load();
-      const open=e.target.closest('[data-order]');if(open){selected=selected===open.dataset.order?null:open.dataset.order;draw();return;}
-      const action=e.target.closest('[data-order-action]');if(action){let reason='';if(action.dataset.orderAction!=='verify')reason=prompt(action.dataset.orderAction==='request_reupload'?'Tell the buyer what to re-upload:':'Why are you rejecting this payment?')||'';if(action.dataset.orderAction!=='verify'&&!reason.trim())return ctx.toast('Add a reason so the buyer knows what to fix.');return update(action.dataset.id,action.dataset.orderAction,{reason});}
-      const note=e.target.closest('[data-note-save]');if(note){const area=root.querySelector('[data-note]');return update(note.dataset.noteSave,'note',{seller_note:area?area.value:''});}
-    });
-    root.addEventListener('change',e=>{const s=e.target.closest('[data-fulfillment]');if(s)update(s.dataset.fulfillment,'status',{fulfillment_status:s.value});});
-    load();return {onShow:load};
-  }
+  const orders = soon('receipt', 'Orders', 'online', 'Orders are coming soon', 'Online orders will show up here once online stores launch.');
   function mcp(root, ctx) {
     const endpoint = 'https://strap60.vercel.app/api/mcp';
     let snapshot = { branches: [], oauth_connections: [], connections: [], activity: [] };

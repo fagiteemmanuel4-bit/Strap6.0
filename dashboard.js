@@ -275,7 +275,7 @@
       } catch (err) {
         console.warn('[Strap dashboard] Could not verify Premium status before navigation:', err);
       }
-      if (planAccess.verified && planAccess.plan !== 'premium' && !['home','products','settings','premium', 'billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'].includes(id)) {
+      if (planAccess.verified && planAccess.plan !== 'premium' && !['home','products','settings','premium','online','orders', 'billing-overview','billing-history','billing-receipts','billing-results','billing-renew','billing-subscription','billing-notifications','billing-reconciliation'].includes(id)) {
         closeDrawer();
         toast('This feature requires Strap Premium.');
         try { StrapFeatures.open('premium'); } catch (err) { console.error('[Strap dashboard] Premium screen failed to open:', err); }

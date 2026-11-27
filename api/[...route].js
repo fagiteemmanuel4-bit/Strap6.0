@@ -1268,6 +1268,22 @@ H['data'] = async (req, res, user, staff) => {
   const r=await q('select blob from user_data where user_id=$1',[ownerId]);
   return [200,{ok:true,blob:await safeOwnerBlob(ownerId,r[0]?r[0].blob:{})}];
 };
+
+H['storefront/page'] = async (req,res) => {
+  const slug=lower(req.query.slug||''), store=await storePublic(slug);
+  if(!store) { res.statusCode=404; res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<!doctype html><title>Store unavailable</title><main><h1>This store is unavailable</h1><p>Check the address or contact the seller.</p></main>'); return null; }
+  const settings=storeSettings(store.settings), products=await q('select id,slug,title,description,price,category,image_url,featured from store_products where store_id=$1 and visible=true order by featured desc,sort_order,title',[store.id]);
+  const selected=products.find(p=>p.slug===String(req.query.product||''))||null;
+  if(req.query.product&&!selected){res.statusCode=404;res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<!doctype html><title>Product not found</title><h1>Product not found</h1>');return null;}
+  const title=selected?selected.title+' · '+store.name:(settings.seoTitle||store.name);
+  const description=settings.seoDescription||settings.description||('Shop '+store.name+' online.');
+  const canonical=origin(req)+'/store/'+encodeURIComponent(slug)+(selected?'/product/'+encodeURIComponent(selected.slug):'');
+  const schema=selected?{'@context':'https://schema.org','@type':'Product',name:selected.title,description:selected.description,image:selected.image_url?[selected.image_url]:undefined,offers:{'@type':'Offer',price:String(selected.price),priceCurrency:store.currency,availability:'https://schema.org/InStock',url:canonical}}:{'@context':'https://schema.org','@type':'Store',name:store.name,url:origin(req)+'/store/'+encodeURIComponent(slug),description,telephone:settings.phone||undefined};
+  const payload=JSON.stringify({slug:store.slug,product:selected&&selected.slug||''}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+  const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111"><title>'+esc(title)+'</title><meta name="description" content="'+esc(description)+'"><link rel="canonical" href="'+esc(canonical)+'"><meta property="og:type" content="website"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(description)+'"><meta property="og:url" content="'+esc(canonical)+'">'+(settings.logoUrl?'<meta property="og:image" content="'+esc(settings.logoUrl)+'">':'')+'<script type="application/ld+json">'+JSON.stringify(schema).replace(/</g,'\\u003c')+'</script><link rel="stylesheet" href="/storefront.css"></head><body><header class="sf-header"><a class="sf-brand" href="/store/'+esc(slug)+'">'+esc(store.name)+'</a><button id="sf-cart-open" class="sf-cart-button">Cart <span id="sf-cart-count">0</span></button></header><main id="sf-app" class="sf-main"><div class="sf-loading">Loading '+esc(store.name)+'…</div></main><footer class="sf-footer">Storefront powered by Strap · Template based on Amado</footer><script>window.STRAP_STOREFRONT='+payload+';</script><script src="/storefront-client.js" defer></script></body></html>';
+  res.statusCode=200;res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(html);return null;
+};
+
 /* ---- images stored inside Neon (bytea) ---- */
 H['media'] = async (req, res, user, staff) => {
   if (req.method === 'GET') {
