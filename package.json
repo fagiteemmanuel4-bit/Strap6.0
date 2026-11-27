@@ -6,9 +6,17 @@
     "node": ">=18"
   },
   "dependencies": {
-    "pg": "^8.11.5"
+    "pg": "^8.11.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "scripts": {
-    "test": "node --check api/[...route].js && node --check pages.js && node --check dashboard.js && node --check storefront-client.js && node --test"
+    "test": "node --check api/[...route].js && node --check pages.js && node --check dashboard.js && node --check storefront-client.js && node --test",
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
   }
 }
