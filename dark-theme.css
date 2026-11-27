@@ -238,3 +238,52 @@ html[data-theme="dark"] .dsheet{
 html[data-theme="dark"] .pane[data-id="settings"]{
   padding-bottom:24px;
 }
+
+/* Settings typography and tab states */
+html[data-theme="dark"] .pane[data-id="settings"] .pm-title,
+html[data-theme="dark"] .pane[data-id="settings"] .pm-h{
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-tabs{
+  background:var(--bg-elevated);
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-tab{
+  color:var(--ink-secondary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-tab.on{
+  background:var(--accent-primary);
+  color:var(--accent-ink);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-saved{
+  color:var(--status-success);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-reset{
+  color:var(--ink-secondary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-logo-i{
+  background:var(--bg-elevated);
+  color:var(--ink-secondary);
+  border-color:var(--border-strong);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-pinc-i{
+  background:var(--bg-sunken);
+  color:var(--ink-primary);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-json:focus{
+  border-color:var(--focus-ring);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--focus-ring) 22%,transparent);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-tabs{
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .st-foot{
+  border-color:var(--border-subtle);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl:focus-within{
+  border-color:var(--focus-ring);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--focus-ring) 16%,transparent);
+}
+html[data-theme="dark"] .pane[data-id="settings"] .pm-fl.bad{
+  border-color:var(--status-danger);
+}
