@@ -35,11 +35,12 @@ window.StrapUI = (() => {
     plus: '<path d="M12 5v14M5 12h14"/>',
     dots: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
-    chevD: '<path d="m6 9 6 6 6-6"/>', chevR: '<path d="m9 6 6 6-6 6"/>', chevUD: '<path d="m8 9.5 4-4 4 4M8 14.5l4 4 4-4"/>',
+    chevD: '<path d="m6 9 6 6 6-6"/>', chevR: '<path d="m9 6 6 6-6 6"/>', chevUD: '<path d="m8 9.5 4-4 4 4M8 14.5l4 4 4-4"/>', chevL: '<path d="m15 6-6 6 6 6"/>', chev: '<path d="m6 9 6 6 6-6"/>', cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17"/>',
     back: '<path d="M15 5 8 12l7 7"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>', x: '<path d="M7 7l10 10M17 7 7 17"/>',
     image: '<rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4"/>',
     upload: '<path d="M12 16V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 15v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15"/>',
     pdf: '<path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8h4M9 13h6M9 16.5h4"/>',
+    'file-check': '<path d="M7 3.5h7l4 4V12M14 3.5V8h4M7 3.5A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h6"/><path d="m14 17 2.5 2.5L21 14.5"/>',
     sheet: '<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M3.5 10h17M3.5 15h17M10 4.5v15"/>',
     csv: '<path d="M5 5h14M5 10h14M5 15h8"/><path d="M17.5 14.5v5.5m0 0-2.2-2.2m2.2 2.2 2.2-2.2"/>',
     link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
@@ -70,7 +71,7 @@ window.StrapUI = (() => {
     palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.6-2.1-.5-1.3.2-2.4 1.6-2.4H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7 16.8 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="8" r="1"/>',
     flash: '<path d="M13 3.5 5.5 13.5H12l-1 7 7.5-10H12z"/>'
   };
-  const ic = (k, s = 22, w = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] || ''}</svg>`;
+  const ic = (k, s = 22, w = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] || P.info}</svg>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // line illustrations: black outline, white fills, one lemon blob. 200x150 canvas.
