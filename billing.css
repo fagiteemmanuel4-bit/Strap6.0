@@ -363,3 +363,51 @@
 .bill-workspace :is(.bill-price-card,.bill-card,.bill-hero,.bill-receipt){overflow-wrap:anywhere}
 @media(max-width:600px){.bill-workspace .bill-links{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.bill-workspace .bill-links>button{transition:none!important}}
+
+
+/* Billing dark theme: preserve the same hierarchy without white-on-white panels. */
+html[data-theme="dark"] .bill-workspace,
+html[data-theme="dark"] .fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field){background:#0a0a0a;color:#f4f4ef}
+html[data-theme="dark"] .bill-workspace .pm-head{background:#0a0a0a;border-color:#303030}
+html[data-theme="dark"] .bill-workspace .bill-card,
+html[data-theme="dark"] .bill-workspace .bill-metrics article,
+html[data-theme="dark"] .bill-workspace .bill-price-card:not(.featured),
+html[data-theme="dark"] .bill-workspace .bill-payment,
+html[data-theme="dark"] .bill-workspace .bill-result,
+html[data-theme="dark"] .bill-workspace .bill-receipt,
+html[data-theme="dark"] .bill-workspace .bill-field input,
+html[data-theme="dark"] .bill-workspace .bill-note,
+html[data-theme="dark"] .bill-workspace .bill-links>button{background:#171717;color:#f4f4ef;border-color:#303030}
+html[data-theme="dark"] .bill-workspace .bill-payment-icon,
+html[data-theme="dark"] .bill-workspace .bill-empty,
+html[data-theme="dark"] .bill-workspace .bill-filter{background:#111;border-color:#303030}
+html[data-theme="dark"] .bill-workspace .bill-links>button:hover,
+html[data-theme="dark"] .bill-workspace .bill-payment:hover{background:#202020;border-color:#484848}
+html[data-theme="dark"] .bill-workspace .bill-kv,
+html[data-theme="dark"] .bill-workspace .bill-receipt-brand{border-color:#303030}
+html[data-theme="dark"] .bill-workspace .bill-kv span,
+html[data-theme="dark"] .bill-workspace .bill-intro,
+html[data-theme="dark"] .bill-workspace .bill-subtitle,
+html[data-theme="dark"] .bill-workspace .bill-help,
+html[data-theme="dark"] .bill-workspace .bill-muted,
+html[data-theme="dark"] .bill-workspace .bill-payment-main small,
+html[data-theme="dark"] .bill-workspace .bill-ref{color:#aaa99f}
+html[data-theme="dark"] .bill-workspace .bill-primary{background:#e6f53a;color:#0a0a0a;border-color:#e6f53a}
+html[data-theme="dark"] .bill-workspace .bill-secondary{background:#222;color:#f4f4ef;border-color:#484848}
+html[data-theme="dark"] .bill-workspace .bill-filter button{color:#b8b8ae}
+html[data-theme="dark"] .bill-workspace .bill-filter button.on{background:#e6f53a;color:#0a0a0a}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured{background:#e6f53a;color:#0a0a0a;border-color:#e6f53a}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured p,
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured li,
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured .bill-price-period{color:#282820}
+html[data-theme="dark"] .bill-workspace .bill-price-card.featured .bill-price{color:#0a0a0a}
+html[data-theme="dark"] .bill-workspace .bill-status.pending,
+html[data-theme="dark"] .bill-workspace .bill-status.ending_at_expiry{background:#303030;color:#f4f4ef}
+html[data-theme="dark"] .bill-workspace .bill-empty>b{color:#f4f4ef}
+html[data-theme="dark"] .bill-workspace .bill-field input{color-scheme:dark}
+html[data-theme="dark"] .bill-workspace .bill-loading:before,
+html[data-theme="dark"] .bill-workspace .bill-loading:after{background:linear-gradient(90deg,#222,#303030,#222);background-size:200% 100%}
+@media(prefers-reduced-motion:reduce){
+ .pane[data-id="settings"] *,
+ .bill-workspace *{scroll-behavior:auto!important}
+}
