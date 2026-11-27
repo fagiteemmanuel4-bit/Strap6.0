@@ -353,3 +353,51 @@
 .st-meter[data-s="4"] i{background:var(--black)}
 
 @media(prefers-reduced-motion:reduce){.sp-sheet,.sx-splash,.kt-card{transition:none!important}}
+
+
+/* Sales craft pass — sharper checkout workspace and clearer product selection. */
+.sx-head{max-width:760px;margin:20px auto 0;gap:12px}
+.sx-title{font-size:clamp(25px,6vw,30px);letter-spacing:-.05em}
+.sx-tools{gap:8px}
+.sx-chip{box-shadow:none;border-color:var(--border-subtle);height:44px}
+.sx-find{max-width:760px;margin:20px auto 0;gap:10px}
+.sx-find .pm-si{border-color:var(--border-subtle);border-radius:18px}
+.sx-scan{border-radius:18px;box-shadow:none}
+.sx-list{max-width:760px;margin:14px auto 100px}
+.sx-p{min-height:82px;padding:12px 10px;border-radius:18px;gap:13px}
+.sx-p+.sx-p::before{left:10px;right:10px;background:var(--border-subtle)}
+.sx-p:active,.sx-p.in{background:var(--bg-elevated)}
+.sx-img{width:62px;height:62px;border-radius:17px;border-color:var(--border-subtle);background:var(--bg-elevated)}
+.sx-info b{font-size:15px;line-height:1.35}
+.sx-price{font-size:13.5px;color:var(--ink-muted)}
+.sx-stock{min-width:72px;border-radius:14px;background:var(--bg-elevated)}
+.sx-stock small{color:var(--ink-muted)}
+.sx-bar-in{max-width:600px;box-shadow:0 16px 36px -22px rgba(0,0,0,.65)}
+.sx-empty{padding-top:36px}
+.sx-closed{padding-top:44px}
+.sx-line{border-color:var(--border-subtle)}
+.sx-total{padding-top:18px}
+.sx-pm{border-color:var(--border-subtle);border-radius:16px}
+.sx-pm:focus-visible,.sx-chip:focus-visible,.sx-scan:focus-visible,.sx-p:focus-visible{outline:2px solid var(--accent-primary);outline-offset:3px}
+@media(min-width:600px){
+  .sx-head,.sx-find,.sx-list{padding-left:0;padding-right:0}
+  .sx-list{margin-top:18px}
+  .sx-p{padding:14px 12px}
+}
+@media(max-width:390px){
+  .sx-head{gap:8px}
+  .sx-title{font-size:23px}
+  .sx-chip{height:40px;padding:0 10px;font-size:12.5px}
+  .sx-img{width:54px;height:54px;border-radius:15px}
+  .sx-p{gap:10px;padding:11px 6px}
+  .sx-stock{min-width:62px;padding:7px 7px}
+  .sx-stock b{font-size:17px}
+  .sx-bar-in{height:62px;gap:8px}
+  .sx-go{height:48px;padding-left:13px;font-size:13.5px}
+}
+html[data-theme="dark"] .sx-chip,
+html[data-theme="dark"] .sx-pm{background:var(--bg-surface);color:var(--ink-primary);border-color:var(--border-subtle)}
+html[data-theme="dark"] .sx-pm.on{background:var(--accent-primary);color:var(--accent-ink);border-color:var(--accent-primary)}
+html[data-theme="dark"] .sx-stock{background:var(--bg-elevated)}
+html[data-theme="dark"] .sx-p:active,
+html[data-theme="dark"] .sx-p.in{background:var(--bg-elevated)}
