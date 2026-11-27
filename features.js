@@ -142,7 +142,13 @@ window.StrapFeatures = (() => {
   const applyTheme = () => {
     const dark = S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = dark ? '#101110' : '#dbe94a';
   };
+  if (window.matchMedia) {
+    const appearance = window.matchMedia('(prefers-color-scheme: dark)');
+    appearance.addEventListener?.('change', () => { if (S.theme === 'system') applyTheme(); });
+  }
   applyTheme();
 
   /* ===== per-branch products ===== */
