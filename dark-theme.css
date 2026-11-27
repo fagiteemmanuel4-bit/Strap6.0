@@ -64,3 +64,50 @@ html[data-theme="dark"] .fx-gate .fx-badge.red{background:var(--status-danger-bg
 html[data-theme="dark"] .fx-gate .fx-badge.green{background:var(--status-success-bg);color:var(--status-success);border-color:var(--status-success)}
 html[data-theme="dark"] :where(.pm-page,.pm-sheet,.fx-screen,.fx-gate,.ob,.sf,.mcp-sheet,.dd-sheet,.gc-slip,.bill-workspace){filter:none!important}
 @media(prefers-contrast:more){html[data-theme="dark"] :where(.sc,.sl-card,.row,.pm-box,.pm-card,.pm-opt,.kt-opt,.kt-dd,.bill-card,.bill-payment,.bill-result,.mcp-linked-app,.mcp-sheet){border-color:var(--border-strong)}}
+
+/* Storefront and payment states */
+html[data-theme="dark"] .fx-screen:has(.bill-hero,.bill-card,.bill-list,.bill-receipt,.bill-result,.bill-loading,.bill-empty,.bill-subtitle,.bill-field){background:var(--bg-canvas)}
+html[data-theme="dark"] .bill-workspace .bill-status{border:1px solid var(--border-strong)}
+html[data-theme="dark"] .bill-workspace .bill-status.active,html[data-theme="dark"] .bill-workspace .bill-status.successful{background:var(--status-success-bg);color:var(--status-success);border-color:var(--status-success)}
+html[data-theme="dark"] .bill-workspace .bill-status.pending{background:var(--status-warning-bg);color:var(--status-warning);border-color:var(--status-warning)}
+html[data-theme="dark"] .bill-workspace .bill-status.failed,html[data-theme="dark"] .bill-workspace .bill-status.expired{background:var(--status-danger-bg);color:var(--status-danger);border-color:var(--status-danger)}
+html[data-theme="dark"] .bill-workspace .bill-alert{border-color:var(--status-danger)}
+html[data-theme="dark"] .bill-workspace .bill-price-card{background:var(--bg-surface);color:var(--ink-primary);border-color:var(--border-subtle)}
+html[data-theme="dark"] .bill-workspace .bill-price-card p,html[data-theme="dark"] .bill-workspace .bill-price-card li{color:var(--ink-muted)}
+html[data-theme="dark"] .bill-workspace .bill-text-btn{color:var(--ink-primary)}
+html[data-theme="dark"] .bill-workspace .bill-switch{color:var(--ink-secondary)}
+html[data-theme="dark"] .bill-workspace .bill-switch input,html[data-theme="dark"] .bill-workspace .bill-checks input{accent-color:var(--accent-primary)}
+html[data-theme="dark"] .bill-workspace .bill-receipt{background:var(--bg-surface);color:var(--ink-primary)}
+html[data-theme="dark"] .bill-workspace .bill-receipt-brand,html[data-theme="dark"] .bill-workspace .bill-kv{border-color:var(--border-subtle)}
+html[data-theme="dark"] .bill-workspace .bill-receipt-total{color:var(--ink-primary)}
+html[data-theme="dark"] .pm-page{background:var(--bg-canvas)}
+html[data-theme="dark"] .pm-pbar{background:linear-gradient(var(--bg-canvas) 70%,rgba(16,17,16,0))}
+html[data-theme="dark"] .pm-pop{background:var(--bg-elevated);border-color:var(--border-strong)}
+html[data-theme="dark"] .pm-badge.draft{background:var(--bg-elevated);color:var(--ink-secondary)}
+html[data-theme="dark"] .pm-badge.archived{background:var(--status-danger-bg);color:var(--status-danger)}
+html[data-theme="dark"] .sx-stock.low b{color:var(--status-warning)}
+html[data-theme="dark"] .sx-stock.out b{color:var(--status-danger)}
+html[data-theme="dark"] .sx-q{background:var(--accent-primary);color:var(--accent-ink);border-color:var(--bg-surface)}
+html[data-theme="dark"] .kt-opt.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--ink-primary)}
+html[data-theme="dark"] .kt-ddl{color:var(--ink-muted)}
+html[data-theme="dark"] .mcp-sheet-content select[multiple] option:checked{background:var(--accent-soft);color:var(--ink-primary)}
+html[data-theme="dark"] .st-json{background:var(--bg-sunken);color:var(--accent-strong);border-color:var(--border-strong)}
+html[data-theme="dark"] .st-pinc.on{background:#242820;color:var(--ink-primary)}
+html[data-theme="dark"] .st-pinc p{color:var(--ink-muted)}
+html[data-theme="dark"] .st-saved{color:var(--status-success)}
+html[data-theme="dark"] .st-meter i{background:var(--border-strong)}
+html[data-theme="dark"] .st-meter[data-s="1"] i:nth-child(-n+1){background:var(--status-danger)}
+html[data-theme="dark"] .st-meter[data-s="2"] i:nth-child(-n+2){background:var(--status-warning)}
+html[data-theme="dark"] .st-meter[data-s="3"] i:nth-child(-n+3){background:var(--accent-strong)}
+html[data-theme="dark"] .st-meter[data-s="4"] i{background:var(--status-success)}
+html[data-theme="dark"] .fx-gate .fx-doc,html[data-theme="dark"] .fx-gate .fx-drop{border-color:var(--border-strong)}
+html[data-theme="dark"] .fx-gate .fx-warn{background:var(--status-warning-bg);border-color:var(--status-warning);color:var(--ink-primary)}
+html[data-theme="dark"] .fx-gate .fx-spin i{border-color:var(--ink-muted)}
+html[data-theme="dark"] .fx-gate .fx-spin b{border-top-color:var(--accent-primary)}
+html[data-theme="dark"] .fx-gate .fx-spin span{background:var(--accent-primary)}
+html[data-theme="dark"] .fx-gate .fx-ul,html[data-theme="dark"] .fx-gate .fx-ol{color:var(--ink-secondary)}
+html[data-theme="dark"] .fx-gate .fx-dot{border-color:var(--border-strong)}
+html[data-theme="dark"] .fx-gate .fx-tl>div+div:before{background:var(--border-strong)}
+html[data-theme="dark"] .fx-gate .fx-tl i{background:var(--bg-surface);border-color:var(--border-strong)}
+html[data-theme="dark"] .fx-gate .fx-tl .done i{background:var(--accent-primary);border-color:var(--accent-primary)}
+html[data-theme="dark"] .fx-gate .fx-tl .now i{background:var(--accent-primary);border-color:var(--accent-primary)}
