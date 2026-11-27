@@ -3,19 +3,19 @@
   "rewrites": [
     {
       "source": "/sitemap.xml",
-      "destination": "/api/health?__strap_route=storefront/sitemap"
+      "destination": "/api/storefront/sitemap"
     },
     {
       "source": "/robots.txt",
-      "destination": "/api/health?__strap_route=storefront/robots"
+      "destination": "/api/storefront/robots"
     },
     {
       "source": "/store/:slug/product/:productSlug",
-      "destination": "/api/health?__strap_route=storefront/page&slug=:slug&product=:productSlug"
+      "destination": "/api/storefront/page?slug=:slug&product=:productSlug"
     },
     {
       "source": "/store/:slug",
-      "destination": "/api/health?__strap_route=storefront/page&slug=:slug"
+      "destination": "/api/storefront/page?slug=:slug"
     },
     {
       "source": "/.well-known/oauth-protected-resource/api/mcp",
