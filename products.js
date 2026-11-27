@@ -186,8 +186,9 @@ window.StrapProducts = (() => {
     };
     const ck = p => `<label class="pm-ck"><input type="checkbox" data-id="${p.id}" ${picked.has(p.id) ? 'checked' : ''} aria-label="Select ${esc(p.title)}"><span>${ic('check', 14, 3.2)}</span></label>`;
     const thumb = p => p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : ic('image', 28, 1.6);
-    const rowHtml = p => `<li class="pm-row" data-id="${p.id}" tabindex="0">${ck(p)}<div class="pm-img">${thumb(p)}</div><div class="pm-info"><b>${esc(p.title)}</b><span class="pm-badge ${p.status}">${label(p.status)}</span><small>${invText(p)}</small></div><span class="pm-price">${money(p.price || 0)}</span></li>`;
-    const cardHtml = p => `<li class="pm-gc" data-id="${p.id}" tabindex="0">${ck(p)}<div class="pm-gimg">${thumb(p)}</div><b>${esc(p.title)}</b><span class="pm-badge ${p.status}">${label(p.status)}</span><small>${invText(p)}</small><span class="pm-price">${money(p.price || 0)}</span></li>`;
+    const itemMenu = p => '<details class="pm-item-menu"><summary aria-label="Product actions" title="Product actions">' + ic('dots', 18, 2) + '</summary><div class="pm-item-pop"><button type="button" data-publish-product="' + esc(p.id) + '">Publish to Online Store</button></div></details>';
+    const rowHtml = p => '<li class="pm-row" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-img">' + thumb(p) + '</div><div class="pm-info"><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small></div><span class="pm-price">' + money(p.price || 0) + '</span>' + itemMenu(p) + '</li>';
+    const cardHtml = p => '<li class="pm-gc" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-gimg">' + thumb(p) + '</div><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small><span class="pm-price">' + money(p.price || 0) + '</span>' + itemMenu(p) + '</li>';
 
     function renderChrome() {
       const has = items.length > 0 && !loading;
@@ -220,7 +221,7 @@ window.StrapProducts = (() => {
       if (!rows.length) { body.innerHTML = `<div class="pm-nomatch">${ic('search', 26, 1.8)}<p>No products match your search.</p></div>`; return; }
       body.innerHTML = viewMode === 'grid' ? `<ul class="pm-grid">${rows.map(cardHtml).join('')}</ul>` : `<ul class="pm-list">${rows.map(rowHtml).join('')}</ul>`;
       body.querySelectorAll('.pm-row[data-id], .pm-gc[data-id]').forEach(item => {
-        const open = e => { if (e && e.target && e.target.closest && e.target.closest('.pm-ck')) return; const product = items.find(x => String(x.id) === String(item.dataset.id)); if (product) openPage(product); else toast('This product could not be opened. Refresh and try again.'); };
+        const open = e => { if (e && e.target && e.target.closest && e.target.closest('.pm-ck,.pm-item-menu')) return; const product = items.find(x => String(x.id) === String(item.dataset.id)); if (product) openPage(product); else toast('This product could not be opened. Refresh and try again.'); };
         item.addEventListener('click', open);
         item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
       });
@@ -235,9 +236,35 @@ window.StrapProducts = (() => {
     }
     function renderAll() { renderChrome(); renderBody(); renderSel(); refreshLists(); subs.forEach(f => { try { f(); } catch (e) {} }); }
 
+    async function publishProduct(id, button) {
+      const product = items.find(item => String(item.id) === String(id));
+      if (!product) return toast('Product not found. Refresh and try again.');
+      if (product.status !== 'active') return toast('Activate this product before publishing it online.');
+      if (button) { button.disabled = true; button.textContent = 'Publishing…'; }
+      try {
+        const storeResult = await StrapAPI.call('GET', 'storefront');
+        if (!storeResult.ok) throw new Error(storeResult.msg || 'Could not check your online store.');
+        if (!storeResult.store) { toast('Set up your online store first.'); if (ctx.go) ctx.go('online'); return; }
+        const sync = await StrapAPI.call('POST', 'storefront/products', {});
+        if (!sync.ok) throw new Error(sync.msg || 'Could not add this product to your online catalogue.');
+        const branch = productBranch();
+        const linked = (sync.products || []).find(row => String(row.source_product_id) === String(product.id) && String(row.source_branch_id) === branch);
+        if (!linked) throw new Error('This product could not be matched to your online catalogue. Try syncing from Online Store.');
+        const updated = await StrapAPI.call('PATCH', 'storefront/products/update', { id: linked.id, visible: true });
+        if (!updated.ok) throw new Error(updated.msg || 'Could not publish this product.');
+        toast(storeResult.store.status === 'published' ? 'Product is now visible in your online store.' : 'Product added. Publish your store from Online Store to make it public.');
+      } catch (error) {
+        toast(error.message || 'Could not publish this product.');
+      } finally {
+        if (button && button.isConnected) { button.disabled = false; button.textContent = 'Publish to Online Store'; }
+      }
+    }
+
     // ----- events on the list page -----
     root.addEventListener('click', e => {
       const t = e.target;
+      const publish = t.closest('[data-publish-product]');
+      if (publish) { e.preventDefault(); e.stopPropagation(); const menu = publish.closest('details'); if (menu) menu.open = false; publishProduct(publish.dataset.publishProduct, publish); return; }
       const act = t.closest('[data-act]');
       if (act) { const a = act.dataset.act; if (a === 'import') openImport(); if (a === 'discover') toast('Product sourcing is coming soon'); return; }
       if (t.closest('#pm-more')) return togglePop();

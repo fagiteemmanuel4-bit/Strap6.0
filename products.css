@@ -490,3 +490,12 @@ html[data-theme="dark"] .pm-page .pm-fl select,
 html[data-theme="dark"] .pm-page .pm-fl textarea,
 html[data-theme="dark"] .pm-page .pm-ed{color:var(--ink-primary)}
 html[data-theme="dark"] .pm-page .pm-drop{background:var(--bg-elevated);border-color:var(--border-subtle)}
+
+.pm-row,.pm-gc{position:relative}
+.pm-item-menu{position:absolute;top:10px;right:10px;z-index:8}
+.pm-item-menu>summary{list-style:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line,#e5e5df);border-radius:10px;background:var(--surface,#fff);color:var(--text,#111);cursor:pointer}
+.pm-item-menu>summary::-webkit-details-marker{display:none}
+.pm-item-menu[open]>summary{background:var(--surface-2,#f3f3ee)}
+.pm-item-pop{position:absolute;right:0;top:40px;min-width:190px;padding:5px;background:var(--surface,#fff);border:1px solid var(--line,#e5e5df);border-radius:12px;box-shadow:0 12px 32px #0002}
+.pm-item-pop button{display:block;width:100%;border:0;background:transparent;color:var(--text,#111);text-align:left;padding:11px 12px;border-radius:8px;font:600 12px system-ui,sans-serif;cursor:pointer}
+.pm-item-pop button:hover{background:var(--surface-2,#f3f3ee)}
