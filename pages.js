@@ -488,6 +488,7 @@ window.StrapPages = (() => {
   function mcp(root, ctx) {
     const endpoint = 'https://strap60.vercel.app/api/mcp';
     let snapshot = { branches: [], oauth_connections: [], connections: [], activity: [] };
+    let watchTimer = null, watchVis = null;
     const request = async (method, body) => {
       const response = await fetch('/api/mcp/keys', { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
       const data = await response.json().catch(() => ({}));
@@ -496,82 +497,148 @@ window.StrapPages = (() => {
     };
     const toolsRead = ['Read store profile','List permitted branches','Search products','Check low stock','Read sales history','Search customers'];
     const toolsWrite = ['Create products','Update products','Change stock','Upload product images'];
+    const PATHS = { eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', pen: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', plus: 'M12 5v14M5 12h14', chev: 'M9 5l7 7-7 7', lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z', check: 'M5 12.5l4.5 4.5L19 7.5', close: 'M6 6l12 12M18 6L6 18' };
+    const ic = (n, s = 22, w = 2) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + PATHS[n] + '"/></svg>';
+    const cutArt = '<svg class="mcp-cut" viewBox="0 0 320 120" aria-hidden="true"><circle class="a" cx="54" cy="60" r="40" fill="none" stroke-width="3"/><circle class="b" cx="54" cy="60" r="26"/><circle class="c" cx="54" cy="60" r="11"/><path class="a" d="M102 60h44M182 60h44" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 8"/><path class="x" d="M157 49l10 22M167 49l-10 22" stroke-width="4" stroke-linecap="round"/><rect class="b" x="234" y="28" width="64" height="64" rx="22"/><path class="c" d="M266 44q2.4 14 16 16-13.6 2-16 16-2.4-14-16-16 13.6-2 16-16z"/></svg>';
+    const initial = item => (String(item.client_name || '').trim()[0] || '✦').toUpperCase();
     const appIcon = item => {
-      let src = item.logo_uri || '';
-      if (!src && item.client_uri) { try { src = new URL('/favicon.ico', item.client_uri).toString(); } catch (_) {} }
-      if (!src) return '<span class="mcp-app-fallback">✦</span>';
-      return '<img class="mcp-app-icon" src="' + esc(src) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'mcp-app-fallback\',textContent:\'✦\'}))">';
+      let src = item.logo_uri || '', fb = '';
+      if (item.client_uri) { try { fb = new URL('/favicon.ico', item.client_uri).toString(); } catch (_) {} }
+      if (!src) { src = fb; fb = ''; }
+      if (!src) return '<span class="mcp-app-fallback">' + esc(initial(item)) + '</span>';
+      return '<img class="mcp-app-icon" src="' + esc(src) + '" data-fb="' + esc(fb) + '" data-initial="' + esc(initial(item)) + '" alt="" loading="lazy" referrerpolicy="no-referrer">';
     };
+    const hostOf = item => { try { return new URL(item.client_uri).host; } catch (_) { return ''; } };
     const branchSummary = item => {
       const ids = Array.isArray(item.branch_ids) ? item.branch_ids.map(String) : ['*'];
       return ids.includes('*') ? 'All branches' : ids.map(id => (snapshot.branches.find(b => String(b.id) === id) || {}).name || id).join(', ');
     };
+    const isWrite = item => (item.scopes || []).includes('store:write');
     const renderConnections = () => {
       const apps = Array.isArray(snapshot.oauth_connections) ? snapshot.oauth_connections : [];
-      if (!apps.length) return '<div class="mcp-empty"><span>✦</span><b>No AI apps connected yet</b><p>Connect an AI app to let it work with your Strap store. You control exactly what it can access.</p><button class="mcp-empty-cta" type="button" data-open-connect>Connect an AI app</button></div>';
+      if (!apps.length) return '<div class="mcp-empty">' + cutArt + '<b>Nothing connected yet</b><p>Apps you connect will show up here, each with its own permissions.</p></div>';
       return apps.map(item => {
-        const revoked = !!item.revoked_at, write = (item.scopes || []).includes('store:write');
-        let domain = ''; try { domain = new URL(item.client_uri).host; } catch (_) {}
-        return '<article class="mcp-linked-app" data-linked-app="' + esc(item.client_id) + '">' +
-          appIcon(item) + '<div class="mcp-linked-copy"><b>' + esc(item.client_name || 'Connected AI app') + '</b><small>' + esc(domain || 'AI connection') + '</small><span class="mcp-linked-meta">' + (revoked ? 'Access revoked' : (write ? 'Read & write' : 'Read only')) + ' · ' + esc(branchSummary(item)) + '</span></div>' +
-          '<span class="mcp-status ' + (revoked ? 'is-revoked' : '') + '">' + (revoked ? 'Revoked' : 'Connected') + '</span>' +
-          '<button class="mcp-manage-btn" type="button" data-manage="' + esc(item.client_id) + '" aria-label="Manage ' + esc(item.client_name || 'AI app') + '">Manage</button></article>';
+        const revoked = !!item.revoked_at;
+        return '<button type="button" class="mcp-linked-app' + (revoked ? ' is-revoked' : '') + '" data-manage="' + esc(item.client_id) + '" aria-label="Manage ' + esc(item.client_name || 'AI app') + '">' +
+          appIcon(item) + '<span class="mcp-linked-copy"><b>' + esc(item.client_name || 'Connected AI app') + '</b><small>' + esc(hostOf(item) || 'AI connection') + '</small><span class="mcp-linked-meta">' + (revoked ? 'Access revoked' : (isWrite(item) ? 'Read and write' : 'Read only')) + ' · ' + esc(branchSummary(item)) + '</span></span>' +
+          '<span class="mcp-status' + (revoked ? ' is-revoked' : '') + '">' + (revoked ? 'Revoked' : 'Connected') + '</span><span class="mcp-chev">' + ic('chev', 18, 2.2) + '</span></button>';
       }).join('');
     };
     const appSettings = item => {
       const ids = Array.isArray(item.branch_ids) ? item.branch_ids.map(String) : ['*'];
-      const all = ids.includes('*'), write = (item.scopes || []).includes('store:write'), revoked = !!item.revoked_at;
-      const options = '<option value="*" ' + (all ? 'selected' : '') + '>All branches</option>' + snapshot.branches.map(b => '<option value="' + esc(b.id) + '" ' + (!all && ids.includes(String(b.id)) ? 'selected' : '') + '>' + esc(b.name) + '</option>').join('');
-      const tools = (write ? toolsRead.concat(toolsWrite) : toolsRead).map(t => '<span class="mcp-tool-chip">' + esc(t) + '</span>').join('');
-      return '<div class="mcp-sheet-app">' + appIcon(item) + '<div><b>' + esc(item.client_name || 'Connected AI app') + '</b><small>' + esc(item.client_uri || 'Approved AI connection') + '</small></div></div>' +
-        '<label class="pm-fl"><span>Access level</span><select data-oauth-scope><option value="read" ' + (!write ? 'selected' : '') + '>Read only</option><option value="write" ' + (write ? 'selected' : '') + '>Read and write</option></select></label>' +
-        '<label class="pm-fl"><span>Branch access</span><select data-oauth-branches multiple size="4">' + options + '</select><small class="mcp-field-help">Select one or more branches. Choose All branches for full store access.</small></label>' +
-        '<div class="mcp-sheet-tools"><b>Available permissions</b><div class="mcp-tool-list">' + tools + '</div></div>' +
-        '<div class="mcp-sheet-actions"><button class="pm-add" type="button" data-oauth-save="' + esc(item.client_id) + '">' + (revoked ? 'Restore access' : 'Save changes') + '</button>' +
-        (revoked ? '' : '<button class="pm-imp danger" type="button" data-revoke-oauth="' + esc(item.client_id) + '">Revoke access</button>') + '</div>';
+      const all = ids.includes('*'), write = isWrite(item), revoked = !!item.revoked_at;
+      const chip = (v, label, on) => '<label class="mcp-chip"><input type="checkbox" name="mcp-branch" value="' + esc(v) + '" ' + (on ? 'checked' : '') + '><span>' + esc(label) + '</span></label>';
+      const opt = (v, title, desc, icon, on) => '<label class="mcp-opt"><input type="radio" name="mcp-scope" value="' + v + '" ' + (on ? 'checked' : '') + '><span class="mcp-opt-body"><span class="mcp-opt-ic">' + ic(icon, 21) + '</span><span class="mcp-opt-tx"><b>' + title + '</b><small>' + desc + '</small></span><span class="mcp-rd"></span></span></label>';
+      const perms = list => '<ul class="mcp-perms">' + list.map(t => '<li>' + ic('check', 15, 2.8) + esc(t) + '</li>').join('') + '</ul>';
+      return '<div class="mcp-sheet-app">' + appIcon(item) + '<div><b>' + esc(item.client_name || 'Connected AI app') + '</b><small>' + esc(item.client_uri || 'Approved AI connection') + '</small></div><span class="mcp-status' + (revoked ? ' is-revoked' : '') + '">' + (revoked ? 'Revoked' : 'Connected') + '</span></div>' +
+        '<div class="mcp-gh">What it can do</div>' +
+        opt('read', 'Read only', 'Can look at your store. Can’t change anything.', 'eye', !write) +
+        opt('write', 'Read and write', 'Can also add products, edit them and change stock.', 'pen', write) +
+        '<div class="mcp-gh">Branches</div><div class="mcp-chips">' + chip('*', 'All branches', all) + snapshot.branches.map(b => chip(b.id, b.name, !all && ids.includes(String(b.id)))).join('') + '</div>' +
+        '<div class="mcp-gh">Included</div><div class="mcp-perm-group"><b>Can see</b>' + perms(toolsRead) + '</div>' +
+        '<div class="mcp-perm-group mcp-write' + (write ? '' : ' is-locked') + '"><b>Can change</b>' + perms(toolsWrite) + '<small>Choose Read and write to allow these.</small></div>' +
+        '<div class="mcp-sheet-actions"><button class="mcp-btn" type="button" data-oauth-save="' + esc(item.client_id) + '">' + (revoked ? 'Restore access' : 'Save changes') + '</button>' +
+        (revoked ? '' : '<button class="mcp-btn danger" type="button" data-revoke-oauth="' + esc(item.client_id) + '">Revoke access</button>') + '</div>';
     };
+    const closeSheet = () => { stopWatch(); const sheet = root.querySelector('.mcp-sheet-backdrop'); if (sheet) sheet.remove(); document.body.classList.remove('mcp-sheet-open'); };
     const openSheet = (title, body, kind) => {
       closeSheet();
       const sheet = document.createElement('div'); sheet.className = 'mcp-sheet-backdrop'; sheet.dataset.mcpSheet = kind || 'settings';
       sheet.innerHTML = '<section class="mcp-sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
-        '<div class="mcp-sheet-grip"></div><header><div><small>STRAP MCP</small><h3>' + esc(title) + '</h3></div><button type="button" class="mcp-sheet-close" data-close-sheet aria-label="Close">×</button></header>' +
+        '<div class="mcp-sheet-grip"></div><header><h3>' + esc(title) + '</h3><button type="button" class="mcp-sheet-close" data-close-sheet aria-label="Close">' + ic('close', 19, 2.2) + '</button></header>' +
         '<div class="mcp-sheet-content">' + body + '</div></section>';
       root.appendChild(sheet); document.body.classList.add('mcp-sheet-open');
       requestAnimationFrame(() => sheet.classList.add('is-open'));
     };
-    const closeSheet = () => { const sheet = root.querySelector('.mcp-sheet-backdrop'); if (sheet) sheet.remove(); document.body.classList.remove('mcp-sheet-open'); };
-    const activityMarkup = () => snapshot.activity && snapshot.activity.length ? '<div class="mcp-activity-list">' + snapshot.activity.map(item => '<div><span class="mcp-activity-dot"></span><section><b>' + esc(String(item.action || 'AI activity').replaceAll('strap_', '').replaceAll('_', ' ')) + '</b><small>' + esc(item.branch_id || 'Store') + ' · ' + esc(item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently') + '</small></section></div>').join('') + '</div>' : '<div class="mcp-empty"><b>No AI activity yet</b><p>Actions taken by connected AI apps will appear here.</p></div>';
-    const tokenMarkup = () => {
-      const tokens = (snapshot.connections || []).map(item => '<div class="mcp-token-row"><div><b>' + esc(item.name || 'Private connection') + '</b><small>Private token · ' + esc((item.scopes || []).includes('store:write') ? 'Read & write' : 'Read only') + '</small></div><button class="pm-imp danger" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('');
-      return (tokens || '<p class="pg-note">No private tokens created.</p>');
+    const confirmBox = (title, text, yes) => new Promise(resolve => {
+      const m = document.createElement('div'); m.className = 'mcp-modal';
+      m.innerHTML = '<div class="mcp-modal-card" role="alertdialog" aria-modal="true" aria-label="' + esc(title) + '">' + cutArt + '<h3>' + esc(title) + '</h3><p>' + esc(text) + '</p><button type="button" class="mcp-btn danger" data-y>' + esc(yes) + '</button><button type="button" class="mcp-btn alt" data-n>Keep it</button></div>';
+      const done = v => { m.classList.remove('is-open'); setTimeout(() => m.remove(), 220); resolve(v); };
+      m.addEventListener('click', e => { if (e.target.closest('[data-y]')) done(true); else if (e.target.closest('[data-n]') || e.target === m) done(false); });
+      root.appendChild(m); requestAnimationFrame(() => m.classList.add('is-open'));
+    });
+    const activityMarkup = limit => {
+      const list = (snapshot.activity || []).slice(0, limit || 100);
+      if (!list.length) return '<p class="mcp-note">Actions taken by connected AI apps will appear here.</p>';
+      return '<div class="mcp-activity-list">' + list.map(item => {
+        const action = String(item.action || 'AI activity').replaceAll('strap_', '').replaceAll('_', ' ');
+        return '<div><span class="mcp-activity-dot' + (/create|update|change|upload|set|delete/i.test(action) ? ' is-write' : '') + '"></span><section><b>' + esc(action) + '</b><small>' + esc(item.branch_id || 'Store') + ' · ' + esc(item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently') + '</small></section></div>';
+      }).join('') + '</div>';
     };
-    const connectMarkup = () => '<p class="mcp-sheet-intro">Connect an AI app such as Claude using its secure approval flow. You will choose what it can read or change.</p>' +
-      '<label class="pm-fl"><span>MCP server address</span><div class="mcp-url-row"><input readonly value="' + endpoint + '"><button type="button" class="pm-imp" data-copy-endpoint>Copy</button></div></label>' +
-      '<ol class="mcp-steps"><li>Open your AI app and choose <b>Add custom connector</b> or <b>Add MCP server</b>.</li><li>Paste the server address. In Claude, choose <b>Use Claude’s published identity</b> when asked about OAuth client identity.</li><li>Continue to Strap, sign in and approve the requested access.</li></ol><p class="mcp-safety-note">Never share your AI app password. Only approve connection requests you started.</p>' +
-      '<details class="mcp-token-create"><summary>Create a private token instead</summary><p class="pg-note">For AI clients that do not support secure browser approval. Treat generated tokens like passwords.</p>' +
-      '<label class="pm-fl"><span>Connection name</span><input id="mcp-name" maxlength="80" placeholder="e.g. Local automation" autocomplete="off"></label>' +
-      '<label class="pm-fl"><span>Branch access</span><select id="mcp-branch"><option value="*">All branches</option>' + snapshot.branches.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('') + '</select></label>' +
-      '<label class="pm-fl"><span>Permissions</span><select id="mcp-scope"><option value="read">Read only</option><option value="write">Read and write</option></select></label>' +
-      '<button class="pm-add wide" type="button" data-create>Generate private token</button><div id="mcp-new-token" hidden></div></details>' +
+    const tokenMarkup = () => {
+      const tokens = (snapshot.connections || []).map(item => '<div class="mcp-token-row"><div><b>' + esc(item.name || 'Private connection') + '</b><small>Private token · ' + esc(isWrite(item) ? 'Read and write' : 'Read only') + '</small></div><button class="mcp-mini danger" type="button" data-revoke="' + esc(item.id) + '">Revoke</button></div>').join('');
+      return tokens || '<p class="mcp-note">No private tokens created.</p>';
+    };
+    const connectMarkup = () => '<p class="mcp-sheet-intro">Add Strap to your AI app. Once it connects, Strap detects the app’s name and icon for you.</p>' +
+      '<div class="mcp-gh">Server address</div><div class="mcp-key"><input readonly value="' + endpoint + '" aria-label="MCP server address"><button type="button" data-copy-endpoint>Copy</button></div>' +
+      '<ol class="mcp-steps"><li>Open your AI app and choose <b>Add custom connector</b> or <b>Add MCP server</b>.</li><li>Paste the server address. In Claude, choose <b>Use Claude’s published identity</b> when asked about OAuth client identity.</li><li>Continue to Strap, sign in and approve the access it asks for.</li></ol>' +
+      '<div class="mcp-wait" id="mcp-wait" aria-live="polite"><i class="mcp-spin"></i><span>Waiting for your AI app to connect…</span></div>' +
+      '<p class="mcp-safety-note">Only approve connection requests you started.</p>' +
+      '<details class="mcp-token-create"><summary>Create a private token instead</summary><p class="mcp-note">For AI clients that can’t use secure browser approval. Treat a token like a password.</p>' +
+      '<label class="mcp-field"><span>Connection name</span><input id="mcp-name" maxlength="80" placeholder="e.g. Local automation" autocomplete="off"></label>' +
+      '<label class="mcp-field"><span>Branch access</span><select id="mcp-branch"><option value="*">All branches</option>' + snapshot.branches.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('') + '</select></label>' +
+      '<label class="mcp-field"><span>Permissions</span><select id="mcp-scope"><option value="read">Read only</option><option value="write">Read and write</option></select></label>' +
+      '<button class="mcp-btn" type="button" data-create>Generate private token</button><div id="mcp-new-token" hidden></div></details>' +
       '<div class="mcp-existing-tokens"><b>Private tokens</b>' + tokenMarkup() + '</div>';
+    const paintHome = () => {
+      const apps = Array.isArray(snapshot.oauth_connections) ? snapshot.oauth_connections : [];
+      const active = apps.filter(x => !x.revoked_at).length;
+      const c = $('#mcp-count', root); if (c) c.textContent = apps.length ? active + ' connected' : '';
+      const l = $('#mcp-connections', root); if (l) l.innerHTML = renderConnections();
+      const a = $('#mcp-activity', root); if (a) a.innerHTML = activityMarkup(5);
+      const all = $('#mcp-all', root); if (all) all.hidden = !(snapshot.activity || []).length;
+    };
+    /* ---- auto-detect the app: no picking, we watch for the new connection ---- */
+    function stopWatch() { if (watchTimer) clearInterval(watchTimer); watchTimer = null; if (watchVis) document.removeEventListener('visibilitychange', watchVis); watchVis = null; }
+    const startWatch = () => {
+      stopWatch();
+      const base = new Map((snapshot.oauth_connections || []).map(x => [String(x.client_id), !!x.revoked_at]));
+      const started = Date.now();
+      const check = async () => {
+        if (!root.querySelector('[data-mcp-sheet="connect"]') || Date.now() - started > 900000) return stopWatch();
+        try {
+          const fresh = await request('GET'); snapshot = fresh;
+          const hit = (fresh.oauth_connections || []).find(x => !x.revoked_at && (!base.has(String(x.client_id)) || base.get(String(x.client_id)) === true));
+          if (!hit) return;
+          stopWatch(); paintHome();
+          const box = $('#mcp-wait', root);
+          if (box) { box.className = 'mcp-found'; box.innerHTML = appIcon(hit) + '<span><b>' + esc(hit.client_name || 'Your AI app') + ' is connected</b><small>' + esc(hostOf(hit) || 'Approved just now') + '</small></span><div class="mcp-found-actions"><button class="mcp-btn" type="button" data-manage="' + esc(hit.client_id) + '">Choose permissions</button><button class="mcp-btn alt" type="button" data-close-sheet>Done</button></div>'; }
+          ctx.toast((hit.client_name || 'AI app') + ' connected');
+        } catch (_) {}
+      };
+      watchTimer = setInterval(check, 3000);
+      watchVis = () => { if (!document.hidden) check(); };
+      document.addEventListener('visibilitychange', watchVis);
+    };
     const draw = async () => {
       root.innerHTML = head('plug', 'MCP') +
-        '<section class="mcp-home"><div class="mcp-home-heading"><div><p class="mcp-kicker">YOUR AI CONNECTIONS</p><h2>Connected apps</h2><p>AI tools you’ve approved to work with your store.</p></div><span class="mcp-count" id="mcp-count">—</span></div>' +
-        '<div id="mcp-connections" class="mcp-linked-list"><div class="mcp-loading">Loading connected apps…</div></div>' +
-        '<div class="mcp-home-actions"><button class="mcp-connect-btn" type="button" data-open-connect><span>＋</span> Connect AI app</button><button class="mcp-quiet-btn" type="button" data-open-activity>Activity</button></div>' +
-        '<button class="mcp-settings-link" type="button" data-open-connect>Connection setup and advanced settings <span>↗</span></button></section>';
-      try {
-        snapshot = await request('GET');
-        const activeCount = (snapshot.oauth_connections || []).filter(x => !x.revoked_at).length;
-        $('#mcp-count', root).textContent = String(activeCount);
-        $('#mcp-connections', root).innerHTML = renderConnections();
-      } catch (error) {
-        $('#mcp-connections', root).innerHTML = '<div class="mcp-empty"><b>Could not load connections</b><p>' + esc(error.message) + '</p><button class="mcp-quiet-btn" type="button" data-refresh>Try again</button></div>';
-      }
+        '<section class="mcp-home"><p class="mcp-lede">Let an AI app work with your store. You decide what it can do, and you can stop it any time.</p>' +
+        '<button class="mcp-connect-btn" type="button" data-open-connect>Connect an AI app<i>' + ic('plus', 22, 2.4) + '</i></button>' +
+        '<div class="mcp-sec"><h2>Your apps</h2><small id="mcp-count"></small></div>' +
+        '<div id="mcp-connections" class="mcp-linked-list"><div class="mcp-loading"><i class="mcp-spin"></i>Loading connected apps…</div></div>' +
+        '<div class="mcp-sec"><h2>Recent activity</h2><button type="button" class="mcp-link" id="mcp-all" data-open-activity hidden>See all</button></div>' +
+        '<div id="mcp-activity"></div></section>';
+      try { snapshot = await request('GET'); paintHome(); }
+      catch (error) { $('#mcp-connections', root).innerHTML = '<div class="mcp-empty"><b>Could not load connections</b><p>' + esc(error.message) + '</p><button class="mcp-mini" type="button" data-refresh>Try again</button></div>'; }
     };
+    root.addEventListener('error', event => {
+      const img = event.target; if (!img || img.tagName !== 'IMG' || !img.classList.contains('mcp-app-icon')) return;
+      if (img.dataset.fb && !img.dataset.tried) { img.dataset.tried = '1'; img.src = img.dataset.fb; return; }
+      img.replaceWith(Object.assign(document.createElement('span'), { className: 'mcp-app-fallback', textContent: img.dataset.initial || '✦' }));
+    }, true);
+    root.addEventListener('change', event => {
+      const t = event.target, sheet = t.closest && t.closest('.mcp-sheet'); if (!sheet) return;
+      if (t.name === 'mcp-scope') { const g = $('.mcp-write', sheet); if (g) g.classList.toggle('is-locked', t.value !== 'write'); }
+      if (t.name === 'mcp-branch') {
+        const boxes = Array.from(sheet.querySelectorAll('input[name="mcp-branch"]')), all = boxes.find(b => b.value === '*');
+        if (t.value === '*' && t.checked) boxes.forEach(b => { if (b !== t) b.checked = false; });
+        else if (t.checked && all) all.checked = false;
+        if (!boxes.some(b => b.checked) && all) all.checked = true;
+      }
+    });
     root.addEventListener('click', async event => {
       if (event.target.closest('[data-close-sheet]') || (event.target.classList.contains('mcp-sheet-backdrop'))) return closeSheet();
-      if (event.target.closest('[data-open-connect]')) return openSheet('Connect an AI app', connectMarkup(), 'connect');
+      if (event.target.closest('[data-open-connect]')) { openSheet('Connect an AI app', connectMarkup(), 'connect'); return startWatch(); }
       if (event.target.closest('[data-open-activity]')) return openSheet('Recent AI activity', activityMarkup(), 'activity');
       if (event.target.closest('[data-refresh]')) return draw();
       const manage = event.target.closest('[data-manage]');
@@ -586,9 +653,9 @@ window.StrapPages = (() => {
           const data = await request('POST', { name, scopes: scope === 'write' ? ['store:read', 'store:write'] : ['store:read'], branch_ids: [branch] });
           const panel = $('#mcp-new-token', root); panel.hidden = false;
           const config = JSON.stringify({ url: endpoint, headers: { Authorization: 'Bearer ' + data.access_token } }, null, 2);
-          panel.innerHTML = '<div class="pg-note"><b>Copy this token now.</b> Strap will not show it again.</div><textarea readonly rows="3" id="mcp-token-value">' + esc(data.access_token) + '</textarea><button type="button" class="pm-add wide" data-copy-token>Copy token</button><textarea readonly rows="5" id="mcp-config-value">' + esc(config) + '</textarea><button type="button" class="pm-imp" data-copy-config>Copy client configuration</button>';
+          panel.innerHTML = '<p class="mcp-note"><b>Copy this token now.</b> Strap will not show it again.</p><textarea readonly rows="3" id="mcp-token-value">' + esc(data.access_token) + '</textarea><button type="button" class="mcp-btn" data-copy-token>Copy token</button><textarea readonly rows="5" id="mcp-config-value">' + esc(config) + '</textarea><button type="button" class="mcp-btn alt" data-copy-config>Copy client configuration</button>';
           ctx.toast('Private token created');
-          const fresh = await request('GET'); snapshot = fresh;
+          snapshot = await request('GET');
           const list = root.querySelector('.mcp-existing-tokens'); if (list) list.innerHTML = '<b>Private tokens</b>' + tokenMarkup();
         } catch (error) { ctx.toast(error.message); }
         finally { if (createButton.isConnected) createButton.disabled = false; }
@@ -596,8 +663,8 @@ window.StrapPages = (() => {
       }
       const oauthSave = event.target.closest('[data-oauth-save]');
       if (oauthSave) {
-        const sheet = oauthSave.closest('.mcp-sheet'), scope = $('select[data-oauth-scope]', sheet).value;
-        const selected = Array.from($('select[data-oauth-branches]', sheet).selectedOptions).map(option => option.value);
+        const sheet = oauthSave.closest('.mcp-sheet'), picked = $('input[name="mcp-scope"]:checked', sheet), scope = picked ? picked.value : 'read';
+        const selected = Array.from(sheet.querySelectorAll('input[name="mcp-branch"]:checked')).map(box => box.value);
         if (!selected.length) return ctx.toast('Choose at least one branch.');
         oauthSave.disabled = true;
         try { await request('PATCH', { client_id: oauthSave.dataset.oauthSave, scopes: scope === 'write' ? ['store:read', 'store:write'] : ['store:read'], branch_ids: selected.includes('*') ? ['*'] : selected }); ctx.toast('Access settings saved'); closeSheet(); await draw(); }
@@ -606,15 +673,16 @@ window.StrapPages = (() => {
       }
       const revokeOAuth = event.target.closest('[data-revoke-oauth]');
       if (revokeOAuth) {
-        if (!confirm('Revoke this app? It will immediately lose access to your Strap store.')) return;
+        const item = (snapshot.oauth_connections || []).find(x => String(x.client_id) === revokeOAuth.dataset.revokeOauth), name = (item && item.client_name) || 'this app';
+        if (!await confirmBox('Revoke ' + name + '?', name + ' loses access to your store right away. You can restore it later.', 'Revoke access')) return;
         try { await request('DELETE', { client_id: revokeOAuth.dataset.revokeOauth }); ctx.toast('App access revoked'); closeSheet(); await draw(); }
         catch (error) { ctx.toast(error.message); }
         return;
       }
       const revoke = event.target.closest('[data-revoke]');
       if (revoke) {
-        if (!confirm('Revoke this private token? It will stop working immediately.')) return;
-        try { await request('DELETE', { id: revoke.dataset.revoke }); ctx.toast('Token revoked'); const fresh = await request('GET'); snapshot = fresh; const list = root.querySelector('.mcp-existing-tokens'); if (list) list.innerHTML = '<b>Private tokens</b>' + tokenMarkup(); }
+        if (!await confirmBox('Revoke this token?', 'It will stop working immediately.', 'Revoke token')) return;
+        try { await request('DELETE', { id: revoke.dataset.revoke }); ctx.toast('Token revoked'); snapshot = await request('GET'); const list = root.querySelector('.mcp-existing-tokens'); if (list) list.innerHTML = '<b>Private tokens</b>' + tokenMarkup(); }
         catch (error) { ctx.toast(error.message); }
         return;
       }
@@ -623,7 +691,6 @@ window.StrapPages = (() => {
     });
     draw();
   }
-  const MAP = { 'sales-today': (r, c) => StrapSales.today(r, c), 'sales-history': (r, c) => StrapSales.history(r, c), 'new-sale': (r, c) => StrapSales.mount(r, c), growth, online, mcp, activity, devices, settings: (r, c) => StrapSettings.mount(r, c), inventory };
   function build(id, root, ctx) {
     ctxRef = ctx;
     if (id === 'collections') return collections(root, ctx);
