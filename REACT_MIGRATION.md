@@ -30,3 +30,10 @@ The app currently uses classic browser scripts and global modules (`StrapAPI`, `
 ## Current status
 
 Phase 1 introduces the React/Vite runtime entry points and keeps the existing DOM-driven screens running as a compatibility layer. This is intentionally not presented as a completed React rewrite; feature modules must be migrated in subsequent phases.
+
+
+## Phase 2 — React-owned shared UI (in progress)
+
+- Toast rendering is now a React component mounted into the existing toast host; the dashboard uses this React API with a legacy fallback.
+- The shared picker bottom-sheet shell is now rendered by React while preserving the existing picker markup, CSS class names, delegated option handlers, keyboard dismissal, and native form controls.
+- Picker contents and feature pages remain compatibility DOM during this stage; their behaviour and appearance are intentionally unchanged.
