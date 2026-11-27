@@ -10,6 +10,8 @@ window.StrapUI = (() => {
     gift: '<rect x="3.5" y="8.5" width="17" height="4" rx="1.2"/><path d="M5 12.5V20h14v-7.5M12 8.5V20"/><path d="M12 8.5c-1-3.5-5.5-3.5-5.5-1.2 0 1.6 2.6 1.2 5.5 1.2zm0 0c1-3.5 5.5-3.5 5.5-1.2 0 1.6-2.6 1.2-5.5 1.2z"/>',
     collections: '<rect x="3.5" y="8" width="13" height="12" rx="2.5"/><path d="M7.5 4.5h11a2 2 0 0 1 2 2V16"/>',
     inventory: '<path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16z"/><path d="m3.5 8 8.5 4.5L20.5 8M12 12.5v8"/>',
+    box: '<path d="m3.5 7 8.5-4 8.5 4-8.5 4z"/><path d="M3.5 7v10l8.5 4 8.5-4V7M12 11v10"/>',
+    alert: '<path d="M12 3.5 21 20H3z"/><path d="M12 9v4.5M12 17h.01"/>',
     clipboard: '<rect x="5.5" y="4.5" width="13" height="16" rx="2.5"/><path d="M9 4.5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v.5M9 11h6M9 15h4"/>',
     transfer: '<path d="M4 8h14m0 0-3.5-3.5M18 8l-3.5 3.5"/><path d="M20 16H6m0 0 3.5-3.5M6 16l3.5 3.5"/>',
     plug: '<path d="M9 3.5v5M15 3.5v5"/><path d="M6.5 8.5h11v3.5a5.5 5.5 0 0 1-11 0z"/><path d="M12 17.5v3"/>',
