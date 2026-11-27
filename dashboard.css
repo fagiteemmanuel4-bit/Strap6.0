@@ -170,3 +170,88 @@ body.is-dash{background:var(--black)}
 @media(prefers-reduced-motion:reduce){
   .dash.go .dsheet,.dash.go .in,.dash.go .tabs,.dash.go .ln>span{animation:none!important}
 }
+
+
+/* Dashboard craft pass — layout-only refinements; all existing controls remain intact. */
+.pane[data-id="home"]{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  align-content:start;
+}
+.pane[data-id="home"] > .dh,
+.pane[data-id="home"] > .hi,
+.pane[data-id="home"] > .sec,
+.pane[data-id="home"] > .rev,
+.pane[data-id="home"] > .sl-card{
+  min-width:0;
+}
+.pane[data-id="home"] > .sec{
+  margin-top:clamp(26px,5vh,38px);
+  margin-bottom:14px;
+}
+.pane[data-id="home"] > .rev{
+  margin-bottom:12px;
+  border-radius:26px;
+  box-shadow:0 16px 32px -24px rgba(10,10,10,.58);
+}
+.pane[data-id="home"] > .sl-card{
+  border-radius:22px;
+  margin-bottom:18px;
+}
+.pane[data-id="home"] > .sc{
+  border-radius:20px;
+  border-color:var(--border-subtle);
+  box-shadow:0 5px 18px -16px rgba(10,10,10,.24);
+  min-width:0;
+  margin-bottom:10px;
+}
+.pane[data-id="home"] > .sc .ic{
+  width:50px;
+  height:50px;
+  border-radius:16px;
+}
+.pane[data-id="home"] > .sc .lb{
+  line-height:1.35;
+}
+.pane[data-id="home"] > .sc .vl{
+  letter-spacing:-.045em;
+}
+.pane[data-id="home"] > .sc .sb{
+  line-height:1.4;
+}
+.pane[data-id="home"] .bell{
+  box-shadow:none;
+  border-color:var(--border-subtle);
+}
+@media(min-width:560px){
+  .dsheet{max-width:680px;padding-left:32px;padding-right:32px}
+  .pane[data-id="home"]{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:14px;
+  }
+  .pane[data-id="home"] > .dh,
+  .pane[data-id="home"] > .hi,
+  .pane[data-id="home"] > .sec,
+  .pane[data-id="home"] > .rev,
+  .pane[data-id="home"] > .sl-card{
+    grid-column:1 / -1;
+  }
+  .pane[data-id="home"] > .sc{
+    margin:0;
+    padding:16px;
+  }
+  .pane[data-id="home"] > .sc .ic{
+    width:46px;
+    height:46px;
+  }
+}
+@media(max-width:359px){
+  .dsheet{padding-left:14px;padding-right:14px}
+  .pane[data-id="home"] > .sc{padding:14px;gap:12px}
+  .pane[data-id="home"] > .sc .ic{width:44px;height:44px;border-radius:14px}
+  .pane[data-id="home"] > .sc .vl{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce){
+  .pane[data-id="home"] > .sc,
+  .pane[data-id="home"] > .rev{transition:none}
+}
