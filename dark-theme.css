@@ -414,31 +414,3 @@ html[data-theme="dark"] :where(.toast){background:#080808!important;color:#fff!i
 html[data-theme="dark"] :where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid #fff!important;outline-offset:3px}
 html[data-theme="dark"] :where(button:disabled,[aria-disabled="true"],.disabled){opacity:.55}
 @media(prefers-contrast:more){html[data-theme="dark"] :where(.sc,.sl-card,.row,.pm-box,.pm-card,.pm-opt,.kt-opt,.kt-dd,.bill-card,.bill-payment,.bill-result,.mcp-linked-app,.mcp-sheet){border-color:#fff!important}}
-
-
-/* App-wide monochrome dark mode: white foregrounds on black surfaces. */
-html[data-theme="dark"] body,
-html[data-theme="dark"] body.is-dash,
-html[data-theme="dark"] :where(.dash,.pane,.pm-page,.fx-screen,.fx-gate,.ob,.sf,.bill-workspace,.workspace,.page-shell){background:#000!important;color:#fff!important}
-html[data-theme="dark"] :where(.dsheet,.drawer,.sidebar,.nav-drawer,.ds-panel,.ds-menu,.ds-body,.ds-nav,.ds-group,.ds-item,.ds-link,.ds-search,.ds-profile,.ds-user,.ds-open,.ds-close){color:#fff!important}
-html[data-theme="dark"] :where(.dsheet,.drawer,.sidebar,.nav-drawer,.ds-panel,.ds-menu,.ds-body,.ds-nav){background:#050505!important;border-color:#303030!important}
-html[data-theme="dark"] :where(.ds-item,.ds-link,.ds-nav a,.ds-nav button,.ds-group-title,.ds-label,.ds-section-title){color:#fff!important}
-html[data-theme="dark"] :where(.ds-item,.ds-link):hover,html[data-theme="dark"] :where(.ds-item,.ds-link)[aria-current="page"]{background:#202020!important;color:#fff!important}
-html[data-theme="dark"] :where(.sc,.sl-card,.row,.pg-rows,.pg-prof,.pg-sum div,.pm-box,.pm-card,.pm-search,.pm-pop,.pm-opt,.pm-site,.pm-sheet,.pm-img,.sx-p,.sx-chip,.sx-stock,.kt-card,.kt-col,.kt-opt,.kt-dd,.kt-hex,.bill-card,.bill-metrics article,.bill-payment,.bill-result,.bill-receipt,.bill-price-card,.bill-note,.bill-empty,.mcp-linked-app,.mcp-sheet,.dd-sheet,.gc-slip,.gc-terms,.form-card,.field-card,.settings-card){background:#090909!important;color:#fff!important;border-color:#303030!important}
-html[data-theme="dark"] :where(.sc,.sl-card,.row,.pg-rows,.pg-prof,.pm-box,.pm-card,.pm-opt,.pm-site,.kt-card,.kt-col,.bill-card,.bill-payment,.bill-result,.mcp-linked-app,.mcp-sheet,.gc-slip,.gc-terms) :where(h1,h2,h3,h4,p,span,label,strong,small,b,em){color:inherit}
-html[data-theme="dark"] :where(.pm-fl,.pm-field,.field,.form-field,.form-field-wrap,.bill-field,.mcp-field,.setting-field,.receipt-field,.st-field){background:#080808!important;color:#fff!important}
-html[data-theme="dark"] :where(input,textarea,select,.pm-fl input,.pm-fl textarea,.pm-fl select,.bill-field input,.mcp-field input,.mcp-field select){background:#111!important;color:#fff!important;border-color:#555!important}
-html[data-theme="dark"] :where(input,textarea,select)::placeholder{color:#aaa!important;opacity:1}
-html[data-theme="dark"] :where(label,.field-label,.pm-fl label,.bill-field label,.mcp-field label,.setting-label){color:#fff!important}
-html[data-theme="dark"] :where(button,a,.btn,.button,.tab,.pm-pill,.pm-x,.pg-r,.bill-links>button,.mcp-manage-btn,.mcp-quiet-btn){color:#fff}
-html[data-theme="dark"] :where(.btn-secondary,.button-secondary,.bill-secondary,.pm-pill,.pm-x,.pg-r,.bill-links>button,.mcp-manage-btn,.mcp-quiet-btn){background:#171717!important;border-color:#444!important;color:#fff!important}
-html[data-theme="dark"] :where(.btn-primary,.button-primary,.bill-primary,.gc-download){background:var(--accent-primary)!important;color:#000!important;border-color:var(--accent-primary)!important}
-html[data-theme="dark"] :where(.tabs,.tab-list,.segmented,.segmented-control,.filter-bar,.toolbar){background:#111!important;border-color:#333!important}
-html[data-theme="dark"] :where(.tab,.filter-bar button,.toolbar button){color:#ddd!important}
-html[data-theme="dark"] :where(.tab.active,.tab.on,.filter-bar button.active,.filter-bar button.on){background:#242424!important;color:#fff!important}
-html[data-theme="dark"] :where(.divider,hr,.separator){border-color:#333!important}
-html[data-theme="dark"] :where(.muted,.meta,.hint,.help,.subtitle,.description,.empty-state p){color:#c7c7c7!important}
-html[data-theme="dark"] :where(.toast,.popover,.dropdown-menu,.menu-panel,.tooltip,.modal,.dialog,.sheet,.bottom-sheet){background:#090909!important;color:#fff!important;border-color:#444!important}
-html[data-theme="dark"] :where(.toast,.popover,.dropdown-menu,.menu-panel,.tooltip,.modal,.dialog,.sheet,.bottom-sheet) :where(h1,h2,h3,p,span,label,button,small,strong){color:inherit}
-html[data-theme="dark"] :where(button:disabled,[aria-disabled="true"],.disabled){color:#aaa!important;opacity:.7}
-html[data-theme="dark"] :where(button,a,input,select,textarea,[tabindex]):focus-visible{outline-color:var(--focus-ring)!important}
