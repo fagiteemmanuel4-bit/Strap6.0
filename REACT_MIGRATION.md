@@ -37,3 +37,10 @@ Phase 1 introduces the React/Vite runtime entry points and keeps the existing DO
 - Toast rendering is now a React component mounted into the existing toast host; the dashboard uses this React API with a legacy fallback.
 - The shared picker bottom-sheet shell is now rendered by React while preserving the existing picker markup, CSS class names, delegated option handlers, keyboard dismissal, and native form controls.
 - Picker contents and feature pages remain compatibility DOM during this stage; their behaviour and appearance are intentionally unchanged.
+
+
+## Phase 3 — first React feature pages
+
+- Customers and Purchase orders are now mounted as React components.
+- Their existing page class names, icons, empty-state illustrations, row layout, bottom-sheet form styling, validation, duplicate-customer protection, and local record-store calls are preserved.
+- These pages retain their existing `onShow` refresh contract and do not change the database or API.
