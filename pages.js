@@ -385,15 +385,15 @@ window.StrapPages = (() => {
   }
   function online(root, ctx) {
     let store = null, products = [], orders = [], step = 1, saving = false;
+    const request = (method, path, body) => StrapAPI.call(method, path, body);
+    const storeSlug = value => String(value || '').toLowerCase().normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
     let draft = {
       name: ctx.store.bizname || '', slug: storeSlug(ctx.store.bizname || ''),
       currency: ctx.store.currency || 'NGN', description: '', phone: '', email: '',
       address: '', announcement: '', deliveryFee: '0', bankName: '',
       accountNumber: '', accountName: '', bankInstructions: ''
     };
-    const request = (method, path, body) => StrapAPI.call(method, path, body);
-    const storeSlug = value => String(value || '').toLowerCase().normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
     const field = (label, key, value, placeholder, type = 'text', required = false) =>
       '<label class="sf-admin-field"><span>' + label + '</span><input data-sf-field="' + key + '" name="' + key + '" type="' + type + '" value="' + esc(value == null ? '' : value) + '" placeholder="' + esc(placeholder || '') + '"' + (required ? ' required' : '') + '></label>';
     const area = (label, key, value, placeholder) =>
@@ -439,6 +439,8 @@ window.StrapPages = (() => {
         capture();
         if (step === 1) {
           if (draft.name.length < 2) return ctx.toast('Enter your store name.');
+          draft.currency = String(draft.currency || 'NGN').toUpperCase();
+          if (!/^[A-Z]{3}$/.test(draft.currency)) return ctx.toast('Enter a valid 3-letter currency code, such as NGN.');
           draft.slug = storeSlug(draft.slug || draft.name);
           if (draft.slug.length < 3) return ctx.toast('Your store link needs at least 3 characters.');
           step = 2; return drawSetup();
