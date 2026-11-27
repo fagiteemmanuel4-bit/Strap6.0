@@ -363,3 +363,54 @@ html[data-theme="dark"] :where(.dd-tile,.dd-ck){
 html[data-theme="dark"] :where(.pm-sheet,.dd-sheet,.dr-panel){
   overscroll-behavior:contain;
 }
+
+/* High-contrast monochrome dark mode: white surfaces become black; black ink becomes white. */
+html[data-theme="dark"] body,
+html[data-theme="dark"] body.is-dash,
+html[data-theme="dark"] .dash,
+html[data-theme="dark"] .flow,
+html[data-theme="dark"] .land,
+html[data-theme="dark"] .fx-screen,
+html[data-theme="dark"] .dsheet,
+html[data-theme="dark"] .pm-page,
+html[data-theme="dark"] .dr-panel,
+html[data-theme="dark"] .pm-sheet,
+html[data-theme="dark"] .dd-sheet,
+html[data-theme="dark"] .kt-card,
+html[data-theme="dark"] .bill-workspace,
+html[data-theme="dark"] .bill-workspace .fx-in {background:#000!important;color:#fff!important}
+html[data-theme="dark"] :where(.dsheet,.sl-card,.sc,.row,.pg-rows,.pg-prof,.pg-sum div,.pm-box,.pm-card,.pm-pop,.pm-opt,.pm-site,.pm-sheet,.pm-fl,.pm-search,.kt-opt,.kt-dd,.kt-col,.kt-card,.sx-p,.sx-chip,.sx-stock,.bill-card,.bill-metrics article,.bill-payment,.bill-result,.bill-receipt,.bill-price-card,.bill-note,.bill-empty,.bill-loading,.fx-card,.fx-doc,.fx-drop,.fx-search,.fx-chip,.paycard,.gc-view,.dd-o,.dd-card,.dd-nav,.dd-t,.dd-new input,.toast,.tabs,.staff-bar){
+ background:#080808!important;color:#fff!important;border-color:#303030!important;box-shadow:none}
+html[data-theme="dark"] :where(.dr-panel,.dr-top,.dr-nav,.dr-group,.dr-item,.dr-link,.dr-section,.dr-search,.dr-footer,.dr-panel a,.dr-panel button){
+ color:#fff!important}
+html[data-theme="dark"] :where(.dr-panel,.dr-search,.dr-open,.dr-close){background:#050505!important;border-color:#333!important}
+html[data-theme="dark"] :where(.dr-panel svg,.dr-panel .ic,.dr-panel [data-icon]){color:#fff!important;stroke:currentColor}
+html[data-theme="dark"] :where(label,.label,.lb,.pg-row b,.pg-row small,.pg-r,.pg-r b,.pm-title,.pm-info,.pm-info b,.pm-info small,.pm-gc,.pm-gc small,.pm-price,.pm-fl label,.pm-fl span,.kt-opt,.kt-dd,.kt-ddl,.kt-cl,.sx-title,.sx-p,.sx-bt,.bill-workspace label,.bill-workspace p,.bill-workspace h1,.bill-workspace h2,.bill-workspace h3,.bill-workspace small,.bill-workspace .bill-text-btn,.fx-screen label,.fx-screen p,.fx-screen small,.fx-screen h1,.fx-screen h2,.fx-screen h3,.fx-gate label,.fx-gate p,.fx-gate small,.fx-gate h1,.fx-gate h2,.fx-gate h3,.dd-sheet label,.dd-sheet small,.dd-sheet b,.dd-sheet span){color:#fff!important}
+html[data-theme="dark"] :where(input,textarea,select,.pm-fl input,.pm-fl textarea,.pm-fl select,.bill-field input,.dd-new input,.kt-dd input){
+ background:#080808!important;color:#fff!important;border-color:#555!important}
+html[data-theme="dark"] :where(input,textarea,select)::placeholder{color:#bdbdbd!important;opacity:1}
+html[data-theme="dark"] :where(.rev,.pg-big,.pm-pill.dark,.pm-selbar,.kt-b:not(.alt),.sx-bar-in,.bill-hero,.bill-primary,.bill-filter button.on,.fx-btn:not(.o):not(.r),.gc-download,.dd-chip.on){
+ background:#fff!important;color:#000!important;border-color:#fff!important}
+html[data-theme="dark"] :where(.rev,.pg-big,.pm-pill.dark,.pm-selbar,.kt-b:not(.alt),.sx-bar-in,.bill-hero,.bill-primary,.bill-filter button.on,.fx-btn:not(.o):not(.r),.gc-download,.dd-chip.on) :where(span,b,strong,small,svg,i){color:#000!important;stroke:currentColor}
+html[data-theme="dark"] :where(.av,.rev .ic,.pm-tico,.fx-gs .ic){background:var(--accent-primary)!important;color:#000!important}
+html[data-theme="dark"] :where(.av,.rev .ic,.pm-tico,.fx-gs .ic) svg{color:#000!important;stroke:currentColor}
+html[data-theme="dark"] :where(.pm-round,.pm-pill,.pm-pl,.pm-icobtn,.pm-x,.pg-ico,.pg-pill,.st-ri,.st-seg,.st-pv,.st-pinc,.kt-mic,.kt-sw,.kt-cl,.bill-secondary,.bill-links,.bill-links button,.bill-filter button,.mcp-manage-btn,.mcp-quiet-btn,.dd-nav,.dd-chip,.dd-card,.dd-s,.gc-view,.gc-slip-actions button){
+ background:#080808!important;color:#fff!important;border-color:#444!important}
+html[data-theme="dark"] :where(.pm-sep,.pm-tools,.pm-row,.pg-row,.pg-r,.ds-sep,.bill-kv,.bill-hero-foot,.bill-receipt-brand,.bill-switch,.mcp-sheet>header,.mcp-sheet-tools,.mcp-token-create,.mcp-existing-tokens,.mcp-activity-list>div){border-color:#333!important}
+html[data-theme="dark"] :where(.pm-search input,.pm-fl input,.pm-fl textarea,.pm-fl select,.pm-sheet input,.pm-sheet textarea,.pm-sheet select,.fx-screen input,.fx-screen textarea,.fx-screen select,.ob input,.sf input,.bill-field input,.mcp-sheet-content input,.mcp-sheet-content select,.mcp-sheet-content textarea,.kt-hex input){background:#050505!important;color:#fff!important;border-color:#555!important}
+html[data-theme="dark"] :where(.bill-status.active,.bill-status.successful,.fx-badge.green){background:var(--status-success-bg)!important;color:var(--status-success)!important}
+html[data-theme="dark"] :where(.bill-status.pending,.fx-badge.amber){background:var(--status-warning-bg)!important;color:var(--status-warning)!important}
+html[data-theme="dark"] :where(.bill-status.failed,.bill-status.expired,.fx-badge.red,.sc.warn){background:var(--status-danger-bg)!important;color:var(--status-danger)!important}
+html[data-theme="dark"] :where(.pm-del,.kt-b.danger,.fx-btn.r){background:#45100d!important;color:#ffb0a8!important;border-color:#a43b32!important}
+html[data-theme="dark"] .gc-slip{background:#050505!important;color:#fff!important;border-color:#444!important}
+html[data-theme="dark"] .gc-front{background:#080808!important;color:#fff!important}
+html[data-theme="dark"] .gc-front :where(.gc-amount,.gc-store,.gc-holiday,.gc-brand,.gc-code){color:#fff!important}
+html[data-theme="dark"] .gc-back{background:#050505!important;color:#fff!important}
+html[data-theme="dark"] .gc-qr,html[data-theme="dark"] .fx-qr{background:#fff!important;border-color:#fff!important}
+html[data-theme="dark"] :where(.pm-img,.pm-th,.sx-img,.dd-art){background:#080808!important;border-color:#333!important}
+html[data-theme="dark"] :where(.pm-img img,.pm-th img,.sx-img img,.dd-art img,.gc-qr img,.fx-qr img){filter:none!important}
+html[data-theme="dark"] :where(.dnav,.tabs,.sx-bar-in){border:1px solid #333!important}
+html[data-theme="dark"] :where(.toast){background:#080808!important;color:#fff!important;border:1px solid #444!important}
+html[data-theme="dark"] :where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid #fff!important;outline-offset:3px}
+html[data-theme="dark"] :where(button:disabled,[aria-disabled="true"],.disabled){opacity:.55}
+@media(prefers-contrast:more){html[data-theme="dark"] :where(.sc,.sl-card,.row,.pm-box,.pm-card,.pm-opt,.kt-opt,.kt-dd,.bill-card,.bill-payment,.bill-result,.mcp-linked-app,.mcp-sheet){border-color:#fff!important}}
