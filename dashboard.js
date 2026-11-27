@@ -92,7 +92,7 @@
     try {
       buildDash(data);
       dash.hidden = false; document.body.classList.add('is-dash');
-      const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = '#0a0a0a';
+      const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = document.documentElement.dataset.theme === 'dark' ? '#101110' : '#dbe94a';
       window.scrollTo(0, 0);
       await sleep(80);
       dash.classList.add('go'); loader.classList.add('out'); runCounts();
