@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { readdirSync, copyFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, copyFileSync, mkdirSync, cpSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,7 +35,6 @@ export default defineConfig({
         mcpLogin: resolve(root, 'mcp-login.html'),
         mcpConsent: resolve(root, 'mcp-consent.html'),
         premiumThankYou: resolve(root, 'premium-thank-you.html'),
-        cashier: resolve(root, 'staff-modes/cashier.html'),
         stockKeeper: resolve(root, 'staff-modes/stock-keeper.html')
       }
     }
