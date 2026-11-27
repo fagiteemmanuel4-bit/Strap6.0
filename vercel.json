@@ -60,5 +60,8 @@
       "path": "/api/billing/cron",
       "schedule": "0 9 * * *"
     }
-  ]
+  ],
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
