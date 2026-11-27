@@ -60,10 +60,11 @@ function RecordForm({ config, onClose, onSave }) {
   </div>;
 }
 
-function RecordPage({ id, ctx }) {
+function RecordPage({ id, ctx, version }) {
   const config = RECORD_PAGE_CONFIG[id], key = id === 'customers' ? 'customers' : 'purchase';
   const [rows, setRows] = useState(() => window.StrapStore.records(key));
   const [formOpen, setFormOpen] = useState(false);
+  useEffect(() => { setRows(window.StrapStore.records(key)); }, [key, version]);
   const refresh = () => setRows(window.StrapStore.records(key));
   const save = values => {
     if (id === 'customers') {
@@ -142,7 +143,7 @@ export function installReactUI() {
   const mountListPage = (id, host, ctx) => {
     const existing = mountedPages.get(host); if (existing) return existing;
     const root = createRoot(host); let refresh = () => {};
-    function Mounted() { const [, setVersion] = useState(0); refresh = () => setVersion(value => value + 1); return <RecordPage key={id} id={id} ctx={ctx} />; }
+    function Mounted() { const [, setVersion] = useState(0); refresh = () => setVersion(value => value + 1); return <RecordPage id={id} ctx={ctx} version={version} />; }
     flushSync(() => root.render(<Mounted />));
     const api = { onShow: () => refresh() }; mountedPages.set(host, api); return api;
   };
