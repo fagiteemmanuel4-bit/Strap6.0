@@ -48,6 +48,7 @@ window.StrapPages = (() => {
   }
 
   function list(id, root, ctx) {
+    if (['customers', 'purchase'].includes(id) && window.StrapReactUI?.mountListPage) return window.StrapReactUI.mountListPage(id, root, ctx);
     const c = CFG[id], key = ({ purchase: 'purchase', transfers: 'transfers', gift: 'gift', customers: 'customers' })[id];
     const rows = StrapStore.records(key);
     const add = () => formSheet({ title: c.cta, fields: c.fields, cta: c.cta }, v => {
@@ -908,6 +909,7 @@ window.StrapPages = (() => {
   }
   function build(id, root, ctx) {
     ctxRef = ctx;
+    if (id === 'settings') return window.StrapSettings?.mount(root, ctx) || {};
     if (id === 'collections') return collections(root, ctx);
     if (CFG[id] && id !== 'orders') return list(id, root, ctx) || {};
     if (id === 'orders') return orders(root, ctx);

@@ -10,7 +10,6 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="application-name" content="Strap">
 <title>Strap</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Sora:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="loader.css">
@@ -63,8 +62,7 @@
   </section>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="api.js"></script>
-<script src="picker.js"></script>
-<script src="script.js"></script>
+<div id="react-runtime" aria-hidden="true"></div>
+<script type="module" src="/src/auth.jsx"></script>
 </body>
 </html>
