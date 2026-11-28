@@ -69,7 +69,15 @@ window.StrapUI = (() => {
     vibrate: '<rect x="8" y="3.5" width="8" height="17" rx="2"/><path d="M4 9v6M20 9v6"/>',
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.6-2.1-.5-1.3.2-2.4 1.6-2.4H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7 16.8 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="8" r="1"/>',
-    flash: '<path d="M13 3.5 5.5 13.5H12l-1 7 7.5-10H12z"/>'
+    flash: '<path d="M13 3.5 5.5 13.5H12l-1 7 7.5-10H12z"/>',
+    share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.6M8.2 13.2l7.6 4.6"/>',
+    'message-circle': '<path d="M20 11.5a7.8 7.8 0 0 1-8 7.5 8.8 8.8 0 0 1-3.7-.8L4 20l1.2-3.5A7.2 7.2 0 0 1 4 12c0-4.2 3.6-7.5 8-7.5s8 2.8 8 7z"/><path d="M8.5 10.5c.7 2 2 3.3 4.2 4.2l1.3-1.1 2 1c-.2 1.2-1 1.8-2.2 1.8-3.4-.4-6.6-3.4-7-6.7 0-1.1.6-1.9 1.7-2.2l1 2z"/>',
+    facebook: '<path d="M14 21v-8h3l.5-3H14V8c0-.9.4-1.5 1.6-1.5H18V4h-2.8C12.5 4 11 5.5 11 8v2H8v3h3v8z"/>',
+    instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.7" cy="6.7" r=".8" fill="currentColor"/>',
+    music: '<path d="M14 4v11.2a3.3 3.3 0 1 1-2-3V7l8-2v8.2a3.3 3.3 0 1 1-2-3V3z"/>',
+    send: '<path d="m21 3-7.5 18-3.7-7.8L2 9.5z"/><path d="M21 3 9.8 13.2"/>',
+    'shopping-bag': '<path d="M5 8h14l1 12H4z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>'
+
   };
   const ic = (k, s = 22, w = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] || P.info}</svg>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
