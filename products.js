@@ -169,7 +169,7 @@ window.StrapProducts = (() => {
             <label class="pm-si">${ic('search', 18, 2)}<input id="pm-q" type="search" placeholder="Search products" autocomplete="off"></label>
             <label class="pm-so"><select id="pm-sort" aria-label="Sort products"><option value="new">Newest</option><option value="az">Name A–Z</option><option value="lo">Price: low to high</option><option value="hi">Price: high to low</option></select>${ic('chevUD', 16, 2.2)}</label>
           </div>
-          <div class="pm-selbar" id="pm-selbar" hidden><b></b><button type="button" id="pm-clear">Clear</button></div>
+          <div class="pm-selbar" id="pm-selbar" hidden><b></b><div class="pm-sel-actions"><button type="button" class="pm-sel-action" id="pm-sel-import">${ic('download',16)}<span>Import</span></button><button type="button" class="pm-sel-action" id="pm-sel-publish">${ic('store',16)}<span>Publish</span></button><button type="button" class="pm-sel-action" id="pm-sel-share">${ic('share',16)}<span>Share</span></button><button type="button" class="pm-sel-clear" id="pm-clear">Clear</button></div></div>
           <div id="pm-body"></div>
         </section>
       </div>`;
@@ -186,9 +186,8 @@ window.StrapProducts = (() => {
     };
     const ck = p => `<label class="pm-ck"><input type="checkbox" data-id="${p.id}" ${picked.has(p.id) ? 'checked' : ''} aria-label="Select ${esc(p.title)}"><span>${ic('check', 14, 3.2)}</span></label>`;
     const thumb = p => p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : ic('image', 28, 1.6);
-    const itemMenu = p => '<details class="pm-item-menu"><summary aria-label="Product actions" title="Product actions">' + ic('dots', 18, 2) + '</summary><div class="pm-item-pop"><button type="button" data-publish-product="' + esc(p.id) + '">Publish to Online Store</button></div></details>';
-    const rowHtml = p => '<li class="pm-row" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-img">' + thumb(p) + '</div><div class="pm-info"><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small></div><span class="pm-price">' + money(p.price || 0) + '</span>' + itemMenu(p) + '</li>';
-    const cardHtml = p => '<li class="pm-gc" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-gimg">' + thumb(p) + '</div><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small><span class="pm-price">' + money(p.price || 0) + '</span>' + itemMenu(p) + '</li>';
+    const rowHtml = p => '<li class="pm-row" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-img">' + thumb(p) + '</div><div class="pm-info"><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small></div><span class="pm-price">' + money(p.price || 0) + '</span>' + '</li>';
+    const cardHtml = p => '<li class="pm-gc" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-gimg">' + thumb(p) + '</div><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small><span class="pm-price">' + money(p.price || 0) + '</span>' + '</li>';
 
     function renderChrome() {
       const has = items.length > 0 && !loading;
@@ -226,7 +225,10 @@ window.StrapProducts = (() => {
         item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
       });
     }
-    function renderSel() { selbar.hidden = !picked.size; $('b', selbar).textContent = `${picked.size} selected`; }
+    function renderSel() {
+      const count = picked.size; selbar.hidden = !count; $('b', selbar).textContent = `${count} selected`;
+      ['#pm-sel-publish','#pm-sel-share'].forEach(s => { const b=$(s,root); if(b) b.disabled=!count; });
+    }
     const subs = [];
     function refreshLists() {
       const pg = document.querySelector('.pm-page'); if (!pg) return;
@@ -263,6 +265,9 @@ window.StrapProducts = (() => {
     // ----- events on the list page -----
     root.addEventListener('click', e => {
       const t = e.target;
+      if (t.closest('#pm-sel-import')) { openImport(); return; }
+      if (t.closest('#pm-sel-publish')) { publishSelected(); return; }
+      if (t.closest('#pm-sel-share')) { openShareSheet(); return; }
       const publish = t.closest('[data-publish-product]');
       if (publish) { e.preventDefault(); e.stopPropagation(); const menu = publish.closest('details'); if (menu) menu.open = false; publishProduct(publish.dataset.publishProduct, publish); return; }
       const act = t.closest('[data-act]');
@@ -297,6 +302,89 @@ window.StrapProducts = (() => {
       exportScreen(x);
     });
     document.addEventListener('click', e => { if (!pop.hidden && !e.target.closest('#pm-pop') && !e.target.closest('#pm-more')) togglePop(false); });
+
+
+    // ===== Share selected products =====
+    const shareWrap = document.createElement('div');
+    shareWrap.className = 'pm-layer pm-share-layer'; shareWrap.hidden = true;
+    shareWrap.innerHTML = `
+      <div class="pm-scrim"></div>
+      <section class="pm-sheet pm-share-sheet" role="dialog" aria-modal="true" aria-label="Share products">
+        <div class="pm-grab"><i></i></div>
+        <div class="pm-share-head"><div><h2>Share product</h2><p>Choose where you want to share it</p></div><button type="button" class="pm-x" data-share-close aria-label="Close">${ic('close',20,2.2)}</button></div>
+        <div class="pm-share-products" id="pm-share-products"></div>
+        <div class="pm-share-platforms">
+          <button type="button" class="pm-share-platform ready" data-platform="whatsapp"><span>${ic('message-circle',23,2)}</span><b>WhatsApp</b></button>
+          <button type="button" class="pm-share-platform soon" data-platform="facebook"><span>${ic('facebook',23,2)}</span><b>Facebook</b><small>Coming soon</small></button>
+          <button type="button" class="pm-share-platform soon" data-platform="instagram"><span>${ic('instagram',23,2)}</span><b>Instagram</b><small>Coming soon</small></button>
+          <button type="button" class="pm-share-platform soon" data-platform="tiktok"><span>${ic('music',23,2)}</span><b>TikTok</b><small>Coming soon</small></button>
+          <button type="button" class="pm-share-platform soon" data-platform="telegram"><span>${ic('send',23,2)}</span><b>Telegram</b><small>Coming soon</small></button>
+          <button type="button" class="pm-share-platform soon" data-platform="catalog"><span>${ic('shopping-bag',23,2)}</span><b>WhatsApp Catalog</b><small>Coming soon</small></button>
+        </div>
+        <label class="pm-share-store" id="pm-share-store-wrap" hidden><input type="checkbox" id="pm-share-store"><span><b>Include online store link</b><small>Let customers buy this product from your store</small></span></label>
+        <div class="pm-share-caption"><label for="pm-share-caption">Post caption</label><textarea id="pm-share-caption" rows="4" readonly></textarea><button type="button" class="pm-share-copy" id="pm-share-copy">${ic('copy',16,2)} Copy caption</button></div>
+        <p class="pm-share-note" id="pm-share-note">Your first product photo will be included when you share.</p>
+      </section>`;
+    document.body.appendChild(shareWrap);
+    let shareProducts=[],shareProduct=null,shareStore=null,shareOnlineRow=null;
+    const shareText=p=>String(p&&p.description||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|h[1-6])>/gi,'\n').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    const productImage=p=>p&&(p.image||(p.files||[]).find(f=>f&&/^image\//.test(f.type||'')&&/^https?:/i.test(f.url||''))?.url)||'';
+    const productPublicUrl=(store,row)=>row&&(row.public_url||row.product_url||row.url)||(store&&store.slug&&row&&row.slug?window.location.origin+'/store/'+encodeURIComponent(store.slug)+'/product/'+encodeURIComponent(row.slug):'');
+    function updateShareCaption(){
+      if(!shareProduct)return;
+      let caption=shareText(shareProduct)||shareProduct.title||'Check out this product!';
+      if($('#pm-share-store').checked&&shareOnlineRow){const url=productPublicUrl(shareStore,shareOnlineRow);if(url)caption+='\n\nBuy here: '+url;}
+      $('#pm-share-caption').value=caption;
+      $('#pm-share-note').textContent=productImage(shareProduct)?'The first product photo will be attached when you share.':'No product photo found. Only the caption will be shared.';
+    }
+    async function checkShareStore(p){
+      try{
+        const r=await StrapAPI.call('GET','storefront');if(!r||!r.ok||!r.store)return;
+        const sync=await StrapAPI.call('POST','storefront/products',{});if(!sync||!sync.ok)return;
+        const row=(sync.products||[]).find(x=>String(x.source_product_id)===String(p.id)&&String(x.source_branch_id)===productBranch()&&x.visible);
+        if(!row)return;shareStore=r.store;shareOnlineRow=row;$('#pm-share-store-wrap').hidden=false;updateShareCaption();
+      }catch(_){}
+    }
+    function selectShareProduct(id){
+      shareProduct=shareProducts.find(p=>String(p.id)===String(id))||shareProducts[0]||null;shareOnlineRow=null;
+      $('#pm-share-products').innerHTML=shareProducts.map(p=>'<button type="button" class="pm-share-product'+(shareProduct&&String(p.id)===String(shareProduct.id)?' on':'')+'" data-share-product="'+esc(p.id)+'"><span class="pm-share-thumb">'+(productImage(p)?'<img src="'+esc(productImage(p))+'" alt="">':ic('image',20,2))+'</span><span><b>'+esc(p.title)+'</b><small>'+money(p.price||0)+'</small></span>'+ic('check',17,2)+'</button>').join('');
+      $('#pm-share-store-wrap').hidden=true;$('#pm-share-store').checked=false;updateShareCaption();if(shareProduct)checkShareStore(shareProduct);
+    }
+    function openShareSheet(){
+      shareProducts=items.filter(p=>picked.has(p.id));if(!shareProducts.length)return toast('Select at least one product to share.');
+      shareStore=null;shareOnlineRow=null;shareWrap.hidden=false;document.body.classList.add('pm-open');void shareWrap.offsetWidth;shareWrap.classList.add('on');selectShareProduct(shareProducts[0].id);
+    }
+    function closeShareSheet(){shareWrap.classList.remove('on');setTimeout(()=>{if(!shareWrap.classList.contains('on'))shareWrap.hidden=true;},380);if(sheetWrap.hidden&&flow.hidden&&page.hidden)document.body.classList.remove('pm-open');}
+    async function shareOnWhatsApp(){
+      if(!shareProduct)return;const caption=$('#pm-share-caption').value,imageUrl=productImage(shareProduct);
+      try{
+        if(imageUrl&&navigator.share&&navigator.canShare&&typeof File!=='undefined'){
+          const response=await fetch(imageUrl);if(!response.ok)throw Error('Image unavailable');
+          const blob=await response.blob(),ext=blob.type.includes('png')?'.png':blob.type.includes('webp')?'.webp':'.jpg';
+          const file=new File([blob],(shareProduct.title||'product').replace(/[^a-z0-9-_]/gi,'-')+ext,{type:blob.type||'image/jpeg'});
+          if(navigator.canShare({files:[file]})){await navigator.share({files:[file],text:caption});return;}
+        }
+      }catch(error){if(error&&error.name==='AbortError')return;}
+      window.open('https://wa.me/?text='+encodeURIComponent(caption),'_blank','noopener');
+      if(imageUrl)toast('WhatsApp opened. Attach the product photo if it was not added automatically.');
+    }
+    async function publishSelected(){
+      const selected=items.filter(p=>picked.has(p.id));if(!selected.length)return;
+      const btn=$('#pm-sel-publish',root),label=btn.innerHTML;btn.disabled=true;btn.innerHTML=ic('clock',16)+'<span>Publishing…</span>';
+      for(const p of selected)await publishProduct(p.id,null);
+      btn.disabled=false;btn.innerHTML=label;
+    }
+    shareWrap.addEventListener('click',e=>{
+      if(e.target.closest('.pm-scrim')||e.target.closest('[data-share-close]'))return closeShareSheet();
+      const choice=e.target.closest('[data-share-product]');if(choice){selectShareProduct(choice.dataset.shareProduct);return;}
+      const platform=e.target.closest('[data-platform]');if(platform){if(platform.dataset.platform!=='whatsapp')return toast(platform.dataset.platform==='catalog'?'WhatsApp Catalog sharing is coming soon.':platform.querySelector('b').textContent+' sharing is coming soon.');shareOnWhatsApp();}
+    });
+    shareWrap.addEventListener('change',e=>{if(e.target.id==='pm-share-store')updateShareCaption();});
+    $('#pm-share-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#pm-share-caption').value);toast('Caption copied');}catch(_){ $('#pm-share-caption').select();document.execCommand('copy');toast('Caption copied');}});
+    shareWrap.addEventListener('touchstart',e=>{if(e.target.closest('.pm-grab')){shareWrap.dataset.y=String(e.touches[0].clientY);shareWrap.dataset.dy='0';}},{passive:true});
+    shareWrap.addEventListener('touchmove',e=>{if(shareWrap.dataset.y){const dy=Math.max(0,e.touches[0].clientY-Number(shareWrap.dataset.y));shareWrap.dataset.dy=String(dy);$('.pm-share-sheet',shareWrap).style.transform='translateY('+dy+'px)';}},{passive:true});
+    shareWrap.addEventListener('touchend',()=>{const s=$('.pm-share-sheet',shareWrap);if(Number(shareWrap.dataset.dy)>90)closeShareSheet();else s.style.transform='';delete shareWrap.dataset.y;delete shareWrap.dataset.dy;});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!shareWrap.hidden)closeShareSheet();});
 
     // ===== bottom sheet: import options =====
     const sheetWrap = document.createElement('div');
