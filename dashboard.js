@@ -260,7 +260,14 @@
         }
       } else {
         try {
-          mods[id] = StrapPages.build(id, p, ctx);
+          if (id === 'settings') {
+            if (!window.StrapSettings || typeof window.StrapSettings.mount !== 'function') {
+              throw new Error('Settings module did not finish loading');
+            }
+            mods[id] = window.StrapSettings.mount(p, ctx);
+          } else {
+            mods[id] = StrapPages.build(id, p, ctx);
+          }
         } catch (err) {
           console.error('[Strap dashboard] Page module failed to initialize (' + id + '):', err);
           mods[id] = null;
