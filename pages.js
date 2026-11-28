@@ -910,6 +910,15 @@ window.StrapPages = (() => {
   function build(id, root, ctx) {
     ctxRef = ctx;
     if (id === 'settings') return window.StrapSettings?.mount(root, ctx) || {};
+    if (id === 'inventory') return inventory(root, ctx);
+    if (id === 'growth') return growth(root, ctx);
+    if (['sales-today', 'sales-history', 'new-sale'].includes(id)) {
+      const sales = window.StrapSales;
+      if (!sales) throw new Error('Sales module did not finish loading');
+      if (id === 'sales-today') return sales.today(root, ctx);
+      if (id === 'sales-history') return sales.history(root, ctx);
+      return sales.mount(root, ctx);
+    }
     if (id === 'collections') return collections(root, ctx);
     if (CFG[id] && id !== 'orders') return list(id, root, ctx) || {};
     if (id === 'orders') return orders(root, ctx);
