@@ -278,7 +278,8 @@
     }
     // inventory needs the products module to exist first
     async function show(id, options = {}) {
-      if (id === 'staff') { toast('Staff is coming soon.'); closeDrawer(); return; }
+      const comingSoon = { staff: 'Staff', activity: 'Activity log', devices: 'Devices & printers' };
+      if (comingSoon[id]) { toast(comingSoon[id] + ' is coming soon.'); closeDrawer(); return; }
       if (STAFF && !(STAFF.allowedRoutes || []).includes(id)) { toast('This section is not included in your staff access.'); return; }
       let planAccess = { verified: false, plan: StrapFeatures.state.plan };
       try {
