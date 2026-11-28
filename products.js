@@ -154,7 +154,8 @@ window.StrapProducts = (() => {
         <header class="pm-head">
           <h1 class="pm-title"><span class="pm-tico">${ic('tag', 24, 1.8)}</span>Products</h1>
           <button class="pm-add sm" type="button" id="pm-add" hidden>Add product</button>
-          
+          <button class="pm-round" type="button" id="pm-more" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" hidden>${ic('dots', 24)}</button>
+          <div class="pm-pop" id="pm-pop" role="menu" hidden></div>
         </header>
         <section class="pm-box">
           <div class="pm-tools">
@@ -168,7 +169,7 @@ window.StrapProducts = (() => {
             <label class="pm-si">${ic('search', 18, 2)}<input id="pm-q" type="search" placeholder="Search products" autocomplete="off"></label>
             <label class="pm-so"><select id="pm-sort" aria-label="Sort products"><option value="new">Newest</option><option value="az">Name A–Z</option><option value="lo">Price: low to high</option><option value="hi">Price: high to low</option></select>${ic('chevUD', 16, 2.2)}</label>
           </div>
-          <div class="pm-selbar" id="pm-selbar"><div class="pm-sel-main"><div class="pm-sel-actions"><button type="button" class="pm-sel-action" id="pm-sel-import">${ic('download',16)}<span>Import products</span></button><div class="pm-export-wrap"><button type="button" class="pm-sel-action" id="pm-export-toggle" aria-expanded="false" aria-haspopup="menu">${ic('upload',16)}<span>Export products</span>${ic('chevD',14,2)}</button><div class="pm-export-menu" id="pm-export-menu" role="menu" hidden>${EXPORTS.map(x => `<button type="button" role="menuitem" class="pm-pi${x.soon ? ' soon' : ''}" data-x="${x.id}"><span class="pm-pico">${ic(x.icon,19)}</span><span>${x.label}</span>${x.soon ? '<em>Coming soon</em>' : ''}</button>`).join('')}</div></div></div><div class="pm-selection-tools" id="pm-selection-tools" hidden><b id="pm-selected-count"></b><button type="button" class="pm-sel-action" id="pm-sel-share">${ic('share-2',16)}<span>Share</span></button><button type="button" class="pm-sel-clear" id="pm-clear">Clear</button></div></div></div>
+          <div class="pm-selbar" id="pm-selbar" hidden><b></b><div class="pm-sel-actions"><button type="button" class="pm-sel-action" id="pm-sel-import">${ic('download',16)}<span>Import</span></button><button type="button" class="pm-sel-action" id="pm-sel-publish">${ic('store',16)}<span>Publish</span></button><button type="button" class="pm-sel-action" id="pm-sel-share">${ic('share',16)}<span>Share</span></button><button type="button" class="pm-sel-clear" id="pm-clear">Clear</button></div></div>
           <div id="pm-body"></div>
         </section>
       </div>`;
@@ -190,7 +191,7 @@ window.StrapProducts = (() => {
 
     function renderChrome() {
       const has = items.length > 0 && !loading;
-      $('#pm-add', root).hidden = !has;
+      $('#pm-add', root).hidden = !has; $('#pm-more', root).hidden = !has;
       const vb = $('#pm-vbtn', root), sb = $('#pm-sbtn', root);
       vb.innerHTML = ic(viewMode === 'list' ? 'grid' : 'list', 20, 2); vb.setAttribute('aria-label', viewMode === 'list' ? 'Switch to column view' : 'Switch to list view');
       [vb, sb].forEach(b => { b.disabled = !has; b.classList.toggle('off', !has); });
@@ -225,7 +226,8 @@ window.StrapProducts = (() => {
       });
     }
     function renderSel() {
-      const count = picked.size; const tools = $('#pm-selection-tools', root); tools.hidden = !count; $('#pm-selected-count', root).textContent = `${count} selected`;
+      const count = picked.size; selbar.hidden = !count; $('b', selbar).textContent = `${count} selected`;
+      ['#pm-sel-publish','#pm-sel-share'].forEach(s => { const b=$(s,root); if(b) b.disabled=!count; });
     }
     const subs = [];
     function refreshLists() {
@@ -264,14 +266,13 @@ window.StrapProducts = (() => {
     root.addEventListener('click', e => {
       const t = e.target;
       if (t.closest('#pm-sel-import')) { openImport(); return; }
-      if (t.closest('#pm-export-toggle')) { toggleExportMenu(); return; }
+      if (t.closest('#pm-sel-publish')) { publishSelected(); return; }
       if (t.closest('#pm-sel-share')) { openShareSheet(); return; }
-      const exportChoice = t.closest('[data-x]');
-      if (exportChoice) { closeExportMenu(); const format = EXPORTS.find(x => x.id === exportChoice.dataset.x); if (format && format.soon) return toast('Export as link is coming soon'); if (format) exportScreen(format); return; }
       const publish = t.closest('[data-publish-product]');
       if (publish) { e.preventDefault(); e.stopPropagation(); const menu = publish.closest('details'); if (menu) menu.open = false; publishProduct(publish.dataset.publishProduct, publish); return; }
       const act = t.closest('[data-act]');
       if (act) { const a = act.dataset.act; if (a === 'import') openImport(); if (a === 'discover') toast('Product sourcing is coming soon'); return; }
+      if (t.closest('#pm-more')) return togglePop();
       if (t.closest('#pm-clear')) { picked.clear(); renderBody(); renderSel(); return; }
       if (t.closest('[data-plus]')) return toast('Saved views are coming soon');
       const tb = t.closest('.pm-tab[data-s]'); if (tb) { status = tb.dataset.s; renderChrome(); renderBody(); return; }
@@ -288,16 +289,20 @@ window.StrapProducts = (() => {
     $('#pm-q', root).addEventListener('input', e => { query = e.target.value.trim(); renderBody(); });
     $('#pm-sort', root).addEventListener('change', e => { sort = e.target.value; renderBody(); });
 
-    // ----- persistent import/export toolbar -----
-    const exportMenu = $('#pm-export-menu', root), exportToggle = $('#pm-export-toggle', root);
-    function toggleExportMenu(force) {
-      const open = force !== undefined ? force : exportMenu.hidden;
-      exportMenu.hidden = !open; exportToggle.setAttribute('aria-expanded', String(open));
-    }
-    const closeExportMenu = () => toggleExportMenu(false);
-    document.addEventListener('click', e => {
-      if (!exportMenu.hidden && !e.target.closest('#pm-export-menu') && !e.target.closest('#pm-export-toggle')) closeExportMenu();
+    // ----- three-dots menu (only exists once there are products) -----
+    const pop = $('#pm-pop', root), moreBtn = $('#pm-more', root);
+    pop.innerHTML = `<button type="button" role="menuitem" class="pm-pi" data-m="import"><span class="pm-pico">${ic('download', 20)}</span><span>Import products</span></button><p class="pm-pop-h">Export products</p>` + EXPORTS.map(x =>
+      `<button type="button" role="menuitem" class="pm-pi${x.soon ? ' soon' : ''}" data-x="${x.id}"><span class="pm-pico">${ic(x.icon, 20)}</span><span>${x.label}</span>${x.soon ? '<em>Coming soon</em>' : ''}</button>`).join('');
+    function togglePop(force) { const open = force !== undefined ? force : pop.hidden; pop.hidden = !open; moreBtn.setAttribute('aria-expanded', open); }
+    pop.addEventListener('click', e => {
+      const b = e.target.closest('.pm-pi'); if (!b) return; togglePop(false);
+      if (b.dataset.m === 'import') return openImport();
+      const x = EXPORTS.find(v => v.id === b.dataset.x);
+      if (x.soon) return toast('Export as link is coming soon');
+      exportScreen(x);
     });
+    document.addEventListener('click', e => { if (!pop.hidden && !e.target.closest('#pm-pop') && !e.target.closest('#pm-more')) togglePop(false); });
+
 
     // ===== Share selected products =====
     const shareWrap = document.createElement('div');
@@ -363,6 +368,12 @@ window.StrapProducts = (() => {
       window.open('https://wa.me/?text='+encodeURIComponent(caption),'_blank','noopener');
       if(imageUrl)toast('WhatsApp opened. Attach the product photo if it was not added automatically.');
     }
+    async function publishSelected(){
+      const selected=items.filter(p=>picked.has(p.id));if(!selected.length)return;
+      const btn=$('#pm-sel-publish',root),label=btn.innerHTML;btn.disabled=true;btn.innerHTML=ic('clock',16)+'<span>Publishing…</span>';
+      for(const p of selected)await publishProduct(p.id,null);
+      btn.disabled=false;btn.innerHTML=label;
+    }
     shareWrap.addEventListener('click',e=>{
       if(e.target.closest('.pm-scrim')||e.target.closest('[data-share-close]'))return closeShareSheet();
       const choice=e.target.closest('[data-share-product]');if(choice){selectShareProduct(choice.dataset.shareProduct);return;}
@@ -410,7 +421,7 @@ window.StrapProducts = (() => {
     grab.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; dy = 0; sheet.style.transition = 'none'; }, { passive: true });
     grab.addEventListener('touchmove', e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); sheet.style.transform = `translateY(${dy}px)`; }, { passive: true });
     grab.addEventListener('touchend', () => { sheet.style.transition = ''; if (dy > 90) closeSheet(); else sheet.style.transform = ''; y0 = null; });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!sheetWrap.hidden) closeSheet(); else if (!flow.hidden) fClose(); else if (!page.hidden) closePage(); closeExportMenu(); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!sheetWrap.hidden) closeSheet(); else if (!flow.hidden) fClose(); else if (!page.hidden) closePage(); togglePop(false); } });
 
     // ===== full-screen flow screens (import / export) =====
     const flow = document.createElement('div'); flow.className = 'pm-flow'; flow.hidden = true; document.body.appendChild(flow);
