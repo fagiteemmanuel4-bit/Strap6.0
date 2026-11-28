@@ -329,7 +329,7 @@ window.StrapProducts = (() => {
     let shareProducts=[],shareProduct=null,shareStore=null,shareOnlineRow=null;
     const shareText=p=>String(p&&p.description||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|h[1-6])>/gi,'\n').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
     const productImage=p=>p&&(p.image||(p.files||[]).find(f=>f&&/^image\//.test(f.type||'')&&/^https?:/i.test(f.url||''))?.url)||'';
-    const productPublicUrl=(store,row)=>row&&(row.public_url||row.product_url||row.url)||(store&&store.url&&row&&row.slug?String(store.url).replace(/\/$/,'')+'/products/'+encodeURIComponent(row.slug):'');
+    const productPublicUrl=(store,row)=>row&&(row.public_url||row.product_url||row.url)||(store&&(store.public_url||store.url||store.domain)&&row&&row.slug?String(store.public_url||store.url||store.domain).replace(/\/$/,'')+'/products/'+encodeURIComponent(row.slug):'');
     function updateShareCaption(){
       if(!shareProduct)return;
       let caption=shareText(shareProduct)||shareProduct.title||'Check out this product!';
@@ -370,7 +370,7 @@ window.StrapProducts = (() => {
     }
     async function publishSelected(){
       const selected=items.filter(p=>picked.has(p.id));if(!selected.length)return;
-      const btn=$('#pm-sel-publish',root),label=btn.innerHTML;btn.disabled=true;btn.innerHTML=ic('loader',16)+'<span>Publishing…</span>';
+      const btn=$('#pm-sel-publish',root),label=btn.innerHTML;btn.disabled=true;btn.innerHTML=ic('clock',16)+'<span>Publishing…</span>';
       for(const p of selected)await publishProduct(p.id,null);
       btn.disabled=false;btn.innerHTML=label;
     }
