@@ -187,7 +187,7 @@ window.StrapProducts = (() => {
     const ck = p => `<label class="pm-ck"><input type="checkbox" data-id="${p.id}" ${picked.has(p.id) ? 'checked' : ''} aria-label="Select ${esc(p.title)}"><span>${ic('check', 14, 3.2)}</span></label>`;
     const thumb = p => p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : ic('image', 28, 1.6);
     const rowHtml = p => '<li class="pm-row" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-img">' + thumb(p) + '</div><div class="pm-info"><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small></div><span class="pm-price">' + money(p.price || 0) + '</span>' + '</li>';
-    const cardHtml = p => '<li class="pm-gc" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-gimg">' + thumb(p) + '</div><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small><span class="pm-price">' + money(p.price || 0) + '</span>' + itemMenu(p) + '</li>';
+    const cardHtml = p => '<li class="pm-gc" data-id="' + esc(p.id) + '" tabindex="0">' + ck(p) + '<div class="pm-gimg">' + thumb(p) + '</div><b>' + esc(p.title) + '</b><span class="pm-badge ' + esc(p.status) + '">' + label(p.status) + '</span><small>' + invText(p) + '</small><span class="pm-price">' + money(p.price || 0) + '</span>' + '</li>';
 
     function renderChrome() {
       const has = items.length > 0 && !loading;
