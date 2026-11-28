@@ -32,8 +32,12 @@ function DashboardRuntime() {
         await import('../products.js');
         await import('../sales.js');
         await import('../settings.js');
-        await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
-        await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        // QR/PDF are optional enhancements. A blocked CDN must not prevent the
+        // core dashboard and its pages from starting.
+        await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js')
+          .catch(error => console.warn('[Strap] QR code helper unavailable; continuing without it.', error));
+        await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+          .catch(error => console.warn('[Strap] PDF helper unavailable; continuing without it.', error));
         await import('../features.js');
         await import('../pages.js');
         await import('../dashboard.js');
