@@ -329,7 +329,7 @@ window.StrapProducts = (() => {
     let shareProducts=[],shareProduct=null,shareStore=null,shareOnlineRow=null;
     const shareText=p=>String(p&&p.description||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|h[1-6])>/gi,'\n').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
     const productImage=p=>p&&(p.image||(p.files||[]).find(f=>f&&/^image\//.test(f.type||'')&&/^https?:/i.test(f.url||''))?.url)||'';
-    const productPublicUrl=(store,row)=>row&&(row.public_url||row.product_url||row.url)||(store&&(store.public_url||store.url||store.domain)&&row&&row.slug?String(store.public_url||store.url||store.domain).replace(/\/$/,'')+'/products/'+encodeURIComponent(row.slug):'');
+    const productPublicUrl=(store,row)=>row&&(row.public_url||row.product_url||row.url)||(store&&store.slug&&row&&row.slug?window.location.origin+'/store/'+encodeURIComponent(store.slug)+'/product/'+encodeURIComponent(row.slug):'');
     function updateShareCaption(){
       if(!shareProduct)return;
       let caption=shareText(shareProduct)||shareProduct.title||'Check out this product!';
@@ -347,7 +347,7 @@ window.StrapProducts = (() => {
     }
     function selectShareProduct(id){
       shareProduct=shareProducts.find(p=>String(p.id)===String(id))||shareProducts[0]||null;shareOnlineRow=null;
-      $('#pm-share-products').innerHTML=shareProducts.map(p=>'<button type="button" class="pm-share-product'+(shareProduct&&String(p.id)===String(shareProduct.id)?' on':'')+'" data-share-product="'+esc(p.id)+'"><span class="pm-share-thumb">'+(productImage(p)?'<img src="'+esc(productImage(p))+'" alt="">':ic('image',20,2))+'</span><span><b>'+esc(p.title)+'</b><small>'+money(p.price||0)+'</small></span>'+ic('check-circle',17,2)+'</button>').join('');
+      $('#pm-share-products').innerHTML=shareProducts.map(p=>'<button type="button" class="pm-share-product'+(shareProduct&&String(p.id)===String(shareProduct.id)?' on':'')+'" data-share-product="'+esc(p.id)+'"><span class="pm-share-thumb">'+(productImage(p)?'<img src="'+esc(productImage(p))+'" alt="">':ic('image',20,2))+'</span><span><b>'+esc(p.title)+'</b><small>'+money(p.price||0)+'</small></span>'+ic('check',17,2)+'</button>').join('');
       $('#pm-share-store-wrap').hidden=true;$('#pm-share-store').checked=false;updateShareCaption();if(shareProduct)checkShareStore(shareProduct);
     }
     function openShareSheet(){
