@@ -909,6 +909,7 @@ window.StrapPages = (() => {
   }
   function build(id, root, ctx) {
     ctxRef = ctx;
+    if (id === 'settings') return window.StrapSettings?.mount(root, ctx) || {};
     if (id === 'collections') return collections(root, ctx);
     if (CFG[id] && id !== 'orders') return list(id, root, ctx) || {};
     if (id === 'orders') return orders(root, ctx);
