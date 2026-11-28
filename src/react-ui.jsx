@@ -143,7 +143,7 @@ export function installReactUI() {
   const mountListPage = (id, host, ctx) => {
     const existing = mountedPages.get(host); if (existing) return existing;
     const root = createRoot(host); let refresh = () => {};
-    function Mounted() { const [, setVersion] = useState(0); refresh = () => setVersion(value => value + 1); return <RecordPage id={id} ctx={ctx} version={version} />; }
+    function Mounted() { const [version, setVersion] = useState(0); refresh = () => setVersion(value => value + 1); return <RecordPage id={id} ctx={ctx} version={version} />; }
     flushSync(() => root.render(<Mounted />));
     const api = { onShow: () => refresh() }; mountedPages.set(host, api); return api;
   };
